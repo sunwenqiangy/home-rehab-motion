@@ -1,0 +1,23 @@
+{
+  "name": "home-rehab-motion-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/admin-web",
+    "apps/patient-miniapp",
+    "services/main-service",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n admin,main,analysis \"npm run dev:admin\" \"npm run dev:main\" \"npm run dev:analysis\"",
+    "dev:admin": "npm run dev -w @home-rehab-motion/admin-web",
+    "dev:main": "npm run start:dev -w @home-rehab-motion/main-service",
+    "dev:analysis": "python3 -m uvicorn app.main:app --app-dir services/analysis-service --reload --host 0.0.0.0 --port 8000",
+    "typecheck": "npm run typecheck -ws --if-present",
+    "db:generate": "npm run prisma:generate -w @home-rehab-motion/main-service"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0",
+    "typescript": "^5.4.5"
+  }
+}

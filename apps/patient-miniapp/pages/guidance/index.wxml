@@ -1,0 +1,62 @@
+<view class="guidance-v4-page">
+  <view class="guidance-v4-top-sticky">
+    <view class="guidance-v4-statusbar" style="height: {{statusBarHeight}}px;"></view>
+
+    <view class="guidance-v4-nav">
+      <view class="guidance-v4-nav__title-wrap"><view class="guidance-v4-nav__mark"></view><text class="guidance-v4-nav__title">训练指导</text></view>
+      <view class="guidance-v4-nav__capsule"></view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="guidance-v4-screen" enable-back-to-top="true">
+    <view class="guidance-v4-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+
+    <view class="guidance-v4-screen-inner">
+      <view class="guidance-v4-filter-row">
+        <view wx:for="{{filters}}" wx:key="value" class="guidance-v4-filter-chip {{activeFilter === item.value ? 'guidance-v4-filter-chip--active' : ''}}" data-value="{{item.value}}" bindtap="onFilterTap">{{item.label}}</view>
+      </view>
+
+      <view wx:if="{{loading}}" class="guidance-v4-card guidance-v4-loading-card">
+        <view class="guidance-v4-card-title">正在加载训练指导...</view>
+      </view>
+
+      <view wx:else>
+        <view class="guidance-v4-card" wx:for="{{items}}" wx:key="contentId" wx:if="{{activeFilter === 'all' || activeFilter === item.actionType}}" data-content-id="{{item.contentId}}" bindtap="onViewDetail" hover-class="guidance-v4-card--pressed" hover-stay-time="80">
+          <view class="guidance-v4-card__row">
+            <view class="{{item.coverClassName}}">
+              <image wx:if="{{item.coverUrl}}" class="guidance-v4-card__cover-image" src="{{item.coverUrl}}" mode="aspectFill" />
+              <text wx:else class="guidance-v4-card__icon">{{item.iconText}}</text>
+            </view>
+            <view class="guidance-v4-card__main">
+              <view class="guidance-v4-card__title">{{item.actionLabel}}</view>
+              <view class="guidance-v4-card__desc">{{item.briefInstruction || '动作说明待更新'}}</view>
+              <view wx:if="{{item.durationLabel}}" class="guidance-v4-card__duration">建议用时：{{item.durationLabel}}</view>
+              <view class="guidance-v4-card__chip-row">
+                <text class="{{item.chipClassName}}">查看详情 ›</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="guidance-v4-tabbar">
+    <navigator class="guidance-v4-tab" url="/pages/index/index" open-type="redirect" hover-class="none">
+      <text class="guidance-v4-tab__icon">🏠</text>
+      <text class="guidance-v4-tab__label">首页</text>
+    </navigator>
+    <view class="guidance-v4-tab guidance-v4-tab--active">
+      <text class="guidance-v4-tab__icon">🏋️</text>
+      <text class="guidance-v4-tab__label">训练</text>
+    </view>
+    <navigator class="guidance-v4-tab" url="/pages/history/index" open-type="redirect" hover-class="none">
+      <text class="guidance-v4-tab__icon">📊</text>
+      <text class="guidance-v4-tab__label">历史</text>
+    </navigator>
+    <navigator class="guidance-v4-tab" url="/pages/mine/index" open-type="redirect" hover-class="none">
+      <text class="guidance-v4-tab__icon">👤</text>
+      <text class="guidance-v4-tab__label">我的</text>
+    </navigator>
+  </view>
+</view>

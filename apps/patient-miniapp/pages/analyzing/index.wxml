@@ -1,0 +1,63 @@
+<view class="az-page">
+  <view class="az-top-sticky">
+    <!-- 自定义状态栏 -->
+    <view class="az-statusbar" style="height: {{statusBarHeight}}px;"></view>
+
+    <!-- 自定义导航栏 -->
+    <view class="az-nav">
+      <view class="az-nav__title">⏳ 分析中</view>
+      <view class="az-nav__capsule"></view>
+    </view>
+  </view>
+
+  <scroll-view class="az-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="az-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+    <view class="az-scroll-inner">
+
+      <!-- 步骤条 -->
+      <view class="step-strip">
+        <view class="step-item step-item--done">1 选动作</view>
+        <view class="step-item step-item--done">2 上传</view>
+        <view class="step-item step-item--active">3 等结果</view>
+      </view>
+
+      <!-- 旋转环 -->
+      <view class="ring-wrap">
+        <view class="ring"></view>
+        <text class="ring-wrap__title">正在分析您的动作…</text>
+        <text class="ring-wrap__sub">预计 1~2 分钟</text>
+      </view>
+
+      <!-- 当前进度面板 -->
+      <view class="info-panel">
+        <view class="info-title">📋 当前进度</view>
+        <view class="az-check-list">
+          <view class="az-check-item" wx:for="{{statusSteps}}" wx:key="label">
+            <text class="az-check-item__icon az-check-item__icon--{{item.state}}">{{item.state === 'done' ? '✓' : item.state === 'active' ? '⏳' : '○'}}</text>
+            <text class="az-check-item__text az-check-item__text--{{item.state}}">{{item.label}}</text>
+          </view>
+        </view>
+
+        <!-- 失败/超时信息 -->
+        <view wx:if="{{failed}}" class="az-fail-panel">
+          <view class="az-fail-panel__title">{{failReasonTitle}}</view>
+          <view class="az-fail-panel__desc">{{failReasonDesc}}</view>
+        </view>
+      </view>
+
+      <!-- 提示面板 -->
+      <view class="az-hint-panel">
+        <view class="az-hint-panel__title">💡 分析将在后台继续</view>
+        <view class="az-hint-panel__desc">您可以返回首页等待通知，完成后会自动提醒您查看报告。</view>
+      </view>
+
+      <!-- 操作按钮 -->
+      <view class="az-actions">
+        <button wx:if="{{failed}}" class="btn-big btn-teal" bindtap="onRetryUpload">🔄 重新上传训练视频</button>
+        <button wx:if="{{showHistoryAction}}" class="btn-big btn-outline" bindtap="onViewHistory">📋 去历史记录查看</button>
+        <button wx:if="{{!failed}}" class="btn-big btn-outline" bindtap="onBackHomeWait">🏠 返回首页等待</button>
+      </view>
+
+    </view>
+  </scroll-view>
+</view>

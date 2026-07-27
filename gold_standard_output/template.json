@@ -1,0 +1,218 @@
+{
+  "action_type": "abdominal_crunch",
+  "source_type": "video",
+  "source_video": "教学视频.mp4",
+  "version": 1,
+  "status": "pending_review",
+  "template_params": {
+    "abdominal_displacement": {
+      "mean": 7.0286,
+      "std": 9.3634,
+      "min": 0.0055,
+      "max": 30.2544,
+      "p5": 0.0661,
+      "p25": 0.4719,
+      "p50": 1.9366,
+      "p75": 8.096,
+      "p95": 29.1601,
+      "n_cycles": 23
+    },
+    "displacement_velocity": {
+      "mean": 1.3704,
+      "std": 2.3587,
+      "min": 0.0015,
+      "max": 8.7385,
+      "p5": 0.0071,
+      "p25": 0.073,
+      "p50": 0.2448,
+      "p75": 1.169,
+      "p95": 6.4405,
+      "n_cycles": 23
+    },
+    "hold_duration": {
+      "mean": 2.3622,
+      "std": 5.5001,
+      "min": 0.08,
+      "max": 25.49,
+      "p5": 0.08,
+      "p25": 0.155,
+      "p50": 0.24,
+      "p75": 1.325,
+      "p95": 10.634,
+      "n_cycles": 23
+    },
+    "trunk_angle_change": {
+      "mean": 66.2543,
+      "std": 75.522,
+      "min": 2.2621,
+      "max": 227.1301,
+      "p5": 2.4465,
+      "p25": 4.101,
+      "p50": 12.9531,
+      "p75": 107.7438,
+      "p95": 204.8442,
+      "n_cycles": 23
+    },
+    "pelvis_shift": {
+      "mean": 8.9381,
+      "std": 8.9631,
+      "min": 0.5364,
+      "max": 33.0149,
+      "p5": 0.8456,
+      "p25": 3.0221,
+      "p50": 5.5437,
+      "p75": 10.5596,
+      "p95": 29.0592,
+      "n_cycles": 23
+    },
+    "pelvic_tilt_delta": {
+      "mean": 120.7918,
+      "std": 90.0721,
+      "min": 6.4072,
+      "max": 303.8727,
+      "p5": 9.5694,
+      "p25": 33.6808,
+      "p50": 103.4545,
+      "p75": 186.0487,
+      "p95": 267.1495,
+      "n_cycles": 23
+    },
+    "knee_rotation_angle": {
+      "mean": 102.0638,
+      "std": 50.3517,
+      "min": 18.2078,
+      "max": 153.6861,
+      "p5": 19.7292,
+      "p25": 50.5074,
+      "p50": 132.1135,
+      "p75": 144.6264,
+      "p95": 151.9658,
+      "n_cycles": 23
+    }
+  },
+  "threshold_config": {
+    "_meta": {
+      "sigma_multiplier": 2.0,
+      "note": "基于 ±2.0σ 自动生成，适用于单视频启动期，建议专家审核后调整",
+      "action_type": "abdominal_crunch"
+    },
+    "confidence_min": 0.6,
+    "abdominal_displacement": {
+      "valid_range": [
+        -11.6982,
+        44.4822
+      ],
+      "warning_range": [
+        -21.0616,
+        63.209
+      ],
+      "gold_mean": 7.0286,
+      "gold_std": 9.3634,
+      "unit": "相对画面高度 %",
+      "description": "腹部收缩位移（肩-髋中点代理）",
+      "direction": "larger_better"
+    },
+    "displacement_velocity": {
+      "valid_range": [
+        -3.347,
+        6.0878
+      ],
+      "warning_range": [
+        -5.7057,
+        8.4465
+      ],
+      "gold_mean": 1.3704,
+      "gold_std": 2.3587,
+      "unit": "% /秒",
+      "description": "收缩速度（不宜过快或过慢）",
+      "direction": "moderate"
+    },
+    "hold_duration": {
+      "valid_range": [
+        -8.638,
+        24.3626
+      ],
+      "warning_range": [
+        -14.1381,
+        35.3628
+      ],
+      "gold_mean": 2.3622,
+      "gold_std": 5.5001,
+      "unit": "秒",
+      "description": "收缩保持时间",
+      "direction": "larger_better"
+    },
+    "trunk_angle_change": {
+      "valid_range": [
+        0,
+        217.2983
+      ],
+      "warning_range": [
+        0,
+        368.3423
+      ],
+      "gold_mean": 66.2543,
+      "gold_std": 75.522,
+      "unit": "度",
+      "description": "躯干角度代偿变化量（越小越稳）",
+      "direction": "smaller_better"
+    },
+    "pelvis_shift": {
+      "valid_range": [
+        0,
+        26.8643
+      ],
+      "warning_range": [
+        0,
+        44.7905
+      ],
+      "gold_mean": 8.9381,
+      "gold_std": 8.9631,
+      "unit": "相对画面宽度 %",
+      "description": "骨盆水平偏移（越小越稳）",
+      "direction": "smaller_better"
+    },
+    "pelvic_tilt_delta": {
+      "valid_range": [
+        -59.3524,
+        300.936
+      ],
+      "warning_range": [
+        -149.4245,
+        391.0081
+      ],
+      "gold_mean": 120.7918,
+      "gold_std": 90.0721,
+      "unit": "度",
+      "description": "骨盆倾斜变化量",
+      "direction": "depends"
+    },
+    "knee_rotation_angle": {
+      "valid_range": [
+        1.3604,
+        202.7672
+      ],
+      "warning_range": [
+        -48.9913,
+        253.1189
+      ],
+      "gold_mean": 102.0638,
+      "gold_std": 50.3517,
+      "unit": "度",
+      "description": "膝关节角度变化（2D proxy）",
+      "direction": "depends"
+    }
+  },
+  "quality_report": {
+    "avg_confidence": 0.7498,
+    "missing_rate": 0.2577,
+    "total_frames": 1904,
+    "valid_cycles": 23,
+    "quality_pass": false,
+    "warnings": [
+      "⚠️ 平均置信度 0.75 低于 0.85，建议检查视频质量",
+      "⚠️ 关键点缺失率 25.8% 较高"
+    ]
+  },
+  "generated_at": "2026-06-24T14:03:25"
+}

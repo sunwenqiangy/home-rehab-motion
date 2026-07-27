@@ -1,0 +1,81 @@
+<view class="upload-v4-page">
+  <view class="upload-v4-top-sticky">
+    <!-- 自定义状态栏 -->
+    <view class="upload-v4-statusbar" style="height: {{statusBarHeight}}px;"></view>
+
+    <!-- 自定义导航栏 -->
+    <view class="upload-v4-nav">
+      <view class="upload-v4-nav__back" bindtap="onGoBack">
+        <text class="upload-v4-nav__back-icon">‹</text>
+      </view>
+      <text class="upload-v4-nav__title">上传确认</text>
+      <view class="upload-v4-nav__capsule"></view>
+    </view>
+  </view>
+
+  <scroll-view class="upload-v4-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="upload-v4-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+    <view class="upload-v4-scroll-inner">
+
+      <!-- 步骤条 -->
+      <view class="step-strip">
+        <view class="step-item step-item--done">1 选动作</view>
+        <view class="step-item step-item--active">2 上传</view>
+        <view class="step-item">3 等结果</view>
+      </view>
+
+      <!-- 上传引导 hero -->
+      <view class="upload-hero-card">
+        <view class="upload-hero-card__title">上传前 30 秒自查</view>
+        <view class="upload-hero-card__desc">先看预览和检查结果，再提交，能减少分析失败和重复上传。</view>
+      </view>
+
+      <!-- 视频预览区 -->
+      <view class="info-panel">
+        <view class="info-title">📹 已选视频预览</view>
+        <view wx:if="{{filePath}}" class="video-preview-thumb">
+          <video class="video-preview-thumb__video" src="{{filePath}}" controls="{{true}}" show-center-play-btn="{{true}}" enable-progress-gesture="{{true}}" object-fit="cover"></video>
+        </view>
+        <view wx:else class="video-preview-zone" bindtap="onSelectVideo">
+          <view class="video-preview-zone__inner">
+            <text class="video-preview-zone__icon">🎬</text>
+            <text class="video-preview-zone__meta">点击选择训练视频</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 拍摄检查结果 -->
+      <view class="info-panel" wx:if="{{checkItems.length}}">
+        <view class="info-title">✅ 拍摄检查结果</view>
+        <view class="check-list">
+          <view class="check-item" wx:for="{{checkItems}}" wx:key="label">
+            <text class="check-item__icon {{item.passed ? 'check-item__icon--pass' : 'check-item__icon--warn'}}">{{item.passed ? '✓' : '⚠'}}</text>
+            <text class="check-item__text {{item.passed ? 'check-item__text--pass' : 'check-item__text--warn'}}">{{item.value}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 问题提醒 -->
+      <view class="warn-panel" wx:if="{{validationMessage}}">
+        <view class="warn-panel__title">⚠ 如不通过可先调整</view>
+        <view class="warn-panel__list">
+          <view class="warn-panel__item">• 画面太暗：去光线更好的位置重拍</view>
+          <view class="warn-panel__item">• 未完整入镜：确保腹部到膝部都在画面内</view>
+          <view class="warn-panel__item">• 格式不支持：建议 MP4，再次选择视频</view>
+        </view>
+      </view>
+
+      <!-- 底部操作栏占位 -->
+      <view class="dock-spacer"></view>
+    </view>
+  </scroll-view>
+
+  <!-- 底部固定操作栏 -->
+  <view class="action-dock">
+    <button class="btn-big btn-teal" bindtap="onSubmit" disabled="{{!canSubmit || submitting}}">
+      {{submitting ? '分析中...' : '📤 提交开始分析'}}
+    </button>
+    <view class="action-dock__gap"></view>
+    <button class="btn-big btn-ghost" bindtap="onSelectVideo">🔄 重新选择视频</button>
+  </view>
+</view>

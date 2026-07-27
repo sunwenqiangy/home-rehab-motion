@@ -1,0 +1,297 @@
+@import '../../app.wxss';
+
+/* ========== 页面基础 ========== */
+page {
+  background: #f7fafc;
+}
+
+.az-page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f7fafc;
+}
+
+/* ========== 自定义状态栏 ========== */
+.az-top-sticky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #ffffff;
+}
+
+.az-statusbar {
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+/* ========== 自定义导航栏 ========== */
+.az-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx 20rpx 36rpx;
+  background: #ffffff;
+  box-sizing: border-box;
+  gap: 12rpx;
+}
+
+.az-nav__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #1a202c;
+  text-align: left;
+}
+
+.az-nav__capsule {
+  width: 152rpx;
+  height: 60rpx;
+  border-radius: 999rpx;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  flex-shrink: 0;
+}
+
+/* ========== 可滚动主区域 ========== */
+.az-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.az-top-placeholder {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.az-scroll-inner {
+  padding: 20rpx 28rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+/* ========== 步骤条 ========== */
+.step-strip {
+  display: flex;
+  gap: 12rpx;
+}
+
+.step-item {
+  flex: 1;
+  min-height: 68rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  background: rgba(22, 111, 247, 0.06);
+  color: #a0aec0;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.step-item--done {
+  background: rgba(53, 173, 116, 0.1);
+  color: #259160;
+}
+
+.step-item--active {
+  background: rgba(22, 111, 247, 0.12);
+  color: #166ff7;
+}
+
+/* ========== 旋转环 ========== */
+.ring-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60rpx 0 40rpx;
+}
+
+.ring {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  border: 10rpx solid rgba(56, 178, 172, 0.15);
+  border-top-color: #38b2ac;
+  animation: az-spin 1.2s linear infinite;
+  margin-bottom: 32rpx;
+}
+
+@keyframes az-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.ring-wrap__title {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #38b2ac;
+}
+
+.ring-wrap__sub {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: #718096;
+}
+
+/* ========== info-panel 通用面板 ========== */
+.info-panel {
+  padding: 28rpx;
+  border-radius: 32rpx;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 20rpx 48rpx rgba(34, 87, 139, 0.1);
+  border: 1rpx solid rgba(121, 175, 219, 0.18);
+}
+
+.info-title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #1a202c;
+  margin-bottom: 20rpx;
+}
+
+/* ========== 进度检查列表 ========== */
+.az-check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.az-check-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.az-check-item__icon {
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.az-check-item__icon--done {
+  color: #38a169;
+}
+
+.az-check-item__icon--active {
+  color: #38b2ac;
+}
+
+.az-check-item__icon--pending {
+  color: #cbd5e0;
+}
+
+.az-check-item__icon--warn {
+  color: #dd6b20;
+}
+
+.az-check-item__text {
+  font-size: 28rpx;
+  line-height: 1.8;
+  color: #2d3748;
+}
+
+.az-check-item__text--done {
+  color: #2d3748;
+}
+
+.az-check-item__text--active {
+  color: #38b2ac;
+  font-weight: 700;
+}
+
+.az-check-item__text--pending {
+  color: #cbd5e0;
+}
+
+.az-check-item__text--warn {
+  color: #dd6b20;
+  font-weight: 700;
+}
+
+/* ========== 失败面板 ========== */
+.az-fail-panel {
+  margin-top: 20rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 244, 244, 0.94);
+}
+
+.az-fail-panel__title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #c53030;
+}
+
+.az-fail-panel__desc {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: #742a2a;
+}
+
+/* ========== 提示面板(teal-soft) ========== */
+.az-hint-panel {
+  padding: 28rpx;
+  border-radius: 32rpx;
+  background: rgba(56, 178, 172, 0.08);
+  border: 2rpx solid rgba(14, 154, 167, 0.15);
+}
+
+.az-hint-panel__title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #38b2ac;
+}
+
+.az-hint-panel__desc {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  line-height: 1.6;
+  color: #4a5568;
+}
+
+/* ========== 操作按钮 ========== */
+.az-actions {
+  padding: 14rpx 0;
+}
+
+/* ========== 按钮样式 ========== */
+.btn-big {
+  width: 100%;
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  padding: 0 28rpx;
+  box-sizing: border-box;
+  border: none;
+  line-height: 1;
+  margin-top: 16rpx;
+}
+
+.btn-big::after {
+  border: none;
+}
+
+.btn-teal {
+  background: linear-gradient(135deg, #38b2ac 0%, #2c7a7b 100%);
+  color: #ffffff;
+  box-shadow: 0 12rpx 28rpx rgba(44, 122, 123, 0.28);
+}
+
+.btn-outline {
+  background: rgba(255, 255, 255, 0.9);
+  color: #4a5568;
+  border: 2rpx solid rgba(121, 175, 219, 0.24);
+  box-shadow: 0 8rpx 20rpx rgba(34, 87, 139, 0.06);
+}

@@ -1,0 +1,44 @@
+<view class="login-page">
+  <view class="login-orb login-orb--top"></view>
+  <view class="login-orb login-orb--bottom"></view>
+
+  <view class="login-header" style="padding-top: {{statusBarHeight}}px;">
+    <view class="login-brand-mark" aria-label="Home Rehab Motion">H</view>
+    <view class="login-brand-name">Home Rehab Motion</view>
+  </view>
+
+  <view class="login-content">
+    <view class="login-illustration" aria-hidden="true">
+      <view class="login-illustration__ring"></view>
+      <view class="login-illustration__heart"></view>
+      <view class="login-illustration__line login-illustration__line--left"></view>
+      <view class="login-illustration__line login-illustration__line--right"></view>
+    </view>
+
+    <view class="login-title">腹部训练助手</view>
+    <view class="login-subtitle">记录每一次练习，陪您稳步恢复</view>
+
+    <view class="login-card">
+      <view class="login-card__title">欢迎使用 Home Rehab Motion</view>
+      <view class="login-card__desc">使用微信登录后即可保存训练记录，稍后可按需绑定手机号。</view>
+      <view class="login-security-row">
+        <view class="login-security-item"><view class="login-security-icon">✓</view><text>加密保护</text></view>
+        <view class="login-security-item"><view class="login-security-icon">✓</view><text>安全登录</text></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="login-actions">
+    <button class="login-phone-button" bindtap="onDirectLogin" loading="{{loggingIn}}" disabled="{{loggingIn}}">
+      <view class="login-phone-button__icon">⌕</view>
+      <text>微信一键登录</text>
+    </button>
+    <button wx:if="{{mockLoginEnabled}}" class="login-mock-button" bindtap="onMockLogin">体验登录后页面</button>
+    <view wx:if="{{mockLoginEnabled}}" class="login-mock-hint">预览模式：不请求服务端，不会保存真实训练数据</view>
+    <view class="login-agreement" bindtap="onAgreementChange">
+      <view class="login-check {{agreed ? 'login-check--selected' : ''}}">{{agreed ? '✓' : ''}}</view>
+      <text>我已阅读并同意</text>
+      <text class="login-agreement__link" catchtap="onOpenPrivacy">《隐私政策》</text>
+    </view>
+  </view>
+</view>

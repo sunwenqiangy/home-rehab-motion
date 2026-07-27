@@ -1,0 +1,67 @@
+<view class="feedback-page">
+  <view class="feedback-header" style="padding-top: {{statusBarHeight}}px;">
+    <view class="feedback-nav">
+      <view class="feedback-back" bindtap="onBackHistory">‹</view>
+      <view class="feedback-title">训练反馈</view>
+      <view class="feedback-nav-space"></view>
+    </view>
+    <view class="feedback-status">
+      <view class="feedback-status-icon">✓</view>
+      <view class="feedback-status-copy">
+        <view class="feedback-status-title">{{statusLabel}}</view>
+        <view class="feedback-status-desc">您的训练问题会在这里持续更新</view>
+      </view>
+      <view class="feedback-type">{{feedbackTypeLabel}}</view>
+    </view>
+  </view>
+
+  <scroll-view class="feedback-content" scroll-y refresher-enabled="{{true}}" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onRefresh">
+    <view wx:if="{{loading}}" class="feedback-state">
+      <view class="feedback-state-title">正在读取沟通记录</view>
+    </view>
+
+    <view wx:if="{{loadFailed}}" class="feedback-state">
+      <view class="feedback-state-title">暂时无法读取反馈详情</view>
+      <view class="feedback-state-desc">请返回后稍后再试</view>
+      <button class="feedback-retry" bindtap="onBackHistory">返回上一页</button>
+    </view>
+
+    <view wx:if="{{!loading && !loadFailed}}">
+      <view wx:if="{{handlingMode === 'safety_auto'}}" class="feedback-warning">
+        <view class="feedback-warning-title">安全提醒</view>
+        <view class="feedback-warning-text">请先暂停训练。若不适持续、加重或影响活动，请及时联系主治医生或前往医疗机构评估。</view>
+      </view>
+
+      <view class="feedback-timeline-title">本次训练反馈记录</view>
+      <block wx:for="{{messages}}" wx:key="messageId">
+        <view class="message-row {{item.senderRole === 'staff' ? 'message-row-staff' : 'message-row-patient'}}">
+          <view class="message-avatar">{{item.senderRole === 'staff' ? '护' : '我'}}</view>
+          <view class="message-main">
+            <view class="message-meta"><text>{{item.senderLabel}}</text><text>{{item.timeText}}</text></view>
+            <view class="message-bubble"><text>{{item.displayText}}</text></view>
+          </view>
+        </view>
+      </block>
+
+      <view wx:if="{{!messageCount}}" class="message-row message-row-patient">
+        <view class="message-avatar">我</view>
+        <view class="message-main">
+          <view class="message-meta"><text>我</text><text>{{fallbackTimeText}}</text></view>
+          <view class="message-bubble"><text>{{fallbackMessage}}</text></view>
+        </view>
+      </view>
+
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{!loading && !loadFailed && handlingMode !== 'safety_auto' && status !== 'closed'}}" class="feedback-composer">
+    <view wx:if="{{hasVideo}}" class="feedback-report-link" bindtap="onViewReport">
+      <text>查看关联训练报告</text><text>›</text>
+    </view>
+    <textarea class="feedback-input" value="{{followUpText}}" maxlength="500" auto-height="true" placeholder="补充本次训练的问题…" bindinput="onFollowUpInput" />
+    <view class="feedback-actions">
+      <button class="feedback-image-button" bindtap="onChooseFollowUpImage">图片</button>
+      <button class="feedback-send-button" bindtap="onSubmitFollowUp">发送</button>
+    </view>
+  </view>
+</view>

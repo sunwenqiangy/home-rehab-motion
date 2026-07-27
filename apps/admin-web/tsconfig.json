@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "baseUrl": ".",
+    "types": ["vite/client"],
+    "paths": {
+      "@/*": ["src/*"],
+      "@home-rehab-motion/shared-types": ["../../packages/shared-types/src"],
+      "@home-rehab-motion/shared-contract": ["../../packages/shared-contract/src"],
+      "@home-rehab-motion/shared-constants": ["../../packages/shared-constants/src"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.vue",
+    "env.d.ts",
+    "../../packages/shared-types/src/**/*.ts",
+    "../../packages/shared-contract/src/**/*.ts",
+    "../../packages/shared-constants/src/**/*.ts"
+  ]
+}

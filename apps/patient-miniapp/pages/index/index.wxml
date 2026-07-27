@@ -1,0 +1,113 @@
+<view class="home-v4-page">
+  <view class="home-v4-top-sticky">
+    <view class="home-v4-statusbar" style="height: {{statusBarHeight}}px;"></view>
+
+    <view class="home-v4-nav">
+      <text class="home-v4-nav__title">{{greetingText}}</text>
+      <view class="home-v4-nav__capsule"></view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="home-v4-screen" enable-back-to-top="true">
+    <view class="home-v4-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+    <view class="home-v4-screen-inner">
+      <view class="v4-hero-card">
+      <text class="v4-hero-badge">📋 今日训练</text>
+      <view class="v4-hero-title">{{heroTitle}}</view>
+      <view class="v4-hero-sub">{{heroSub}}</view>
+      <button class="v4-btn-big v4-btn-white" bindtap="onStartToday">{{isLoggedIn ? '▶ 立即开始训练' : '登录后开始训练'}}</button>
+    </view>
+
+    <view wx:if="{{showMessageReminder}}" class="v4-feedback-card" bindtap="onOpenFeedback">
+      <text class="v4-feedback-icon">💬</text>
+      <view class="v4-feedback-main">
+        <view class="v4-feedback-title">{{feedbackTitle}}</view>
+        <view class="v4-feedback-sub">{{feedbackDesc}}</view>
+      </view>
+      <text class="v4-chip v4-chip-blue v4-chip-sm">{{feedbackActionText}}</text>
+    </view>
+
+    <view class="v4-card">
+      <view class="v4-card-title">⚡ 选择训练动作</view>
+      <view class="v4-card-desc">点击下方卡片，先看动作指导再开始</view>
+    </view>
+
+    <view class="v4-action-grid">
+      <view class="v4-action-card" wx:for="{{quickActions}}" wx:key="actionType" data-content-id="{{item.contentId}}" bindtap="onOpenAction">
+        <view class="v4-action-icon">{{item.icon}}</view>
+        <view class="v4-action-title">{{item.label}}</view>
+        <view class="v4-action-chip-wrap">
+          <text class="v4-chip v4-chip-sm {{item.chipClass}}">{{item.chipText}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="v4-weekly-panel">
+      <view class="v4-weekly-row">
+        <view class="v4-weekly-title">📈 本周成长进度</view>
+        <text class="v4-chip v4-chip-teal v4-chip-sm">{{weeklyLabel}}</text>
+      </view>
+      <view class="v4-weekly-sub">{{weeklyDesc}}</view>
+      <view class="v4-progress-bar">
+        <view class="v4-progress-fill" style="width: {{weeklyProgressPercent}}%;"></view>
+      </view>
+      <view class="v4-weekly-days">
+        <view class="v4-day-pill {{item.stateClass}}" wx:for="{{weekDays}}" wx:key="label">{{item.label}}</view>
+      </view>
+    </view>
+
+    <view class="v4-info-panel">
+      <view class="v4-stage-head">
+        <view class="v4-info-title">{{stageTitle}}</view>
+        <text class="v4-chip v4-chip-green v4-chip-sm">{{stageTag}}</text>
+      </view>
+      <view class="v4-stage-grid">
+        <view class="v4-stage-card {{item.stateClass}}" wx:for="{{stageItems}}" wx:key="title">
+          <view class="v4-stage-name">{{item.title}}</view>
+          <view class="v4-stage-tip">{{item.tip}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="v4-card">
+      <view class="v4-card-title">📊 最近训练</view>
+      <view class="v4-list-row" wx:for="{{recentTrainings}}" wx:key="videoId" data-video-id="{{item.videoId}}" data-status="{{item.status}}" data-action-type="{{item.actionType}}" bindtap="onOpenRecent">
+        <view class="v4-status-dot {{item.dotClass}}"></view>
+        <view class="v4-list-body">
+          <view class="v4-list-title">{{item.title}}</view>
+          <view class="v4-list-sub">{{item.subText}}<text wx:if="{{item.status === 'processing' || item.status === 'queued' || item.status === 'pending' || item.status === 'uploading'}}"> · {{item.statusLabel}}</text></view>
+        </view>
+        <text wx:if="{{item.rightType === 'score'}}" class="v4-list-badge {{item.rightClass}}">{{item.rightText}}</text>
+        <text wx:else class="v4-chip v4-chip-sm {{item.rightClass}}">{{item.rightText}}</text>
+      </view>
+    </view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{!isLoggedIn}}" class="home-v4-guest-login-bar">
+    <view class="home-v4-guest-login-copy">
+      <view class="home-v4-guest-login-title">登录后保存每一次训练</view>
+      <view class="home-v4-guest-login-text">查看动作分析、训练记录和成长进度</view>
+    </view>
+    <button class="home-v4-guest-login-button" bindtap="goToLogin">去登录</button>
+  </view>
+
+  <view class="home-v4-tabbar">
+    <view class="home-v4-tab home-v4-tab-active">
+      <text class="home-v4-tab__icon">🏠</text>
+      <text class="home-v4-tab__label">首页</text>
+    </view>
+    <navigator class="home-v4-tab" url="/pages/guidance/index" open-type="redirect" hover-class="none">
+      <text class="home-v4-tab__icon">🏋️</text>
+      <text class="home-v4-tab__label">训练</text>
+    </navigator>
+    <navigator class="home-v4-tab" url="/pages/history/index" open-type="redirect" hover-class="none">
+      <text class="home-v4-tab__icon">📊</text>
+      <text class="home-v4-tab__label">历史</text>
+    </navigator>
+    <navigator class="home-v4-tab" url="/pages/mine/index" open-type="redirect" hover-class="none">
+      <text class="home-v4-tab__icon">👤</text>
+      <text class="home-v4-tab__label">我的</text>
+    </navigator>
+  </view>
+</view>

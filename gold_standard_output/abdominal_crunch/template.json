@@ -1,0 +1,223 @@
+{
+  "action_type": "abdominal_crunch",
+  "action_label": "缩腹运动",
+  "source_type": "video",
+  "source_video": "教学视频.mp4",
+  "video_segment": {
+    "start_sec": 50,
+    "end_sec": 80
+  },
+  "version": 1,
+  "status": "pending_review",
+  "template_params": {
+    "trunk_angle_change": {
+      "mean": 28.5924,
+      "std": 39.6623,
+      "min": 2.0047,
+      "max": 91.7096,
+      "p5": 2.2014,
+      "p25": 2.787,
+      "p50": 3.4324,
+      "p75": 48.7129,
+      "p95": 91.4434,
+      "n_cycles": 7
+    },
+    "pelvis_shift": {
+      "mean": 5.3803,
+      "std": 8.074,
+      "min": 0.1939,
+      "max": 21.3237,
+      "p5": 0.2087,
+      "p25": 0.3836,
+      "p50": 0.5353,
+      "p75": 7.4209,
+      "p95": 19.2037,
+      "n_cycles": 7
+    },
+    "trunk_stability": {
+      "mean": 1.6689,
+      "std": 1.3749,
+      "min": 0.3057,
+      "max": 4.3422,
+      "p5": 0.3528,
+      "p25": 0.6216,
+      "p50": 1.0711,
+      "p75": 2.36,
+      "p95": 3.9212,
+      "n_cycles": 7
+    },
+    "trunk_max_deviation": {
+      "mean": 4.0581,
+      "std": 3.0151,
+      "min": 0.6155,
+      "max": 10.1765,
+      "p5": 1.0323,
+      "p25": 2.3326,
+      "p50": 2.9137,
+      "p75": 5.0179,
+      "p95": 9.1045,
+      "n_cycles": 7
+    },
+    "abdominal_contraction_ratio": {
+      "mean": 58.3053,
+      "std": 37.2388,
+      "min": 9.143,
+      "max": 98.5876,
+      "p5": 9.6797,
+      "p25": 23.9568,
+      "p50": 58.8635,
+      "p75": 96.8147,
+      "p95": 98.3775,
+      "n_cycles": 7
+    },
+    "contraction_velocity": {
+      "mean": 120.8157,
+      "std": 204.1341,
+      "min": 5.7144,
+      "max": 616.1725,
+      "p5": 8.0878,
+      "p25": 16.0583,
+      "p50": 45.5504,
+      "p75": 73.078,
+      "p95": 459.5574,
+      "n_cycles": 7
+    },
+    "hold_duration": {
+      "mean": 1.4486,
+      "std": 2.1283,
+      "min": 0.08,
+      "max": 6.4,
+      "p5": 0.08,
+      "p25": 0.12,
+      "p50": 0.64,
+      "p75": 1.39,
+      "p95": 5.122,
+      "n_cycles": 7
+    }
+  },
+  "threshold_config": {
+    "_meta": {
+      "sigma_multiplier": 2.0,
+      "note": "基于 ±2.0σ 自动生成，适用于单视频启动期，建议专家审核后调整",
+      "action_type": "abdominal_crunch"
+    },
+    "confidence_min": 0.6,
+    "trunk_angle_change": {
+      "valid_range": [
+        0,
+        107.917
+      ],
+      "warning_range": [
+        0,
+        187.2416
+      ],
+      "gold_mean": 28.5924,
+      "gold_std": 39.6623,
+      "unit": "度",
+      "description": "躯干角度代偿变化量（越小越稳定）",
+      "direction": "smaller_better"
+    },
+    "pelvis_shift": {
+      "valid_range": [
+        0,
+        21.5283
+      ],
+      "warning_range": [
+        0,
+        37.6763
+      ],
+      "gold_mean": 5.3803,
+      "gold_std": 8.074,
+      "unit": "相对画面宽度 %",
+      "description": "骨盆水平偏移（越小越稳定）",
+      "direction": "smaller_better"
+    },
+    "trunk_stability": {
+      "valid_range": [
+        -1.0809,
+        4.4187
+      ],
+      "warning_range": [
+        -2.4558,
+        5.7936
+      ],
+      "gold_mean": 1.6689,
+      "gold_std": 1.3749,
+      "unit": "",
+      "description": "trunk_stability",
+      "direction": "moderate"
+    },
+    "trunk_max_deviation": {
+      "valid_range": [
+        -1.9721,
+        10.0883
+      ],
+      "warning_range": [
+        -4.9872,
+        13.1034
+      ],
+      "gold_mean": 4.0581,
+      "gold_std": 3.0151,
+      "unit": "",
+      "description": "trunk_max_deviation",
+      "direction": "moderate"
+    },
+    "abdominal_contraction_ratio": {
+      "valid_range": [
+        -16.1723,
+        132.7829
+      ],
+      "warning_range": [
+        -53.4111,
+        170.0217
+      ],
+      "gold_mean": 58.3053,
+      "gold_std": 37.2388,
+      "unit": "",
+      "description": "abdominal_contraction_ratio",
+      "direction": "moderate"
+    },
+    "contraction_velocity": {
+      "valid_range": [
+        -287.4525,
+        529.0839
+      ],
+      "warning_range": [
+        -491.5866,
+        733.218
+      ],
+      "gold_mean": 120.8157,
+      "gold_std": 204.1341,
+      "unit": "",
+      "description": "contraction_velocity",
+      "direction": "moderate"
+    },
+    "hold_duration": {
+      "valid_range": [
+        -2.808,
+        9.9618
+      ],
+      "warning_range": [
+        -4.9363,
+        14.2184
+      ],
+      "gold_mean": 1.4486,
+      "gold_std": 2.1283,
+      "unit": "秒",
+      "description": "动作保持时长（越长越好）",
+      "direction": "larger_better"
+    }
+  },
+  "quality_report": {
+    "avg_confidence": 0.737,
+    "missing_rate": 0.2897,
+    "total_frames": 214,
+    "valid_cycles": 7,
+    "quality_pass": false,
+    "warnings": [
+      "⚠️ 平均置信度 0.74 低于 0.85，建议检查视频光线/角度",
+      "⚠️ 关键点缺失率 29.0% 较高（部分肢体遮挡）"
+    ]
+  },
+  "generated_at": "2026-06-25T01:13:53"
+}

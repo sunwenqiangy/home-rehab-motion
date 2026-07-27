@@ -1,0 +1,347 @@
+[
+  {
+    "rep_id": 1,
+    "start_frame": 0,
+    "end_frame": 57,
+    "duration_s": 13.68,
+    "params": {
+      "abdominal_displacement": 7.6844,
+      "displacement_velocity": 4.3661,
+      "hold_duration": 0.24,
+      "trunk_angle_change": 152.4132,
+      "pelvis_shift": 7.3986,
+      "pelvic_tilt_delta": 137.0037,
+      "knee_rotation_angle": 149.3046
+    }
+  },
+  {
+    "rep_id": 2,
+    "start_frame": 8,
+    "end_frame": 81,
+    "duration_s": 17.36,
+    "params": {
+      "abdominal_displacement": 5.3661,
+      "displacement_velocity": 0.4502,
+      "hold_duration": 0.23,
+      "trunk_angle_change": 114.1551,
+      "pelvis_shift": 4.362,
+      "pelvic_tilt_delta": 186.4376,
+      "knee_rotation_angle": 152.2615
+    }
+  },
+  {
+    "rep_id": 3,
+    "start_frame": 57,
+    "end_frame": 121,
+    "duration_s": 9.68,
+    "params": {
+      "abdominal_displacement": 1.9366,
+      "displacement_velocity": 0.356,
+      "hold_duration": 0.45,
+      "trunk_angle_change": 101.3324,
+      "pelvis_shift": 6.5817,
+      "pelvic_tilt_delta": 177.6843,
+      "knee_rotation_angle": 145.525
+    }
+  },
+  {
+    "rep_id": 4,
+    "start_frame": 81,
+    "end_frame": 146,
+    "duration_s": 9.92,
+    "params": {
+      "abdominal_displacement": 0.1415,
+      "displacement_velocity": 0.0334,
+      "hold_duration": 0.15,
+      "trunk_angle_change": 227.1301,
+      "pelvis_shift": 6.9305,
+      "pelvic_tilt_delta": 207.594,
+      "knee_rotation_angle": 153.6861
+    }
+  },
+  {
+    "rep_id": 5,
+    "start_frame": 121,
+    "end_frame": 209,
+    "duration_s": 13.6,
+    "params": {
+      "abdominal_displacement": 0.8981,
+      "displacement_velocity": 0.1581,
+      "hold_duration": 0.15,
+      "trunk_angle_change": 178.0276,
+      "pelvis_shift": 5.5437,
+      "pelvic_tilt_delta": 230.2391,
+      "knee_rotation_angle": 87.2768
+    }
+  },
+  {
+    "rep_id": 6,
+    "start_frame": 146,
+    "end_frame": 239,
+    "duration_s": 10.32,
+    "params": {
+      "abdominal_displacement": 1.8369,
+      "displacement_velocity": 0.2319,
+      "hold_duration": 1.21,
+      "trunk_angle_change": 11.372,
+      "pelvis_shift": 2.6772,
+      "pelvic_tilt_delta": 185.6597,
+      "knee_rotation_angle": 58.4171
+    }
+  },
+  {
+    "rep_id": 7,
+    "start_frame": 209,
+    "end_frame": 267,
+    "duration_s": 4.64,
+    "params": {
+      "abdominal_displacement": 0.1045,
+      "displacement_velocity": 0.0435,
+      "hold_duration": 0.08,
+      "trunk_angle_change": 2.5074,
+      "pelvis_shift": 3.5641,
+      "pelvic_tilt_delta": 128.4111,
+      "knee_rotation_angle": 34.9146
+    }
+  },
+  {
+    "rep_id": 8,
+    "start_frame": 239,
+    "end_frame": 307,
+    "duration_s": 5.44,
+    "params": {
+      "abdominal_displacement": 0.5484,
+      "displacement_velocity": 0.2448,
+      "hold_duration": 0.08,
+      "trunk_angle_change": 2.4397,
+      "pelvis_shift": 2.8488,
+      "pelvic_tilt_delta": 112.366,
+      "knee_rotation_angle": 35.6015
+    }
+  },
+  {
+    "rep_id": 9,
+    "start_frame": 267,
+    "end_frame": 354,
+    "duration_s": 9.92,
+    "params": {
+      "abdominal_displacement": 21.0575,
+      "displacement_velocity": 6.5805,
+      "hold_duration": 0.23,
+      "trunk_angle_change": 179.6721,
+      "pelvis_shift": 29.428,
+      "pelvic_tilt_delta": 103.4545,
+      "knee_rotation_angle": 71.4637
+    }
+  },
+  {
+    "rep_id": 10,
+    "start_frame": 307,
+    "end_frame": 401,
+    "duration_s": 10.48,
+    "params": {
+      "abdominal_displacement": 8.4418,
+      "displacement_velocity": 1.2562,
+      "hold_duration": 0.22,
+      "trunk_angle_change": 207.6411,
+      "pelvis_shift": 33.0149,
+      "pelvic_tilt_delta": 60.1329,
+      "knee_rotation_angle": 98.4445
+    }
+  },
+  {
+    "rep_id": 11,
+    "start_frame": 354,
+    "end_frame": 444,
+    "duration_s": 7.2,
+    "params": {
+      "abdominal_displacement": 0.0055,
+      "displacement_velocity": 0.0015,
+      "hold_duration": 0.08,
+      "trunk_angle_change": 2.2621,
+      "pelvis_shift": 0.5364,
+      "pelvic_tilt_delta": 91.9054,
+      "knee_rotation_angle": 143.8721
+    }
+  },
+  {
+    "rep_id": 12,
+    "start_frame": 401,
+    "end_frame": 482,
+    "duration_s": 9.28,
+    "params": {
+      "abdominal_displacement": 30.0604,
+      "displacement_velocity": 8.7385,
+      "hold_duration": 0.91,
+      "trunk_angle_change": 93.46,
+      "pelvis_shift": 14.1494,
+      "pelvic_tilt_delta": 267.4113,
+      "knee_rotation_angle": 141.4093
+    }
+  },
+  {
+    "rep_id": 13,
+    "start_frame": 444,
+    "end_frame": 551,
+    "duration_s": 21.44,
+    "params": {
+      "abdominal_displacement": 30.2544,
+      "displacement_velocity": 5.1805,
+      "hold_duration": 4.17,
+      "trunk_angle_change": 94.0687,
+      "pelvis_shift": 17.1193,
+      "pelvic_tilt_delta": 264.7936,
+      "knee_rotation_angle": 138.1253
+    }
+  },
+  {
+    "rep_id": 14,
+    "start_frame": 482,
+    "end_frame": 603,
+    "duration_s": 27.84,
+    "params": {
+      "abdominal_displacement": 0.091,
+      "displacement_velocity": 0.0058,
+      "hold_duration": 0.23,
+      "trunk_angle_change": 91.6899,
+      "pelvis_shift": 25.7402,
+      "pelvic_tilt_delta": 303.8727,
+      "knee_rotation_angle": 129.8391
+    }
+  },
+  {
+    "rep_id": 15,
+    "start_frame": 551,
+    "end_frame": 672,
+    "duration_s": 17.76,
+    "params": {
+      "abdominal_displacement": 1.2541,
+      "displacement_velocity": 0.1025,
+      "hold_duration": 4.37,
+      "trunk_angle_change": 2.8564,
+      "pelvis_shift": 1.1019,
+      "pelvic_tilt_delta": 93.2373,
+      "knee_rotation_angle": 132.1135
+    }
+  },
+  {
+    "rep_id": 16,
+    "start_frame": 603,
+    "end_frame": 845,
+    "duration_s": 50.16,
+    "params": {
+      "abdominal_displacement": 5.9721,
+      "displacement_velocity": 1.0819,
+      "hold_duration": 1.44,
+      "trunk_angle_change": 4.953,
+      "pelvis_shift": 5.1033,
+      "pelvic_tilt_delta": 92.3873,
+      "knee_rotation_angle": 139.2835
+    }
+  },
+  {
+    "rep_id": 17,
+    "start_frame": 672,
+    "end_frame": 1189,
+    "duration_s": 72.16,
+    "params": {
+      "abdominal_displacement": 7.7502,
+      "displacement_velocity": 0.1736,
+      "hold_duration": 25.49,
+      "trunk_angle_change": 4.2219,
+      "pelvis_shift": 10.2384,
+      "pelvic_tilt_delta": 23.7296,
+      "knee_rotation_angle": 142.7589
+    }
+  },
+  {
+    "rep_id": 18,
+    "start_frame": 845,
+    "end_frame": 1352,
+    "duration_s": 40.56,
+    "params": {
+      "abdominal_displacement": 0.5029,
+      "displacement_velocity": 0.0183,
+      "hold_duration": 0.72,
+      "trunk_angle_change": 5.6067,
+      "pelvis_shift": 5.3808,
+      "pelvic_tilt_delta": 9.3211,
+      "knee_rotation_angle": 21.3987
+    }
+  },
+  {
+    "rep_id": 19,
+    "start_frame": 1189,
+    "end_frame": 1637,
+    "duration_s": 35.84,
+    "params": {
+      "abdominal_displacement": 2.0152,
+      "displacement_velocity": 0.1545,
+      "hold_duration": 11.33,
+      "trunk_angle_change": 3.1602,
+      "pelvis_shift": 0.8171,
+      "pelvic_tilt_delta": 6.4072,
+      "knee_rotation_angle": 19.5437
+    }
+  },
+  {
+    "rep_id": 20,
+    "start_frame": 1352,
+    "end_frame": 1806,
+    "duration_s": 36.32,
+    "params": {
+      "abdominal_displacement": 18.1301,
+      "displacement_velocity": 0.7952,
+      "hold_duration": 0.32,
+      "trunk_angle_change": 12.9531,
+      "pelvis_shift": 1.416,
+      "pelvic_tilt_delta": 28.8113,
+      "knee_rotation_angle": 146.0418
+    }
+  },
+  {
+    "rep_id": 21,
+    "start_frame": 1637,
+    "end_frame": 1827,
+    "duration_s": 15.2,
+    "params": {
+      "abdominal_displacement": 17.1012,
+      "displacement_velocity": 1.2649,
+      "hold_duration": 1.99,
+      "trunk_angle_change": 22.0979,
+      "pelvis_shift": 3.1954,
+      "pelvic_tilt_delta": 38.5504,
+      "knee_rotation_angle": 145.3806
+    }
+  },
+  {
+    "rep_id": 22,
+    "start_frame": 1806,
+    "end_frame": 1867,
+    "duration_s": 4.88,
+    "params": {
+      "abdominal_displacement": 0.441,
+      "displacement_velocity": 0.2625,
+      "hold_duration": 0.08,
+      "trunk_angle_change": 5.8474,
+      "pelvis_shift": 7.5481,
+      "pelvic_tilt_delta": 11.8036,
+      "knee_rotation_angle": 42.5977
+    }
+  },
+  {
+    "rep_id": 23,
+    "start_frame": 1827,
+    "end_frame": 1897,
+    "duration_s": 5.6,
+    "params": {
+      "abdominal_displacement": 0.0633,
+      "displacement_velocity": 0.0198,
+      "hold_duration": 0.16,
+      "trunk_angle_change": 3.9801,
+      "pelvis_shift": 10.8808,
+      "pelvic_tilt_delta": 16.9967,
+      "knee_rotation_angle": 18.2078
+    }
+  }
+]

@@ -1,0 +1,48 @@
+<view class="submit-page">
+  <view class="submit-header">
+    <view class="submit-statusbar" style="height: {{statusBarHeight}}px;"></view>
+    <view class="submit-navbar">
+      <view class="submit-navbar__back" bindtap="onBack">‹</view>
+      <view class="submit-navbar__title">提交训练反馈</view>
+      <view class="submit-navbar__placeholder"></view>
+    </view>
+    <view class="submit-header__copy">告诉我们本次训练中遇到的问题</view>
+  </view>
+
+  <scroll-view class="submit-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="submit-content">
+      <view class="submit-context">
+        <view class="submit-context__icon">训</view>
+        <view><view class="submit-context__label">关联训练</view><view class="submit-context__title">{{actionLabel}}</view></view>
+      </view>
+
+      <view class="submit-card">
+        <view class="submit-label">问题类型</view>
+        <picker range="{{feedbackTypeOptions}}" range-key="label" bindchange="onFeedbackTypeChange">
+          <view class="submit-picker"><text>{{feedbackTypeOptions[selectedFeedbackTypeIndex].label}}</text><text class="submit-picker__arrow">›</text></view>
+        </picker>
+
+        <view wx:if="{{isSafetyFeedback}}" class="submit-safety-note">
+          <view class="submit-safety-note__title">请先暂停本次训练</view>
+          <view class="submit-safety-note__desc">此处仅记录训练中的不适。若不适持续、加重或影响活动，请及时联系主治医生或前往医疗机构评估。</view>
+        </view>
+
+        <view class="submit-label submit-label--content">具体说明</view>
+        <textarea class="submit-input" value="{{feedbackText}}" maxlength="500" auto-height placeholder="例如：动作过程中腰部不舒服，想确认姿势是否正确" bindinput="onFeedbackInput" />
+        <view class="submit-counter">{{feedbackText.length}} / 500</view>
+
+        <view class="submit-label submit-label--content">补充图片 <text>（可选，最多 3 张）</text></view>
+        <view class="submit-images">
+          <view wx:for="{{feedbackImages}}" wx:key="objectKey" class="submit-image-wrap"><image class="submit-image" src="{{item.previewUrl}}" mode="aspectFill"/><text class="submit-image-remove" data-index="{{index}}" bindtap="onRemoveFeedbackImage">×</text></view>
+          <view wx:if="{{feedbackImages.length < 3}}" class="submit-image-add" bindtap="onChooseFeedbackImage"><text class="submit-image-add__plus">＋</text><text>{{feedbackUploading ? '上传中' : '添加图片'}}</text></view>
+        </view>
+      </view>
+
+      <view class="submit-note">{{isSafetyFeedback ? '确认后将记录本次情况，并返回训练报告。' : '提交后可在工单中持续补充信息，工作人员回复后会通知您。'}}</view>
+    </view>
+  </scroll-view>
+
+  <view class="submit-dock">
+    <button class="submit-button" bindtap="onSubmit" disabled="{{feedbackSubmitting}}">{{feedbackSubmitting ? '提交中…' : isSafetyFeedback ? '确认并提交记录' : '提交反馈'}}</button>
+  </view>
+</view>

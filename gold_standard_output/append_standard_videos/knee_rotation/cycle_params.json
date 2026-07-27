@@ -1,0 +1,266 @@
+[
+  {
+    "rep_id": 1,
+    "start_frame": 0,
+    "end_frame": 19,
+    "duration_s": 1.9,
+    "params": {
+      "trunk_angle_change": 3.4376,
+      "pelvis_shift": 0.3402,
+      "knee_y_excursion": 11.8465,
+      "hip_stability": 2.0972
+    }
+  },
+  {
+    "rep_id": 2,
+    "start_frame": 19,
+    "end_frame": 188,
+    "duration_s": 16.9,
+    "params": {
+      "trunk_angle_change": 6.1258,
+      "pelvis_shift": 0.7764,
+      "knee_y_excursion": 6.3282,
+      "hip_stability": 1.4726
+    }
+  },
+  {
+    "rep_id": 3,
+    "start_frame": 188,
+    "end_frame": 377,
+    "duration_s": 18.9,
+    "params": {
+      "trunk_angle_change": 2.6621,
+      "pelvis_shift": 1.1154,
+      "knee_y_excursion": 13.2743,
+      "hip_stability": 1.6983
+    }
+  },
+  {
+    "rep_id": 4,
+    "start_frame": 377,
+    "end_frame": 432,
+    "duration_s": 5.5,
+    "params": {
+      "trunk_angle_change": 0.8951,
+      "pelvis_shift": 0.3643,
+      "knee_y_excursion": 6.1271,
+      "hip_stability": 0.538
+    }
+  },
+  {
+    "rep_id": 5,
+    "start_frame": 432,
+    "end_frame": 479,
+    "duration_s": 4.7,
+    "params": {
+      "trunk_angle_change": 0.9071,
+      "pelvis_shift": 0.5697,
+      "knee_y_excursion": 3.4377,
+      "hip_stability": 0.1709
+    }
+  },
+  {
+    "rep_id": 6,
+    "start_frame": 479,
+    "end_frame": 664,
+    "duration_s": 18.5,
+    "params": {
+      "trunk_angle_change": 3.2544,
+      "pelvis_shift": 0.6545,
+      "knee_y_excursion": 14.4157,
+      "hip_stability": 1.6116
+    }
+  },
+  {
+    "rep_id": 7,
+    "start_frame": 664,
+    "end_frame": 755,
+    "duration_s": 9.1,
+    "params": {
+      "trunk_angle_change": 0.501,
+      "pelvis_shift": 0.2619,
+      "knee_y_excursion": 4.6059,
+      "hip_stability": 0.7081
+    }
+  },
+  {
+    "rep_id": 8,
+    "start_frame": 755,
+    "end_frame": 909,
+    "duration_s": 15.4,
+    "params": {
+      "trunk_angle_change": 1.8949,
+      "pelvis_shift": 0.5989,
+      "knee_y_excursion": 13.3856,
+      "hip_stability": 0.7557
+    }
+  },
+  {
+    "rep_id": 9,
+    "start_frame": 909,
+    "end_frame": 1028,
+    "duration_s": 11.9,
+    "params": {
+      "trunk_angle_change": 1.7119,
+      "pelvis_shift": 0.7149,
+      "knee_y_excursion": 4.6218,
+      "hip_stability": 0.8151
+    }
+  },
+  {
+    "rep_id": 10,
+    "start_frame": 1028,
+    "end_frame": 1166,
+    "duration_s": 13.8,
+    "params": {
+      "trunk_angle_change": 1.7076,
+      "pelvis_shift": 0.5407,
+      "knee_y_excursion": 13.7238,
+      "hip_stability": 1.0536
+    }
+  },
+  {
+    "rep_id": 11,
+    "start_frame": 1166,
+    "end_frame": 1297,
+    "duration_s": 13.1,
+    "params": {
+      "trunk_angle_change": 1.8959,
+      "pelvis_shift": 0.361,
+      "knee_y_excursion": 5.7708,
+      "hip_stability": 0.5207
+    }
+  },
+  {
+    "rep_id": 12,
+    "start_frame": 1297,
+    "end_frame": 1489,
+    "duration_s": 19.2,
+    "params": {
+      "trunk_angle_change": 1.373,
+      "pelvis_shift": 0.5233,
+      "knee_y_excursion": 16.6667,
+      "hip_stability": 3.3561
+    }
+  },
+  {
+    "rep_id": 13,
+    "start_frame": 1489,
+    "end_frame": 1580,
+    "duration_s": 9.1,
+    "params": {
+      "trunk_angle_change": 3.4818,
+      "pelvis_shift": 0.7157,
+      "knee_y_excursion": 6.0963,
+      "hip_stability": 0.421
+    }
+  },
+  {
+    "rep_id": 14,
+    "start_frame": 1580,
+    "end_frame": 1759,
+    "duration_s": 17.9,
+    "params": {
+      "trunk_angle_change": 2.5471,
+      "pelvis_shift": 0.548,
+      "knee_y_excursion": 12.9914,
+      "hip_stability": 1.7572
+    }
+  },
+  {
+    "rep_id": 15,
+    "start_frame": 1759,
+    "end_frame": 1838,
+    "duration_s": 7.9,
+    "params": {
+      "trunk_angle_change": 1.2989,
+      "pelvis_shift": 0.5301,
+      "knee_y_excursion": 5.2782,
+      "hip_stability": 0.5973
+    }
+  },
+  {
+    "rep_id": 16,
+    "start_frame": 1838,
+    "end_frame": 2024,
+    "duration_s": 18.6,
+    "params": {
+      "trunk_angle_change": 3.1849,
+      "pelvis_shift": 0.672,
+      "knee_y_excursion": 15.861,
+      "hip_stability": 0.9418
+    }
+  },
+  {
+    "rep_id": 17,
+    "start_frame": 2024,
+    "end_frame": 2105,
+    "duration_s": 8.1,
+    "params": {
+      "trunk_angle_change": 2.0904,
+      "pelvis_shift": 0.8376,
+      "knee_y_excursion": 5.8274,
+      "hip_stability": 0.7236
+    }
+  },
+  {
+    "rep_id": 18,
+    "start_frame": 2105,
+    "end_frame": 2224,
+    "duration_s": 11.9,
+    "params": {
+      "trunk_angle_change": 2.3945,
+      "pelvis_shift": 1.0536,
+      "knee_y_excursion": 16.0138,
+      "hip_stability": 0.7046
+    }
+  },
+  {
+    "rep_id": 19,
+    "start_frame": 2224,
+    "end_frame": 2434,
+    "duration_s": 21.0,
+    "params": {
+      "trunk_angle_change": 1.9379,
+      "pelvis_shift": 0.9804,
+      "knee_y_excursion": 4.5051,
+      "hip_stability": 0.3223
+    }
+  },
+  {
+    "rep_id": 20,
+    "start_frame": 2434,
+    "end_frame": 2597,
+    "duration_s": 16.3,
+    "params": {
+      "trunk_angle_change": 3.1807,
+      "pelvis_shift": 0.8389,
+      "knee_y_excursion": 18.5488,
+      "hip_stability": 0.7177
+    }
+  },
+  {
+    "rep_id": 21,
+    "start_frame": 2597,
+    "end_frame": 2680,
+    "duration_s": 8.3,
+    "params": {
+      "trunk_angle_change": 2.2942,
+      "pelvis_shift": 1.1516,
+      "knee_y_excursion": 4.2122,
+      "hip_stability": 0.7481
+    }
+  },
+  {
+    "rep_id": 22,
+    "start_frame": 2680,
+    "end_frame": 2833,
+    "duration_s": 15.3,
+    "params": {
+      "trunk_angle_change": 2.9996,
+      "pelvis_shift": 0.8086,
+      "knee_y_excursion": 17.7391,
+      "hip_stability": 0.6788
+    }
+  }
+]

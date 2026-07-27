@@ -1,0 +1,107 @@
+[
+  {
+    "rep_id": 1,
+    "start_frame": 0,
+    "end_frame": 31,
+    "duration_s": 2.48,
+    "params": {
+      "trunk_angle_change": 2.9137,
+      "pelvis_shift": 0.5353,
+      "trunk_stability": 0.7805,
+      "trunk_max_deviation": 2.9137,
+      "abdominal_contraction_ratio": 95.7422,
+      "contraction_velocity": 52.0338,
+      "hold_duration": 0.64
+    }
+  },
+  {
+    "rep_id": 2,
+    "start_frame": 31,
+    "end_frame": 57,
+    "duration_s": 2.08,
+    "params": {
+      "trunk_angle_change": 3.4324,
+      "pelvis_shift": 0.5849,
+      "trunk_stability": 1.7812,
+      "trunk_max_deviation": 3.4324,
+      "abdominal_contraction_ratio": 97.8872,
+      "contraction_velocity": 94.1223,
+      "hold_duration": 0.08
+    }
+  },
+  {
+    "rep_id": 3,
+    "start_frame": 57,
+    "end_frame": 83,
+    "duration_s": 2.08,
+    "params": {
+      "trunk_angle_change": 2.0047,
+      "pelvis_shift": 0.5238,
+      "trunk_stability": 1.0711,
+      "trunk_max_deviation": 2.0047,
+      "abdominal_contraction_ratio": 10.9321,
+      "contraction_velocity": 45.5504,
+      "hold_duration": 0.08
+    }
+  },
+  {
+    "rep_id": 4,
+    "start_frame": 83,
+    "end_frame": 108,
+    "duration_s": 2.0,
+    "params": {
+      "trunk_angle_change": 2.6604,
+      "pelvis_shift": 0.1939,
+      "trunk_stability": 0.4627,
+      "trunk_max_deviation": 2.6604,
+      "abdominal_contraction_ratio": 36.9816,
+      "contraction_velocity": 18.4908,
+      "hold_duration": 0.64
+    }
+  },
+  {
+    "rep_id": 5,
+    "start_frame": 126,
+    "end_frame": 159,
+    "duration_s": 5.44,
+    "params": {
+      "trunk_angle_change": 91.7096,
+      "pelvis_shift": 14.2569,
+      "trunk_stability": 2.9389,
+      "trunk_max_deviation": 10.1765,
+      "abdominal_contraction_ratio": 58.8635,
+      "contraction_velocity": 13.6258,
+      "hold_duration": 2.14
+    }
+  },
+  {
+    "rep_id": 6,
+    "start_frame": 159,
+    "end_frame": 173,
+    "duration_s": 11.2,
+    "params": {
+      "trunk_angle_change": 6.6033,
+      "pelvis_shift": 21.3237,
+      "trunk_stability": 4.3422,
+      "trunk_max_deviation": 6.6033,
+      "abdominal_contraction_ratio": 98.5876,
+      "contraction_velocity": 616.1725,
+      "hold_duration": 6.4
+    }
+  },
+  {
+    "rep_id": 7,
+    "start_frame": 191,
+    "end_frame": 213,
+    "duration_s": 1.76,
+    "params": {
+      "trunk_angle_change": 90.8224,
+      "pelvis_shift": 0.2433,
+      "trunk_stability": 0.3057,
+      "trunk_max_deviation": 0.6155,
+      "abdominal_contraction_ratio": 9.143,
+      "contraction_velocity": 5.7144,
+      "hold_duration": 0.16
+    }
+  }
+]

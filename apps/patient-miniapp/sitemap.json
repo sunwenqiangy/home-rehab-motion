@@ -1,0 +1,9 @@
+{
+  "desc": "Home Rehab Motion sitemap",
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
+}

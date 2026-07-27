@@ -1,0 +1,122 @@
+<!-- P07 · 训练历史 -->
+<view class="v4-page">
+
+  <view class="v4-top-sticky">
+    <!-- 自定义状态栏 -->
+    <view class="v4-statusbar" style="height: {{statusBarHeight}}px;"></view>
+
+    <!-- 自定义导航栏 -->
+    <view class="v4-navbar">
+      <view class="v4-navbar-title">📊 训练历史</view>
+      <view class="v4-navbar-capsule"></view>
+    </view>
+  </view>
+
+  <!-- 页面内容 -->
+  <view class="v4-screen">
+    <view class="v4-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+
+    <!-- 筛选 Chips -->
+    <scroll-view class="v4-filter-scroll" scroll-x enable-flex>
+      <view class="v4-filter-row">
+        <text
+          wx:for="{{filterChips}}"
+          wx:key="key"
+          class="v4-chip {{item.key === activeFilter ? 'v4-chip--teal' : 'v4-chip--gray'}}"
+          data-key="{{item.key}}"
+          bindtap="onFilterTap"
+        >{{item.label}}</text>
+      </view>
+    </scroll-view>
+
+    <!-- 统计概览 3列 -->
+    <view class="v4-stats-grid">
+      <view class="v4-stats-card">
+        <view class="v4-stats-value v4-stats-value--teal">{{monthCount}}</view>
+        <view class="v4-stats-label">本月训练</view>
+      </view>
+      <view class="v4-stats-card">
+        <view class="v4-stats-value v4-stats-value--green">{{avgScore}}</view>
+        <view class="v4-stats-label">平均得分</view>
+      </view>
+      <view class="v4-stats-card">
+        <view class="v4-stats-value v4-stats-value--orange">{{scoreTrend}}</view>
+        <view class="v4-stats-label">分数趋势</view>
+      </view>
+    </view>
+
+    <!-- 本周成长进度 -->
+    <view class="v4-info-panel">
+      <view class="v4-info-head">
+        <view class="v4-info-title">📈 本周成长进度</view>
+        <text class="v4-chip v4-chip--teal v4-chip--sm">{{weeklyLabel}}</text>
+      </view>
+      <view class="v4-progress-bar">
+        <view class="v4-progress-fill" style="width: {{weeklyProgress}}%;"></view>
+      </view>
+      <view wx:if="{{weeklyProgressUnavailable}}" class="v4-progress-error">
+        <text>成长进度暂时无法加载</text>
+        <text class="v4-progress-retry" bindtap="onRetryWeeklyProgress">点击重试</text>
+      </view>
+    </view>
+
+    <!-- 加载状态 -->
+    <view wx:if="{{loading}}" class="v4-empty-state">
+      <view class="v4-empty-icon">⏳</view>
+      <view class="v4-empty-title">正在加载历史记录...</view>
+    </view>
+
+    <!-- 空态 -->
+    <view wx:elif="{{!groupedItems.length}}" class="v4-empty-state">
+      <view class="v4-empty-icon">📋</view>
+      <view class="v4-empty-title">还没有训练记录</view>
+      <view class="v4-empty-desc">完成一次训练后，这里会出现记录</view>
+    </view>
+
+    <!-- 历史记录列表 -->
+    <block wx:else>
+      <view class="v4-card" wx:for="{{groupedItems}}" wx:key="dateLabel">
+        <view class="v4-date-header">{{item.dateLabel}}</view>
+        <view
+          class="v4-list-row"
+          wx:for="{{item.records}}"
+          wx:key="videoId"
+          data-video-id="{{item.videoId}}"
+          data-status="{{item.status}}"
+          data-action-type="{{item.actionType}}"
+          bindtap="onViewReport"
+        >
+          <view class="v4-status-dot v4-status-dot--{{item.dotColor}}"></view>
+          <view class="v4-list-body">
+            <view class="v4-list-title">{{item.actionLabel}}</view>
+            <view class="v4-list-sub">{{item.timeLabel}}</view>
+          </view>
+          <view wx:if="{{item.showScore}}" class="v4-list-badge v4-list-badge--{{item.dotColor}}">{{item.scoreText}}</view>
+          <text wx:else class="v4-chip v4-chip--{{item.chipColor}} v4-chip--sm">{{item.chipText}}</text>
+        </view>
+      </view>
+    </block>
+
+  </view>
+
+  <!-- TabBar -->
+  <view class="v4-tabbar">
+    <view class="v4-tab-item" bindtap="onTabHome">
+      <text class="v4-tab-icon">🏠</text>
+      <text class="v4-tab-label">首页</text>
+    </view>
+    <view class="v4-tab-item" bindtap="onTabGuidance">
+      <text class="v4-tab-icon">🏋️</text>
+      <text class="v4-tab-label">训练</text>
+    </view>
+    <view class="v4-tab-item v4-tab-item--active">
+      <text class="v4-tab-icon">📊</text>
+      <text class="v4-tab-label">历史</text>
+    </view>
+    <view class="v4-tab-item" bindtap="onTabMine">
+      <text class="v4-tab-icon">👤</text>
+      <text class="v4-tab-label">我的</text>
+    </view>
+  </view>
+
+</view>

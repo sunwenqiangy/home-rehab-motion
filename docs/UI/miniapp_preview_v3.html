@@ -1,0 +1,2909 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Home Rehab Motion 患者端 · V3.3 交互细化版</title>
+<style>
+:root {
+  --bg-deep: #0d1830;
+  --bg-panel: #152645;
+  --bg-soft: #eef6ff;
+  --card: #ffffff;
+  --card-soft: #f7fbff;
+  --line: rgba(117, 162, 204, 0.16);
+  --line-strong: rgba(117, 162, 204, 0.26);
+  --primary: #1f7dff;
+  --primary-2: #6eb6ff;
+  --primary-soft: rgba(31, 125, 255, 0.12);
+  --success: #39b980;
+  --success-soft: rgba(57, 185, 128, 0.12);
+  --warning: #f2a94b;
+  --warning-soft: rgba(242, 169, 75, 0.14);
+  --danger: #ef6d6d;
+  --danger-soft: rgba(239, 109, 109, 0.12);
+  --text: #17324f;
+  --text-soft: #46607a;
+  --text-faint: #6f88a3;
+  --hero-blue: linear-gradient(145deg, #0d67e7 0%, #3f98ff 50%, #9fd7ff 100%);
+  --hero-dark: linear-gradient(145deg, #11213c 0%, #173257 52%, #28507c 100%);
+  --surface: linear-gradient(180deg, rgba(255,255,255,.99) 0%, rgba(247,251,255,.97) 100%);
+  --surface-soft: linear-gradient(180deg, rgba(249,252,255,.98) 0%, rgba(242,248,255,.96) 100%);
+  --shadow: 0 18px 44px rgba(16, 42, 78, 0.1);
+  --shadow-soft: 0 14px 32px rgba(31, 125, 255, 0.07);
+  --shadow-strong: 0 32px 96px rgba(11, 28, 52, 0.36);
+  --radius-xl: 36px;
+  --radius-lg: 28px;
+  --radius-md: 22px;
+  --radius-sm: 18px;
+  --space-2xs: 6px;
+  --space-xs: 10px;
+  --space-sm: 14px;
+  --space-md: 18px;
+  --space-lg: 22px;
+  --space-xl: 28px;
+  --space-2xl: 36px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "PingFang SC", "Hiragino Sans GB", "Source Han Sans SC", "Microsoft YaHei", sans-serif;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(89, 182, 255, 0.18), transparent 20%),
+    radial-gradient(circle at 88% 8%, rgba(143, 221, 255, 0.08), transparent 15%),
+    linear-gradient(180deg, #10192f 0%, #162543 38%, #0f1730 100%);
+  color: #eef6ff;
+}
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: min(1680px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 22px 30px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: rgba(14, 24, 47, 0.84);
+  backdrop-filter: blur(24px);
+}
+.header h1 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.header p {
+  margin-top: 8px;
+  max-width: 920px;
+  font-size: 13px;
+  line-height: 1.85;
+  color: rgba(228, 239, 255, 0.72);
+}
+.tags {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #dff1ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.board {
+  width: min(1680px, calc(100% - 56px));
+  margin: 0 auto;
+  padding: 30px 0 44px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(370px, 1fr));
+  gap: 30px 28px;
+}
+.phone-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.phone-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(226, 239, 255, 0.66);
+  letter-spacing: 0.08em;
+}
+.phone {
+  width: 368px;
+  min-height: 812px;
+  border-radius: 46px;
+  background: linear-gradient(180deg, #08111d 0%, #0e1624 100%);
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: var(--shadow-strong);
+  transition: transform .22s ease, box-shadow .22s ease;
+}
+.phone-wrap:hover .phone {
+  transform: translateY(-4px);
+  box-shadow: 0 42px 120px rgba(11, 28, 52, 0.44);
+}
+.phone-inner {
+  position: relative;
+  min-height: 788px;
+  overflow: hidden;
+  border-radius: 34px;
+  background: linear-gradient(180deg, #f7fbff 0%, #eef6ff 52%, #f9fbff 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+}
+.notch {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0b111b;
+}
+.notch-pill {
+  width: 88px;
+  height: 10px;
+  border-radius: 999px;
+  background: #182435;
+}
+.statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 18px 0;
+  font-size: 11px;
+  color: #264462;
+}
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #15314f;
+}
+.navbar-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.navbar-action-pill {
+  position: relative;
+  display: inline-flex;
+  width: 76px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(121, 175, 219, 0.3);
+  background: rgba(255,255,255,0.9);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.75);
+}
+.navbar-action-pill::before {
+  content: "";
+  position: absolute;
+  left: 24px;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(31,125,255,.18);
+  box-shadow: 0 0 0 5px rgba(31,125,255,.08);
+}
+.navbar-action-pill::after {
+  content: "••";
+  position: absolute;
+  right: 12px;
+  top: 2px;
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: #5f7892;
+}
+.screen {
+  padding: 0 var(--space-md) 128px;
+}
+.page-screen {
+  padding: 8px 20px 144px;
+}
+.page-screen > :first-child {
+  margin-top: 4px;
+}
+.page-screen > :last-child {
+  margin-bottom: 6px;
+}
+.surface,
+.hero,
+.summary-card,
+.list-card,
+.metric-card,
+.empty-card,
+.note-card {
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid rgba(122,163,204,.16);
+  box-shadow: var(--shadow);
+}
+.surface {
+  padding: 20px 18px;
+}
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: var(--space-lg);
+}
+.hero.hero-primary {
+  background: var(--hero-blue);
+  color: #fff;
+  border: none;
+}
+.hero.hero-soft {
+  background: linear-gradient(145deg, rgba(31,125,255,.14), rgba(255,255,255,.99) 42%, rgba(247,251,255,.96) 100%);
+}
+.hero-badge,
+.badge,
+.pill,
+.mode-pill,
+.filter-chip,
+.meta-chip,
+.delivery-chip,
+.record-chip,
+.state-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.hero-badge {
+  min-height: 34px;
+  padding: 0 14px;
+}
+.hero-primary .hero-badge {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+}
+.hero-soft .hero-badge {
+  background: rgba(31,125,255,.14);
+  color: #0f63d6;
+}
+.badge,
+.meta-chip,
+.record-chip {
+  background: rgba(31,125,255,.1);
+  color: #0f63d6;
+  border: 1px solid rgba(31,125,255,.12);
+}
+.badge-green,
+.record-chip.success {
+  background: rgba(57,185,128,.12);
+  color: #228d5e;
+  border-color: rgba(57,185,128,.16);
+}
+.badge-orange,
+.record-chip.warn {
+  background: rgba(242,169,75,.16);
+  color: #b56d00;
+  border-color: rgba(242,169,75,.18);
+}
+.badge-danger,
+.record-chip.danger {
+  background: rgba(239,109,109,.12);
+  color: #c55454;
+  border-color: rgba(239,109,109,.16);
+}
+.state-tag {
+  background: rgba(31,125,255,.08);
+  color: #527095;
+  border: 1px solid rgba(31,125,255,.1);
+  font-size: 10px;
+  min-height: 22px;
+  padding: 0 8px;
+}
+.state-tag.active-state {
+  background: rgba(57,185,128,.1);
+  color: #228d5e;
+  border-color: rgba(57,185,128,.12);
+}
+.state-tag.fail-state {
+  background: rgba(239,109,109,.1);
+  color: #c55454;
+  border-color: rgba(239,109,109,.12);
+}
+.entry-time-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.2);
+  color: rgba(255,255,255,.98);
+  font-size: 12px;
+  font-weight: 700;
+}
+.hero-soft .entry-time-pill {
+  background: rgba(31,125,255,.1);
+  color: #0f63d6;
+}
+.hero-notice-entry {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding-right: 8px;
+}
+.hero-notice-entry .entry-time-pill {
+  padding-right: 18px;
+}
+.hero-notice-entry .notice-dot {
+  position: absolute;
+  top: -6px;
+  right: -2px;
+  box-shadow: 0 0 0 4px rgba(31,125,255,.18);
+}
+.hero-title {
+  margin-top: 18px;
+  font-size: 29px;
+  line-height: 1.18;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #17314f;
+}
+.hero-primary .hero-title,
+.hero-primary .hero-desc,
+.hero-primary .hero-note,
+.hero-primary .hero-meta { color: #fff; }
+.hero-desc {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.82;
+  color: #3f5871;
+}
+.hero-meta,
+.chip-row,
+.meta-row,
+.mode-row,
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: var(--space-sm);
+}
+.pill {
+  min-height: 34px;
+}
+.hero-primary .pill {
+  background: rgba(255,255,255,.16);
+  color: #fff;
+}
+.hero-soft .pill {
+  background: rgba(31,125,255,.1);
+  color: #0f63d6;
+}
+.progress-panel,
+.info-panel,
+.goal-panel,
+.highlight-panel,
+.state-panel,
+.badge-wall,
+.preview-card,
+.delivery-card,
+.rule-card {
+  margin-top: var(--space-md);
+  padding: 20px;
+  border-radius: 24px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-soft);
+}
+.progress-top,
+.section-head,
+.goal-top,
+.list-head,
+.delivery-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.progress-main {
+  flex: 1;
+  min-width: 0;
+}
+.progress-side-card {
+  flex-shrink: 0;
+  min-width: 104px;
+  padding: 10px 12px;
+  border-radius: 20px;
+  background: rgba(31,125,255,.08);
+  border: 1px solid rgba(31,125,255,.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+  text-align: center;
+}
+.progress-side-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #5b7591;
+}
+.progress-side-value {
+  display: block;
+  margin-top: 6px;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 800;
+  color: #166ff7;
+}
+.hero-primary .progress-side-card {
+  background: rgba(255,255,255,.16);
+  border-color: rgba(255,255,255,.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
+}
+.hero-primary .progress-side-label {
+  color: rgba(255,255,255,.82);
+}
+.hero-primary .progress-side-value {
+  color: #ffffff;
+}
+.progress-title,
+.info-title,
+.section-title,
+.goal-title,
+.list-title,
+.delivery-title,
+.delivery-card h3 {
+  color: #17314f;
+  font-weight: 800;
+}
+.progress-title,
+.info-title,
+.goal-title,
+.list-title,
+.delivery-card h3 { font-size: 18px; }
+.section-title { font-size: 20px; margin-top: 18px; }
+.section-desc,
+.info-desc,
+.summary-foot,
+.list-desc,
+.goal-desc,
+.progress-desc,
+.compact-note,
+.delivery-item,
+.helper-text,
+.big-sub {
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.info-desc,
+.section-desc,
+.goal-desc,
+.progress-desc,
+.compact-note,
+.summary-foot,
+.list-desc {
+  margin-top: 8px;
+}
+.summary-grid,
+.metric-grid,
+.quick-grid,
+.delivery-grid,
+.badge-grid,
+.overview-grid,
+.media-grid,
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: var(--space-md);
+}
+.summary-card,
+.metric-card {
+  position: relative;
+  overflow: hidden;
+  padding: 20px 18px;
+  box-shadow: var(--shadow-soft);
+}
+.summary-card::before,
+.metric-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #4a9dff 0%, #8ec7ff 100%);
+}
+.summary-card.warn::before,
+.metric-card.warn::before { background: linear-gradient(180deg, #ffbd66 0%, #ffd89a 100%); }
+.summary-card.success::before,
+.metric-card.success::before { background: linear-gradient(180deg, #44c084 0%, #9be3bc 100%); }
+.summary-card .summary-label,
+.summary-card .summary-value,
+.summary-card .summary-foot,
+.metric-card .summary-label,
+.metric-card .summary-value,
+.metric-card .summary-foot {
+  padding-left: 10px;
+}
+.summary-label {
+  font-size: 12px;
+  color: #4f6882;
+}
+.summary-value {
+  margin-top: 10px;
+  font-size: 26px;
+  font-weight: 800;
+  color: #17314f;
+}
+.summary-value--sm { font-size: 22px; }
+.summary-value--xs { font-size: 18px; }
+.list-card {
+  margin-top: var(--space-md);
+  padding: 20px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  box-shadow: var(--shadow-soft);
+}
+.marker {
+  width: 14px;
+  height: 14px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: #b9dcff;
+  flex-shrink: 0;
+}
+.marker.success { background: #8fd9b4; }
+.marker.warn { background: #ffd48b; }
+.marker.danger { background: #ef9393; }
+.list-main { flex: 1; }
+.list-arrow,
+.side-arrow {
+  color: #8ca2bb;
+  font-size: 22px;
+  font-weight: 700;
+}
+.side-col {
+  min-width: 92px;
+  text-align: right;
+}
+.tabbar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.98);
+  border: 1px solid rgba(117,162,204,.18);
+  box-shadow: 0 16px 34px rgba(34,87,139,.12);
+  backdrop-filter: blur(12px);
+}
+.tab-item {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  border-radius: 999px;
+  text-align: center;
+  padding: 7px 0;
+  color: #6f8aa6;
+  font-size: 11px;
+  line-height: 1;
+}
+.tab-item.active {
+  background: linear-gradient(145deg, rgba(31,125,255,.12), rgba(31,125,255,.06));
+  color: var(--primary);
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+}
+.btn-row {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: 20px;
+}
+.btn-row.btn-row-stack {
+  display: grid;
+  gap: 12px;
+}
+.btn-row.btn-row-stack .btn {
+  width: 100%;
+}
+.btn {
+  flex: 1;
+  min-height: 48px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #2f8fff 0%, #166ff7 100%);
+  color: #fff;
+  box-shadow: 0 14px 28px rgba(22,111,247,.22);
+}
+.btn-secondary {
+  background: linear-gradient(145deg, #edf5ff 0%, #e3efff 100%);
+  color: #1467ef;
+  border: 1px solid rgba(117,162,204,.24);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.84);
+}
+.btn-ghost {
+  background: rgba(255,255,255,.98);
+  color: #3f5b78;
+  border: 1px solid rgba(117,162,204,.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.76);
+}
+.cta-main-btn {
+  width: 100%;
+  min-height: 56px;
+  margin-top: var(--space-md);
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1f7dff 0%, #3f97ff 100%);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  box-shadow: 0 16px 34px rgba(31,125,255,.24);
+}
+.progress-bar,
+.tiny-bar {
+  margin-top: 12px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(31,125,255,.12);
+  overflow: hidden;
+}
+.progress-bar > span,
+.tiny-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1f7dff 0%, #86c7ff 100%);
+}
+.tiny-bar {
+  height: 8px;
+  margin-top: 8px;
+}
+.record-meta-row,
+.meta-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.record-status-chip {
+  display: inline-flex;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.record-status-chip--success {
+  background: rgba(53,173,116,0.12);
+  color: #1e8a5a;
+}
+.record-status-chip--warn {
+  background: rgba(255,189,102,0.14);
+  color: #c9851c;
+}
+.record-status-chip--danger {
+  background: rgba(239,109,109,.14);
+  color: #c55454;
+}
+.subtle-time {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.hero-primary.entry-home { padding: 18px 18px 20px; }
+.entry-home-top,
+.guidance-hero-top,
+.upload-hero-top,
+.history-hero-top,
+.report-hero-top,
+.analysis-hero-top,
+.profile-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.page-screen-home .hero.entry-home { padding: 22px 20px 24px; }
+.page-screen-guidance .hero,
+.page-screen-upload .hero,
+.page-screen-analyzing .hero,
+.page-screen-analyzing-fail .hero {
+  padding: 22px 20px 20px;
+}
+.page-screen-report .hero,
+.page-screen-history .hero,
+.page-screen-mine .hero,
+.page-screen-notifications .hero,
+.page-screen-feedback .hero {
+  padding: 24px 20px 22px;
+}
+.page-screen-home .entry-actions,
+.page-screen-home .info-panel,
+.page-screen-home .summary-grid,
+.page-screen-home .feedback-status-card,
+.page-screen-home .list-card {
+  margin-top: 20px;
+}
+.page-screen-home .section-title { margin-top: 28px; }
+.page-screen-guidance .media-grid {
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+.page-screen-guidance .media-card::after {
+  min-height: 136px;
+}
+.page-screen-guidance .surface,
+.page-screen-guidance .btn-row,
+.page-screen-guidance .btn-row,
+.page-screen-upload .summary-grid,
+.page-screen-upload .preview-card,
+.page-screen-upload .surface,
+.page-screen-upload .goal-panel,
+.page-screen-upload .btn-row,
+.page-screen-analyzing .surface,
+.page-screen-analyzing .state-panel,
+.page-screen-analyzing .summary-grid,
+.page-screen-analyzing .btn-row,
+.page-screen-analyzing-fail .surface,
+.page-screen-analyzing-fail .summary-grid,
+.page-screen-analyzing-fail .btn-row,
+.page-screen-report .overview-grid,
+.page-screen-report .progress-panel,
+.page-screen-report .info-panel,
+.page-screen-report .surface,
+.page-screen-report .list-card,
+.page-screen-history .filter-row,
+.page-screen-history .summary-grid,
+.page-screen-history .progress-panel,
+.page-screen-history .surface,
+.page-screen-history .list-card,
+.page-screen-history .empty-card,
+.page-screen-mine .badge-wall,
+.page-screen-mine .surface,
+.page-screen-mine .list-card,
+.page-screen-notifications .surface,
+.page-screen-notifications .list-card,
+.page-screen-notifications .empty-card,
+.page-screen-feedback .surface,
+.page-screen-feedback .list-card,
+.page-screen-feedback .btn-row {
+  margin-top: 20px;
+}
+.entry-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+.action-card,
+.media-card,
+.overview-card,
+.badge-card,
+.kpi-card,
+.check-card {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 16px;
+  border-radius: 22px;
+  background: linear-gradient(145deg, #ffffff 0%, #f5faff 100%);
+  border: 1px solid rgba(117,162,204,.18);
+  box-shadow: 0 16px 34px rgba(31,125,255,.08);
+}
+.action-card.guide { background: linear-gradient(145deg, #ffffff 0%, #f3f9ff 100%); }
+.action-card.upload { background: linear-gradient(145deg, #ffffff 0%, #f4fbf8 100%); }
+.action-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.action-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+}
+.action-card.guide .action-icon {
+  color: #1f7dff;
+  background: rgba(31,125,255,.1);
+}
+.action-card.upload .action-icon {
+  color: #35ad74;
+  background: rgba(53,173,116,.12);
+}
+.action-title {
+  margin-top: var(--space-sm);
+  font-size: 16px;
+  font-weight: 800;
+  color: #17314f;
+}
+.action-desc {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.72;
+  color: var(--text-soft);
+}
+.action-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  margin-top: 12px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(31,125,255,.1);
+  color: #1f5fd6;
+  font-size: 11px;
+  font-weight: 700;
+}
+.action-card.upload .action-state {
+  background: rgba(53,173,116,.1);
+  color: #259160;
+}
+.issue-list,
+.point-list,
+.check-list,
+.metric-list,
+.delivery-list {
+  display: grid;
+  gap: 12px;
+  margin-top: var(--space-md);
+}
+.issue-item,
+.point-item,
+.check-item,
+.metric-item,
+.delivery-item {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(31,125,255,.06);
+  color: #36506d;
+  font-size: 13px;
+  line-height: 1.72;
+}
+.record-chip {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.check-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+.check-item > div {
+  min-width: 0;
+}
+.check-item .record-chip {
+  min-width: 84px;
+  min-height: 38px;
+  padding: 0 14px;
+  justify-self: end;
+}
+.check-item.pass { background: rgba(57,185,128,.08); }
+.check-item.warn { background: rgba(242,169,75,.12); }
+.check-item.danger { background: rgba(239,109,109,.1); }
+.check-label {
+  color: #17314f;
+  font-weight: 700;
+}
+.media-card {
+  min-height: 212px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.media-card::after {
+  content: "素材预留";
+  width: 100%;
+  min-height: 126px;
+  margin-top: 16px;
+  border-radius: 20px;
+  border: 1px dashed rgba(117,162,204,.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8aa4bf;
+  font-size: 13px;
+  font-weight: 700;
+  background: linear-gradient(180deg, rgba(247,251,255,.98) 0%, rgba(239,246,255,.94) 100%);
+}
+.media-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #17314f;
+}
+.media-desc {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #4f6782;
+}
+.preview-frame {
+  min-height: 188px;
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(18,33,61,.92) 0%, rgba(24,46,82,.94) 100%),
+    radial-gradient(circle at 50% 40%, rgba(111, 187, 255, 0.28), transparent 35%);
+  border: 1px solid rgba(143,197,255,.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(235,245,255,.9);
+  font-size: 13px;
+  line-height: 1.8;
+  text-align: center;
+  padding: 18px;
+}
+.state-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: var(--space-md);
+}
+.state-row {
+  display: grid;
+  grid-template-columns: 84px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 15px 14px;
+  border-radius: 20px;
+  background: rgba(31,125,255,.06);
+  border: 1px solid rgba(31,125,255,.08);
+}
+.state-row.active {
+  background: rgba(31,125,255,.12);
+}
+.state-row.done {
+  background: rgba(57,185,128,.08);
+}
+.state-step {
+  font-size: 12px;
+  font-weight: 800;
+  color: #4d6783;
+}
+.state-name {
+  color: #17314f;
+  font-size: 14px;
+  font-weight: 700;
+}
+.state-mark {
+  min-width: 58px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f63d6;
+}
+.state-row.done .state-mark { color: #228d5e; }
+.state-row.warn .state-mark { color: #b56d00; }
+.score-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: var(--space-sm);
+}
+.score-label {
+  font-size: 12px;
+  color: #4b6480;
+}
+.score-grade {
+  margin-top: 6px;
+  font-size: 30px;
+  font-weight: 800;
+  color: #17314f;
+}
+.score-value {
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, rgba(31,125,255,.14), rgba(31,125,255,.06));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  font-size: 28px;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+}
+.result-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: var(--space-md);
+}
+.metric-line {
+  display: grid;
+  grid-template-columns: 74px 1fr 40px;
+  gap: 12px;
+  align-items: center;
+}
+.metric-line .tiny-bar { margin-top: 0; }
+.metric-key {
+  color: #17314f;
+  font-size: 12px;
+  font-weight: 700;
+}
+.metric-value {
+  color: #5d7896;
+  font-size: 12px;
+  text-align: right;
+}
+.badge-wall {
+  display: grid;
+  gap: 16px;
+}
+.badge-wall .section-head {
+  align-items: center;
+}
+.badge-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 0;
+}
+.badge-card {
+  min-height: 146px;
+  padding: 16px 10px 14px;
+  text-align: center;
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(242,248,255,.94) 100%);
+  border: 1px solid rgba(117,162,204,.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+}
+.badge-card .badge-bubble {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(145deg, rgba(31,125,255,.18), rgba(31,125,255,.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  font-size: 17px;
+  font-weight: 800;
+}
+.badge-card.inactive {
+  opacity: 1;
+  background: linear-gradient(145deg, rgba(243,247,252,.98), rgba(236,242,249,.94));
+  border-color: rgba(165,180,200,.16);
+}
+.badge-card.inactive .badge-bubble {
+  background: linear-gradient(145deg, rgba(165,180,200,.14), rgba(165,180,200,.06));
+  color: #7a93af;
+}
+.badge-name {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 700;
+  color: #17314f;
+}
+.badge-time {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: #7b93ae;
+}
+.badge-gallery-panel {
+  margin-top: 18px;
+  padding: 18px 16px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(245,250,255,.95) 100%);
+  border: 1px solid rgba(117,162,204,.16);
+  box-shadow: 0 14px 30px rgba(31,125,255,.08);
+}
+.badge-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.badge-gallery-panel .badge-card {
+  min-height: 138px;
+}
+.badge-gallery-panel .badge-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.badge-gallery-meta {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mode-pill {
+  background: rgba(237,245,255,.98);
+  color: #56718d;
+  border: 1px solid rgba(117,162,204,.18);
+}
+.mode-pill.active {
+  background: rgba(31,125,255,.12);
+  color: #0f63d6;
+  border-color: rgba(31,125,255,.18);
+}
+.filter-chip {
+  background: rgba(31,125,255,.08);
+  color: #527095;
+  border: 1px solid rgba(31,125,255,.1);
+}
+.filter-chip.active {
+  background: rgba(31,125,255,.14);
+  color: #0f63d6;
+}
+.empty-card {
+  margin-top: var(--space-md);
+  padding: 30px 24px;
+  text-align: center;
+}
+.empty-badge {
+  display: inline-flex;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(31,125,255,.08);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.big-title {
+  margin-top: 14px;
+  font-size: 22px;
+  line-height: 1.3;
+  font-weight: 800;
+  color: #17314f;
+}
+
+/* === V3.3 新增：步骤进度条 === */
+.step-strip {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: var(--space-md);
+  background: rgba(31,125,255,.06);
+  border-radius: 999px;
+  padding: 6px 6px;
+}
+.step-strip-item {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 8px 4px;
+  border-radius: 999px;
+  color: #527095;
+}
+.step-strip-item.active {
+  background: rgba(31,125,255,.14);
+  color: #0f63d6;
+}
+.step-strip-item.done {
+  color: #228d5e;
+}
+
+/* === V3.3 新增：分析中旋转环 === */
+.analysis-ring-wrap {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  margin: 20px auto 10px;
+}
+.analysis-ring {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 4px solid rgba(31,125,255,.12);
+  border-top-color: var(--primary);
+  animation: ring-spin 1.6s linear infinite;
+}
+@keyframes ring-spin {
+  to { transform: rotate(360deg); }
+}
+.analysis-ring-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+/* === V3.3 新增：反馈状态卡 === */
+.feedback-status-card {
+  margin-top: var(--space-md);
+  padding: 20px 18px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid rgba(122,163,204,.16);
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.feedback-status-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #17314f;
+}
+.feedback-status-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.7;
+}
+.feedback-status-side {
+  min-width: 70px;
+  text-align: right;
+}
+
+/* === V3.3 新增：加载态骨架 === */
+.skeleton-card {
+  margin-top: var(--space-md);
+  padding: 20px 18px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(249,252,255,.98), rgba(240,247,255,.92));
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+}
+.skeleton-line {
+  height: 14px;
+  border-radius: 8px;
+  background: rgba(31,125,255,.08);
+}
+.skeleton-line.w60 { width: 60%; }
+.skeleton-line.w80 { width: 80%; }
+.skeleton-line.w40 { width: 40%; }
+
+/* === V3.3 新增：消息未读点 === */
+.notice-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.phase-grid,
+.state-preview-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: var(--space-md);
+}
+.phase-card,
+.state-preview-card {
+  padding: 18px 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(117,162,204,.18);
+  background: linear-gradient(145deg, #ffffff 0%, #f5faff 100%);
+  box-shadow: 0 12px 24px rgba(31,125,255,.08);
+}
+.phase-card.corrective {
+  background: linear-gradient(145deg, rgba(255,246,236,.98) 0%, rgba(255,252,247,.98) 100%);
+  border-color: rgba(242,169,75,.24);
+}
+.phase-card.consolidation {
+  background: linear-gradient(145deg, rgba(243,249,255,.98) 0%, rgba(255,255,255,.98) 100%);
+  border-color: rgba(31,125,255,.18);
+}
+.phase-card.incentive {
+  background: linear-gradient(145deg, rgba(241,251,246,.98) 0%, rgba(255,255,255,.98) 100%);
+  border-color: rgba(57,185,128,.22);
+}
+.phase-card-top,
+.state-preview-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.phase-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b84a1;
+}
+.phase-title,
+.state-preview-title {
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #17314f;
+}
+.phase-copy,
+.state-preview-copy {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.78;
+  color: #48617b;
+}
+.phase-points {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.phase-point {
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.72);
+  color: #45607b;
+  font-size: 12px;
+  line-height: 1.72;
+}
+.state-preview-card.warn {
+  background: linear-gradient(145deg, rgba(243,249,255,.98) 0%, rgba(255,255,255,.98) 100%);
+}
+.state-preview-card.danger {
+  background: linear-gradient(145deg, rgba(255,244,244,.98) 0%, rgba(255,255,255,.98) 100%);
+  border-color: rgba(239,109,109,.18);
+}
+.state-preview-card .skeleton-card {
+  margin-top: 12px;
+}
+.page-state-zone {
+  margin-top: 22px;
+  padding: 20px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(250,253,255,.99) 0%, rgba(242,248,255,.96) 100%);
+  border: 1px solid rgba(117,162,204,.18);
+  box-shadow: var(--shadow-soft);
+}
+.state-showcase-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+.state-showcase-card {
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(31,125,255,.06);
+  border: 1px solid rgba(31,125,255,.1);
+}
+.state-showcase-card.warn {
+  background: rgba(242,169,75,.1);
+  border-color: rgba(242,169,75,.16);
+}
+.state-showcase-card.danger {
+  background: rgba(239,109,109,.08);
+  border-color: rgba(239,109,109,.16);
+}
+.state-showcase-card.quiet {
+  background: rgba(107,122,140,.06);
+  border-color: rgba(107,122,140,.12);
+}
+.state-showcase-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b84a1;
+}
+.state-showcase-title {
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #17314f;
+}
+.state-showcase-desc {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.78;
+  color: #48617b;
+}
+.state-lab {
+  width: min(1680px, calc(100% - 56px));
+  margin: 0 auto 34px;
+  padding: 26px;
+  border-radius: 30px;
+  background: linear-gradient(180deg, rgba(255,255,255,.09) 0%, rgba(255,255,255,.05) 100%);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 22px 44px rgba(8, 22, 42, .22);
+  backdrop-filter: blur(18px);
+}
+.state-lab-heading {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #f0f7ff;
+}
+.state-lab-desc {
+  margin-top: 10px;
+  max-width: 980px;
+  font-size: 13px;
+  line-height: 1.82;
+  color: rgba(226,239,255,.76);
+}
+.state-lab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.state-lab-card {
+  padding: 22px 20px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(245,250,255,.93) 100%);
+  border: 1px solid rgba(117,162,204,.14);
+  box-shadow: 0 18px 34px rgba(10, 32, 60, .12);
+}
+.state-lab-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.state-lab-top h3 {
+  font-size: 18px;
+  font-weight: 800;
+  color: #17314f;
+}
+.state-lab-copy {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.78;
+  color: #48617b;
+}
+
+.delivery-map {
+  width: min(1680px, calc(100% - 56px));
+  margin: 6px auto 48px;
+  padding: 24px;
+  border-radius: 30px;
+  background: linear-gradient(180deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.04) 100%);
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 22px 44px rgba(8, 22, 42, .22);
+  backdrop-filter: blur(18px);
+}
+.delivery-heading {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #f0f7ff;
+}
+.delivery-desc {
+  margin-top: 10px;
+  max-width: 980px;
+  font-size: 13px;
+  line-height: 1.82;
+  color: rgba(226,239,255,.76);
+}
+.delivery-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.delivery-card {
+  padding: 20px 18px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(245,250,255,.93) 100%);
+  border: 1px solid rgba(117,162,204,.14);
+  box-shadow: 0 18px 34px rgba(10, 32, 60, .12);
+}
+.delivery-path {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin-top: 10px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(31,125,255,.08);
+  color: #1f7dff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.delivery-item strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #17314f;
+  font-size: 13px;
+}
+.delivery-section {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.delivery-subtitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f0f7ff;
+}
+.delivery-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+.delivery-chip {
+  min-height: 34px;
+  padding: 0 14px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.1);
+  color: #e4f3ff;
+}
+@media (max-width: 900px) {
+  .header { width: calc(100% - 20px); padding: 18px 16px; flex-direction: column; }
+  .board,
+  .delivery-map { width: calc(100% - 24px); }
+  .board { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+  <header class="header">
+    <div>
+      <h1>Home Rehab Motion 患者端 · V3.3 交互细化版</h1>
+      <p>
+        基于 V3.2 收敛版进一步细化：对照真实 wxml 工程骨架补全交互状态层（加载态、空态、失败态、反馈状态卡、消息未读角标、步骤进度条、分析旋转环），补齐报告页三阶段全量示意与加载/失败预览，同时统一卡片、分组和按钮的间距节奏；并对齐一期徽章定义（first-training / streak-3 / streak-7 / consecutive-week-2），使稿件可直接指导前端实现。
+      </p>
+    </div>
+    <div class="tags">
+      <span class="tag">9 页真实骨架</span>
+      <span class="tag">交互状态层补全</span>
+      <span class="tag">状态独立展示区</span>
+      <span class="tag">一期徽章对齐</span>
+      <span class="tag">反馈状态卡</span>
+      <span class="tag">页面边距收口</span>
+    </div>
+  </header>
+
+  <main class="board">
+    <!-- ============ P01 首页 ============ -->
+    <section class="phone-wrap">
+      <div class="phone-label">P01 · 首页（训练主入口）<span class="state-tag active-state">正常态</span></div>
+      <div class="phone">
+        <div class="notch"><div class="notch-pill"></div></div>
+        <div class="phone-inner">
+          <div class="statusbar"><span>9:41</span><span>5G · 86%</span></div>
+          <div class="navbar"><span>训练首页</span><div class="navbar-actions"><span class="navbar-action-pill"></span></div></div>
+          <div class="screen page-screen page-screen-home">
+            <div class="hero hero-primary entry-home">
+              <div class="entry-home-top">
+                <span class="hero-badge">今日训练</span>
+                <div class="hero-notice-entry">
+                  <span class="entry-time-pill">2 条未读</span>
+                  <span class="notice-dot">2</span>
+                </div>
+              </div>
+              <div class="hero-title">开始今日训练</div>
+              <div class="hero-desc">推荐动作：缩腹运动。完成 1 次即可达成今日任务，系统会自动生成本次训练结果建议。</div>
+              <div class="hero-meta">
+                <span class="pill">今日目标：完成 1 次</span>
+                <span class="pill">完成后自动分析</span>
+              </div>
+              <div class="progress-panel" style="background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.12);box-shadow:none;">
+                <div class="progress-top">
+                  <div class="progress-main">
+                    <div class="progress-title" style="color:#fff;">本周成长进度</div>
+                    <div class="compact-note" style="color:rgba(255,255,255,.88);">上周完成 4 / 7，已达到建议达标线；本周重新开始，继续冲击满周完成。</div>
+                  </div>
+                  <div class="progress-side-card">
+                    <span class="progress-side-label">新周进行中</span>
+                    <span class="progress-side-value">1 / 7</span>
+                  </div>
+                </div>
+                <div class="progress-bar" style="background:rgba(255,255,255,.18);"><span style="width:20%;background:linear-gradient(90deg,#ffffff,#d9edff);"></span></div>
+              </div>
+              <button class="cta-main-btn">立即开始训练</button>
+            </div>
+
+            <div class="entry-actions">
+              <div class="action-card guide">
+                <div class="action-top">
+                  <span class="action-icon">01</span>
+                  <span class="side-arrow">›</span>
+                </div>
+                <div class="action-title">先看动作指导</div>
+                <div class="action-desc">先熟悉姿势要点、拍摄角度和常见错误，再开始训练会更稳。</div>
+                <span class="action-state">建议先看</span>
+              </div>
+              <div class="action-card upload">
+                <div class="action-top">
+                  <span class="action-icon">02</span>
+                  <span class="side-arrow">›</span>
+                </div>
+                <div class="action-title">直接上传训练</div>
+                <div class="action-desc">如果已经拍好了视频，可直接提交分析并等待结果。</div>
+                <span class="action-state">已有视频可用</span>
+              </div>
+            </div>
+
+            <div class="info-panel">
+              <div class="section-head">
+                <div class="info-title">完成训练后自动更新</div>
+                <span class="badge">结果后置</span>
+              </div>
+              <div class="info-desc">首页先帮助患者把今天训练做完，成长反馈和报告建议统一在训练完成后查看，减少入口分散。</div>
+              <div class="chip-row">
+                <span class="meta-chip">连续训练天数</span>
+                <span class="meta-chip">本周目标进度</span>
+                <span class="meta-chip">动作结果建议</span>
+              </div>
+            </div>
+
+            <div class="summary-grid">
+              <div class="summary-card">
+                <div class="summary-label">最近结果</div>
+                <div class="summary-value">良好</div>
+                <div class="summary-foot">上一次训练完成度不错，训练后可继续查看变化。</div>
+              </div>
+              <div class="summary-card warn">
+                <div class="summary-label">今日提醒</div>
+                <div class="summary-value">慢一点</div>
+                <div class="summary-foot">动作做慢一点、稳一点，系统分析会更准确。</div>
+              </div>
+            </div>
+
+            <!-- V3.3 新增：反馈状态卡（对齐真实工程 feedback-status-card） -->
+            <div class="feedback-status-card">
+              <div>
+                <div class="feedback-status-title">报告疑问</div>
+                <div class="feedback-status-desc">医护已回复您的反馈，可查看处理结果。</div>
+              </div>
+              <div class="feedback-status-side">
+                <span class="badge badge-orange">已回复</span>
+              </div>
+            </div>
+
+            <div class="section-title">更多服务</div>
+            <div class="section-desc" style="margin-top:0;">训练之外，也可以在这里快速查看报告、历史记录和消息中心。</div>
+
+            <div class="list-card">
+              <div class="marker success"></div>
+              <div class="list-main">
+                <div class="list-title">查看最近报告</div>
+                <div class="list-desc">快速回看上一条训练结果、阶段反馈和系统建议。</div>
+              </div>
+              <div class="list-arrow">›</div>
+            </div>
+
+            <div class="list-card">
+              <div class="marker"></div>
+              <div class="list-main">
+                <div class="list-title">训练历史</div>
+                <div class="list-desc">按时间查看已完成记录、分析中状态和历史报告。</div>
+              </div>
+              <div class="list-arrow">›</div>
+            </div>
+
+            <div class="list-card">
+              <div class="marker warn"></div>
+              <div class="list-main">
+                <div class="list-title">消息中心</div>
+                <div class="list-desc">查看分析完成提醒、医护回复和徽章通知。</div>
+              </div>
+              <div class="side-col"><span class="badge">2 条未读</span></div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab-item active">首页</div>
+            <div class="tab-item">历史</div>
+            <div class="tab-item">我的</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ P02 动作指导 ============ -->
+    <section class="phone-wrap">
+      <div class="phone-label">P02 · 动作指导详情 <span class="state-tag active-state">正常态</span></div>
+      <div class="phone">
+        <div class="notch"><div class="notch-pill"></div></div>
+        <div class="phone-inner">
+          <div class="statusbar"><span>9:41</span><span>5G · 86%</span></div>
+          <div class="navbar"><span>动作指导</span><div class="navbar-actions"><span class="navbar-action-pill"></span></div></div>
+          <div class="screen page-screen page-screen-guidance">
+            <div class="hero hero-soft">
+              <div class="guidance-hero-top">
+                <span class="hero-badge">建议先学习再开始</span>
+                <span class="entry-time-pill">预计 1 分钟看完</span>
+              </div>
+              <div class="hero-title">缩腹运动指导</div>
+              <div class="hero-desc">先保持肩膀放松，慢慢收紧腹部，保持 5 秒后自然回正。动作过程中尽量保持呼吸平稳。</div>
+              <div class="chip-row">
+                <span class="meta-chip">动作怎么做</span>
+                <span class="meta-chip">视频怎么拍</span>
+                <span class="meta-chip">哪些做法容易错</span>
+              </div>
+            </div>
+
+            <div class="media-grid">
+              <div class="media-card">
+                <div>
+                  <div class="media-title">步骤 01 · 收腹开始</div>
+                  <div class="media-desc">用步骤图或封面图告诉患者从哪里开始发力。</div>
+                </div>
+              </div>
+              <div class="media-card">
+                <div>
+                  <div class="media-title">步骤 02 · 保持 5 秒</div>
+                  <div class="media-desc">用图示说明保持阶段，减少做太快的问题。</div>
+                </div>
+              </div>
+              <div class="media-card">
+                <div>
+                  <div class="media-title">步骤 03 · 缓慢回正</div>
+                  <div class="media-desc">强调回正动作要慢，不要突然松掉腹部。</div>
+                </div>
+              </div>
+              <div class="media-card">
+                <div>
+                  <div class="media-title">错误对比素材</div>
+                  <div class="media-desc">后续可放常见错误图、错误 GIF 或拍摄示意图。</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">拍摄要求</div>
+              <div class="info-desc">上传前先确保拍摄角度和画面质量符合要求，能减少分析失败和重传。</div>
+              <div class="chip-row">
+                <span class="meta-chip">侧面 90°</span>
+                <span class="meta-chip">光线充足</span>
+                <span class="meta-chip">腹部到膝部入镜</span>
+                <span class="meta-chip">背景简洁</span>
+              </div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">常见错误</div>
+              <div class="issue-list">
+                <div class="issue-item">不要耸肩，不要靠抬起上半身代替腹部收紧。</div>
+                <div class="issue-item">保持呼吸平稳，不要憋气，回正时动作要慢。</div>
+                <div class="issue-item">拍摄时尽量让腹部和骨盆区域完整入镜，避免关键位置被遮挡。</div>
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-secondary">返回首页</button>
+              <button class="btn btn-primary">去上传训练</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ P03 上传训练 ============ -->
+    <section class="phone-wrap">
+      <div class="phone-label">P03 · 上传训练视频 <span class="state-tag active-state">正常态</span></div>
+      <div class="phone">
+        <div class="notch"><div class="notch-pill"></div></div>
+        <div class="phone-inner">
+          <div class="statusbar"><span>9:41</span><span>5G · 86%</span></div>
+          <div class="navbar"><span>上传确认</span><div class="navbar-actions"><span class="navbar-action-pill"></span></div></div>
+          <div class="screen page-screen page-screen-upload">
+            <div class="hero hero-soft">
+              <div class="upload-hero-top">
+                <span class="hero-badge">步骤 2 / 3</span>
+                <span class="entry-time-pill">预计 1 分钟</span>
+              </div>
+              <div class="hero-title">上传这次训练视频</div>
+              <div class="hero-desc">这一页不只是确认上传，更要帮助患者判断视频是否符合拍摄要求，降低分析失败率。</div>
+              <!-- V3.3 新增：步骤进度条（对齐真实工程 upload-step-strip） -->
+              <div class="step-strip">
+                <div class="step-strip-item done">1 选择动作</div>
+                <div class="step-strip-item active">2 上传视频</div>
+                <div class="step-strip-item">3 等待分析</div>
+              </div>
+            </div>
+
+            <div class="summary-grid">
+              <div class="summary-card">
+                <div class="summary-label">当前动作</div>
+                <div class="summary-value summary-value--sm">缩腹运动</div>
+                <div class="summary-foot">系统默认推荐，可在上方切换。</div>
+              </div>
+              <div class="summary-card warn">
+                <div class="summary-label">视频时长</div>
+                <div class="summary-value summary-value--sm">34 秒</div>
+                <div class="summary-foot">建议拍摄完整动作过程，便于分析。</div>
+              </div>
+            </div>
+
+            <div class="preview-card">
+              <div class="section-head">
+                <div class="info-title">已选视频预览</div>
+                <span class="badge">MP4 · 28MB</span>
+              </div>
+              <div class="preview-frame">视频预览区<br/>患者可在这里确认动作是否完整入镜、画面是否清晰。</div>
+              <div class="helper-text" style="margin-top:12px;">如果视频不合适，建议先重新选择，再提交分析。</div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">拍摄检查结果</div>
+              <div class="check-list">
+                <div class="check-item pass">
+                  <div>
+                    <div class="check-label">视频时长</div>
+                    <div class="helper-text">已录制 34 秒，满足当前动作分析要求。</div>
+                  </div>
+                  <span class="record-chip success">通过</span>
+                </div>
+                <div class="check-item pass">
+                  <div>
+                    <div class="check-label">视频格式</div>
+                    <div class="helper-text">当前为 MP4，可直接上传。</div>
+                  </div>
+                  <span class="record-chip success">通过</span>
+                </div>
+                <div class="check-item pass">
+                  <div>
+                    <div class="check-label">画面与角度</div>
+                    <div class="helper-text">腹部和骨盆区域完整入镜，侧面拍摄角度可用。</div>
+                  </div>
+                  <span class="record-chip success">通过</span>
+                </div>
+                <div class="check-item warn">
+                  <div>
+                    <div class="check-label">动作节奏提醒</div>
+                    <div class="helper-text">如果回正太快，报告会提示"节奏偏快"，但不影响当前提交。</div>
+                  </div>
+                  <span class="record-chip warn">提醒</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">如果不符合要求</div>
+              <div class="issue-list">
+                <div class="issue-item">视频太短：请至少保留完整动作过程，再重新录制。</div>
+                <div class="issue-item">画面太暗：请到光线更好的地方，避免关键部位看不清。</div>
+                <div class="issue-item">未完整入镜：请让腹部到膝部区域都进入画面。</div>
+                <div class="issue-item">格式不支持：请重新选择可上传的视频文件。</div>
+              </div>
+            </div>
+
+            <div class="goal-panel">
+              <div class="goal-top">
+                <div class="goal-title">本次小目标</div>
+                <span class="badge badge-green">先完成最重要</span>
+              </div>
+              <div class="goal-desc">动作完整入镜、节奏平稳即可。系统会在报告页给出下一步建议，不用追求一次特别完美。</div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-secondary">重新选择视频</button>
+              <button class="btn btn-primary">提交开始分析</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ P04 分析中 ============ -->
+    <section class="phone-wrap">
+      <div class="phone-label">P04 · 分析中 <span class="state-tag active-state">正常态</span></div>
+      <div class="phone">
+        <div class="notch"><div class="notch-pill"></div></div>
+        <div class="phone-inner">
+          <div class="statusbar"><span>9:41</span><span>5G · 86%</span></div>
+          <div class="navbar"><span>分析中</span><div class="navbar-actions"><span class="navbar-action-pill"></span></div></div>
+          <div class="screen page-screen page-screen-analyzing">
+            <div class="hero hero-soft">
+              <div class="analysis-hero-top">
+                <span class="hero-badge">步骤 3 / 3</span>
+                <span class="entry-time-pill">预计 1~2 分钟</span>
+              </div>
+              <div class="hero-title">系统正在分析您的动作</div>
+              <div class="hero-desc">分析是异步完成的，患者不需要一直停留等待。完成后会自动生成报告，也会同步到消息中心。</div>
+            </div>
+
+            <!-- V3.3 新增：旋转动画环（对齐真实工程 status-ring） -->
+            <div class="surface" style="text-align:center;padding:28px 18px;">
+              <div class="analysis-ring-wrap">
+                <div class="analysis-ring"></div>
+                <div class="analysis-ring-label">分析中</div>
+              </div>
+              <div class="info-desc" style="margin-top:8px;">当前进度：关键点提取</div>
+            </div>
+
+            <div class="state-panel">
+              <div class="info-title">当前进度</div>
+              <div class="state-grid">
+                <div class="state-row done">
+                  <div class="state-step">步骤 01</div>
+                  <div class="state-name">上传完成</div>
+                  <div class="state-mark">已完成</div>
+                </div>
+                <div class="state-row done">
+                  <div class="state-step">步骤 02</div>
+                  <div class="state-name">视频质量检测</div>
+                  <div class="state-mark">已通过</div>
+                </div>
+                <div class="state-row active">
+                  <div class="state-step">步骤 03</div>
+                  <div class="state-name">关键点提取</div>
+                  <div class="state-mark">进行中</div>
+                </div>
+                <div class="state-row">
+                  <div class="state-step">步骤 04</div>
+                  <div class="state-name">动作分析与报告生成</div>
+                  <div class="state-mark">待处理</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="summary-grid">
+              <div class="summary-card success">
+                <div class="summary-label">等待建议</div>
+                <div class="summary-value summary-value--sm">可返回</div>
+                <div class="summary-foot">分析完成后，首页、历史页和消息中心都会更新。</div>
+              </div>
+              <div class="summary-card warn">
+                <div class="summary-label">等待较久</div>
+                <div class="summary-value summary-value--sm">去历史页</div>
+                <div class="summary-foot">如果超过预期，可稍后从历史记录继续查看，无需重复上传。</div>
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-secondary">返回首页等待</button>
+              <button class="btn btn-ghost">去历史页查看</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ P04b 分析失败态 ============ -->
+    <section class="phone-wrap">
+      <div class="phone-label">P04b · 分析失败 / 质量不足 <span class="state-tag fail-state">异常态</span></div>
+      <div class="phone">
+        <div class="notch"><div class="notch-pill"></div></div>
+        <div class="phone-inner">
+          <div class="statusbar"><span>9:41</span><span>5G · 86%</span></div>
+          <div class="navbar"><span>分析结果</span><div class="navbar-actions"><span class="navbar-action-pill"></span></div></div>
+          <div class="screen page-screen page-screen-analyzing-fail">
+            <div class="hero hero-soft" style="background:linear-gradient(145deg,rgba(239,109,109,.1),rgba(255,255,255,.98) 40%,rgba(247,251,255,.96) 100%);">
+              <div class="analysis-hero-top">
+                <span class="hero-badge" style="background:rgba(239,109,109,.12);color:#c55454;">分析未成功</span>
+                <span class="entry-time-pill">请按提示处理</span>
+              </div>
+              <div class="hero-title">本次分析未能生成报告</div>
+              <div class="hero-desc">这不是您的错，系统在处理视频时遇到了问题。请根据下方提示选择下一步操作。</div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">可能原因</div>
+              <div class="check-list">
+                <div class="check-item danger">
+                  <div>
+                    <div class="check-label">视频质量不足</div>
+                    <div class="helper-text">画面太暗、动作未完整入镜或拍摄角度偏移，系统无法提取足够关键点。</div>
+                  </div>
+                  <span class="record-chip danger">需重传</span>
+                </div>
+                <div class="check-item warn">
+                  <div>
+                    <div class="check-label">系统处理异常</div>
+                    <div class="helper-text">偶尔出现的后端异常，重试一次通常可以解决。</div>
+                  </div>
+                  <span class="record-chip warn">可重试</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">建议操作</div>
+              <div class="issue-list">
+                <div class="issue-item">如果是质量问题：请回到上传页，按拍摄要求重新录制或选择视频。</div>
+                <div class="issue-item">如果是系统异常：请直接重试，不影响已有训练记录。</div>
+                <div class="issue-item">如果等待较久：可先去历史记录页查看最新状态，无需重复上传。</div>
+              </div>
+            </div>
+
+            <div class="summary-grid">
+              <div class="summary-card warn">
+                <div class="summary-label">质量不足时</div>
+                <div class="summary-value summary-value--xs">按要求重传</div>
+                <div class="summary-foot">更强调光线、入镜范围和拍摄角度检查，优先回到上传页重新选择更合适的视频。</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">系统异常时</div>
+                <div class="summary-value summary-value--xs">先重试一次</div>
+                <div class="summary-foot">保留原训练记录，不要求重新拍摄；若仍失败，再去历史页查看最新状态。</div>
+              </div>
+            </div>
+
+            <div class="btn-row btn-row-stack">
+              <button class="btn btn-primary">重新上传视频</button>
+              <button class="btn btn-secondary">重试一次</button>
+              <button class="btn btn-ghost">去历史页查看</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ P05 报告页 ============ -->
+    <section class="phone-wrap">
+      <div class="phone-label">P05 · 报告页（正式结果层）<span class="state-tag active-state">正常态</span></div>
+      <div class="phone">
+        <div class="notch"><div class="notch-pill"></div></div>
+        <div class="phone-inner">
+          <div class="statusbar"><span>9:41</span><span>5G · 86%</span></div>
+          <div class="navbar"><span>训练报告</span><div class="navbar-actions"><span class="navbar-action-pill"></span></div></div>
+          <div class="screen page-screen page-screen-report">
+            <!-- Hero 层：综合评级 + 结果标签 -->
+            <div class="hero hero-soft">
+              <div class="report-hero-top">
+                <span class="hero-badge">缩腹运动</span>
+                <span class="entry-time-pill">训练 34 秒</span>
+              </div>
+              <div class="score-row">
+                <div>
+                  <div class="score-label">综合评价</div>
+                  <div class="score-grade">良好</div>
+                </div>
+                <div class="score-value">82</div>
+              </div>
+              <div class="result-chip-list">
+                <span class="record-chip success">已完成有效训练</span>
+                <span class="record-chip">当前阶段：巩固期</span>
+                <span class="record-chip">置信度：高</span>
+                <span class="record-chip">较上次 +5 分</span>
+              </div>
+            </div>
+
+            <!-- 概述卡片组 -->
+            <div class="overview-grid">
+              <div class="summary-card success">
+                <div class="summary-label">有效次数</div>
+                <div class="summary-value summary-value--sm">4 / 5</div>
+                <div class="summary-foot">已完成 4 次有效动作，本次训练被系统计入有效训练。</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">平均保持时间</div>
+                <div class="summary-value summary-value--sm">6 秒</div>
+                <div class="summary-foot">保持时间已接近目标要求，继续稳定会更好。</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">整体稳定性</div>
+                <div class="summary-value summary-value--sm">良好</div>
+                <div class="summary-foot">身体整体较稳定，仍可继续减少轻微晃动。</div>
+              </div>
+              <div class="summary-card success">
+                <div class="summary-label">与上次对比</div>
+                <div class="summary-value summary-value--sm">+5 分</div>
+                <div class="summary-foot">与上一次训练相比，本次表现更稳，节奏也更连续。</div>
+              </div>
+            </div>
+
+            <!-- 四维指标 -->
+            <div class="surface">
+              <div class="info-title">四维结果摘要</div>
+              <div class="metric-list">
+                <div class="metric-line">
+                  <div class="metric-key">准确性</div>
+                  <div class="tiny-bar"><span style="width:84%;"></span></div>
+                  <div class="metric-value">84</div>
+                </div>
+                <div class="metric-line">
+                  <div class="metric-key">稳定性</div>
+                  <div class="tiny-bar"><span style="width:80%;"></span></div>
+                  <div class="metric-value">80</div>
+                </div>
+                <div class="metric-line">
+                  <div class="metric-key">动作控制</div>
+                  <div class="tiny-bar"><span style="width:78%;"></span></div>
+                  <div class="metric-value">78</div>
+                </div>
+                <div class="metric-line">
+                  <div class="metric-key">保持时间</div>
+                  <div class="tiny-bar"><span style="width:76%;"></span></div>
+                  <div class="metric-value">76</div>
+                </div>
+              </div>
+              <div class="helper-text" style="margin-top:14px;">最需要继续巩固的是动作控制和保持时间，页面不依赖复杂图表理解，直接给出文字化摘要。</div>
+            </div>
+
+            <!-- 成长进度 -->
+            <div class="progress-panel">
+              <div class="progress-top">
+                <div class="progress-main">
+                  <div class="progress-title">本周成长进度</div>
+                  <div class="compact-note">当前已达到建议达标线；若本周完成 7 / 7，下周会重置为 0 / 7，但会保留连续满周成果。</div>
+                </div>
+                <div class="progress-side-card">
+                  <span class="progress-side-label">建议达标</span>
+                  <span class="progress-side-value">3 / 7</span>
+                </div>
+              </div>
+              <div class="progress-bar"><span style="width:43%;"></span></div>
+              <div class="helper-text" style="margin-top:10px;">识别置信度：高</div>
+            </div>
+
+            <!-- 阶段重点（对齐真实工程 report 页三阶段逻辑） -->
+            <div class="info-panel">
+              <div class="section-head">
+                <div class="info-title">当前阶段：巩固期</div>
+                <span class="badge badge-green">继续练会更稳</span>
+              </div>
+              <div class="info-desc">当前主视角不是"指出很多问题"，而是先肯定已有进步，再保留 1 条最值得继续优化的建议。</div>
+              <div class="issue-list">
+                <div class="issue-item">这次节奏比上次更稳定，说明您已经开始形成正确训练感觉。</div>
+                <div class="issue-item">继续把回正动作放慢一点，保持阶段再多坚持 1~2 秒，会更接近目标状态。</div>
+              </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="btn-row">
+              <button class="btn btn-secondary">再训练一次</button>
+              <button class="btn btn-ghost">查看历史记录</button>
+            </div>
+
+            <!-- 回看指导 -->
+            <div class="list-card">
+              <div class="marker success"></div>
+              <div class="list-main">
+                <div class="list-title">回看动作指导</div>
+                <div class="list-desc">如果想知道哪里需要再练，可直接回到指导页查看正确做法、拍摄要求和常见错误。</div>
+              </div>
+              <div class="side-col"><span class="badge">去查看</span></div>
+            </div>
+
+            <!-- 本次重点 -->
+            <div class="surface">
+              <div class="info-title">本次重点</div>
+              <div class="issue-list">
+                <div class="issue-item">腹部发力已经更集中，但收腹保持时长还略短。</div>
+                <div class="issue-item">身体有轻微晃动，建议放慢回正节奏，减少代偿。</div>
+              </div>
+            </div>
+
+            <!-- 系统建议 -->
+            <div class="surface">
+              <div class="info-title">系统建议</div>
+              <div class="issue-list">
+                <div class="issue-item">练习时尽量保持呼吸平稳，每次收腹完成后再多保持 1~2 秒。</div>
+                <div class="issue-item">拍摄时保持手机稳定，避免腹部区域偏出画面，提升后续分析稳定性。</div>
+              </div>
+            </div>
+
+            <!-- 反馈入口（对齐真实工程反馈区块） -->
+            <div class="surface">
+              <div class="info-title">有疑问？提交反馈</div>
+              <div class="info-desc">如果对本次训练结果、身体感受或动作执行有疑问，可以直接留言给医护人员；提交后会直接进入反馈详情查看处理状态。</div>
+              <div class="chip-row">
+                <span class="meta-chip">反馈类型</span>
+                <span class="meta-chip">文字描述</span>
+                <span class="meta-chip">补充图片</span>
+                <span class="meta-chip">安全提醒</span>
+              </div>
+              <div class="preview-card" style="margin-top:16px;padding:18px;">
+                <div class="helper-text">例如：看不懂报告 / 动作不确定 / 上传问题 / 身体不适</div>
+              </div>
+              <div class="btn-row"><button class="btn btn-primary">提交反馈并查看状态</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ P06 历史页 ============ -->
+    <section class="phone-wrap">
+      <div class="phone-label">P06 · 历史页（轻量回顾）<span class="state-tag active-state">正常态</span></div>
+      <div class="phone">
+        <div class="notch"><div class="notch-pill"></div></div>
+        <div class="phone-inner">
+          <div class="statusbar"><span>9:41</span><span>5G · 86%</span></div>
+          <div class="navbar"><span>训练历史</span><div class="navbar-actions"><span class="navbar-action-pill"></span></div></div>
+          <div class="screen page-screen page-screen-history">
+            <div class="hero hero-soft">
+              <div class="history-hero-top">
+                <span class="hero-badge">训练历史</span>
+                <span class="entry-time-pill">最近 7 天</span>
+              </div>
+              <div class="hero-title">回看每一次训练，也是在看到自己的变化</div>
+              <div class="hero-desc">这里优先承担回顾感，不做复杂报表；患者可以快速找到已完成报告、分析中记录和需要重传的项目。</div>
+            </div>
+
+            <div class="filter-row">
+              <span class="filter-chip active">全部</span>
+              <span class="filter-chip">缩腹运动</span>
+              <span class="filter-chip">骨盆倾斜</span>
+              <span class="filter-chip">膝关节旋转</span>
+            </div>
+
+            <div class="summary-grid">
+              <div class="summary-card success">
+                <div class="summary-label">最近状态</div>
+                <div class="summary-value summary-value--sm">1 次完成</div>
+                <div class="summary-foot">今天已完成 1 次有效训练，并生成结果报告。</div>
+              </div>
+              <div class="summary-card warn">
+                <div class="summary-label">待查看</div>
+                <div class="summary-value summary-value--sm">1 条分析中</div>
+                <div class="summary-foot">昨天上传的视频仍在等待结果，可稍后回来查看。</div>
+              </div>
+            </div>
+
+            <div class="progress-panel">
+              <div class="progress-top">
+                <div class="progress-main">
+                  <div class="progress-title">本周成长进度</div>
+                  <div class="compact-note">上周 7 / 7 已完整完成，本周重新开始；连续满周成果会继续保留，但本周进度重新累计。</div>
+                </div>
+                <div class="progress-side-card">
+                  <span class="progress-side-label">新周进行中</span>
+                  <span class="progress-side-value">1 / 7</span>
+                </div>
+              </div>
+              <div class="progress-bar"><span style="width:20%;"></span></div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">最近成长摘要</div>
+              <div class="info-desc">历史页继续承担"轻量回顾"角色，不做重报表；把最近进步、上周成就和最近获得徽章集中表达即可。</div>
+              <div class="chip-row">
+                <span class="meta-chip">较上次 +5 分</span>
+                <span class="meta-chip">上周满周完成</span>
+                <span class="meta-chip">最近获得：连续 7 天</span>
+              </div>
+            </div>
+
+            <div class="list-card">
+              <div class="marker success"></div>
+              <div class="list-main">
+                <div class="list-title">缩腹运动</div>
+                <div class="record-meta-row"><span class="record-status-chip record-status-chip--success">已完成</span><span class="subtle-time">07-14 09:30</span></div>
+                <div class="tiny-bar"><span style="width:100%;background:linear-gradient(90deg,#3fc488,#9be3bc);"></span></div>
+              </div>
+              <div class="side-col"><span class="badge">查看报告</span></div>
+            </div>
+
+            <div class="list-card">
+              <div class="marker warn"></div>
+              <div class="list-main">
+                <div class="list-title">骨盆倾斜</div>
+                <div class="record-meta-row"><span class="record-status-chip record-status-chip--warn">分析中</span><span class="subtle-time">07-13 10:15</span></div>
+                <div class="tiny-bar"><span style="width:60%;"></span></div>
+              </div>
+              <div class="side-col"><span class="badge badge-orange">分析中</span></div>
+            </div>
+
+            <div class="list-card">
+              <div class="marker danger"></div>
+              <div class="list-main">
+                <div class="list-title">膝关节旋转</div>
+                <div class="record-meta-row"><span class="record-status-chip record-status-chip--danger">分析失败</span><span class="subtle-time">07-12 16:42</span></div>
+                <div class="tiny-bar"><span style="width:24%;background:linear-gradient(90deg,#f0a63f,#ffcf7c);"></span></div>
+              </div>
+              <div class="side-col"><span class="badge badge-orange">重新上传</span></div>
+            </div>
+
+            <div class="list-card">
+              <div class="marker warn"></div>
+              <div class="list-main">
+                <div class="list-title">缩腹运动</div>
+                <div class="record-meta-row"><span class="record-status-chip record-status-chip--warn">视频质量不足</span><span class="subtle-time">07-11 18:10</span></div>
+                <div class="tiny-bar"><span style="width:18%;background:linear-gradient(90deg,#f0a63f,#ffcf7c);"></span></div>
+              </div>
+              <div class="side-col"><span class="badge badge-orange">按要求重传</span></div>
+            </div>
+
+            <div class="empty-card">
+              <span class="empty-badge">空态示意</span>
+              <div class="big-title">完成一次训练后，这里会出现记录</div>
+              <div class="big-sub">您可以先从首页开始训练，提交视频分析后，再回来查看历史结果。</div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab-item">首页</div>
+            <div class="tab-item active">历史</div>
+            <div class="tab-item">我的</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ P07 我的 ============ -->
+    <section class="phone-wrap">
+      <div class="phone-label">P07 · 我的（训练沉淀页）<span class="state-tag active-state">正常态</span></div>
+      <div class="phone">
+        <div class="notch"><div class="notch-pill"></div></div>
+        <div class="phone-inner">
+          <div class="statusbar"><span>9:41</span><span>5G · 86%</span></div>
+          <div class="navbar"><span>我的</span><div class="navbar-actions"><span class="navbar-action-pill"></span></div></div>
+          <div class="screen page-screen page-screen-mine">
+            <div class="hero hero-soft">
+              <div class="profile-hero-top">
+                <span class="hero-badge">我的</span>
+                <span class="entry-time-pill">康复第 6 周</span>
+              </div>
+              <div class="hero-title">李阿姨</div>
+              <div class="hero-desc">训练成果和徽章都会沉淀在这里，方便日常回看和继续训练。</div>
+              <div class="chip-row">
+                <span class="meta-chip">女 · 62 岁</span>
+                <span class="meta-chip">腹部训练计划</span>
+                <span class="meta-chip">家庭训练</span>
+              </div>
+            </div>
+
+            <div class="badge-wall">
+              <div class="section-head">
+                <div class="info-title">徽章墙</div>
+                <span class="badge">已获得 3 个</span>
+              </div>
+              <div class="badge-grid">
+                <div class="badge-card">
+                  <div class="badge-bubble">✓</div>
+                  <div class="badge-name">初次尝试</div>
+                  <div class="badge-time">07-02</div>
+                </div>
+                <div class="badge-card">
+                  <div class="badge-bubble">3</div>
+                  <div class="badge-name">连续 3 天</div>
+                  <div class="badge-time">07-07</div>
+                </div>
+                <div class="badge-card">
+                  <div class="badge-bubble">7</div>
+                  <div class="badge-name">7 天满周</div>
+                  <div class="badge-time">07-14</div>
+                </div>
+              </div>
+              <div class="btn-row" style="margin-top:14px;"><button class="btn btn-secondary">查看全部徽章</button></div>
+            </div>
+
+            <div class="list-card">
+              <div class="marker success"></div>
+              <div class="list-main">
+                <div class="list-title">消息中心</div>
+                <div class="list-desc">2 条未读消息，可查看分析完成提醒、反馈回复和徽章通知。</div>
+              </div>
+              <div class="side-col"><span class="badge">去查看</span></div>
+            </div>
+
+            <div class="list-card">
+              <div class="marker"></div>
+              <div class="list-main">
+                <div class="list-title">关于系统与隐私政策</div>
+                <div class="list-desc">保留关于系统与隐私政策入口，满足正式页面信息架构要求。</div>
+              </div>
+              <div class="list-arrow">›</div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab-item">首页</div>
+            <div class="tab-item">历史</div>
+            <div class="tab-item active">我的</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ P08 消息中心 ============ -->
+    <section class="phone-wrap">
+      <div class="phone-label">P08 · 消息中心 <span class="state-tag active-state">正常态</span></div>
+      <div class="phone">
+        <div class="notch"><div class="notch-pill"></div></div>
+        <div class="phone-inner">
+          <div class="statusbar"><span>9:41</span><span>5G · 86%</span></div>
+          <div class="navbar"><span>消息中心</span><div class="navbar-actions"><span class="navbar-action-pill"></span></div></div>
+          <div class="screen page-screen page-screen-notifications">
+            <div class="hero hero-soft">
+              <div class="history-hero-top">
+                <span class="hero-badge">消息中心</span>
+                <span class="entry-time-pill">2 条未读</span>
+              </div>
+              <div class="hero-title">重要结果和提醒，都会在这里通知您</div>
+              <div class="hero-desc">一期消息中心以分析完成、反馈回复、获得新徽章三类主事件为主；点击后直接带患者去有意义的位置。</div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">未读概览</div>
+              <div class="chip-row">
+                <span class="meta-chip">分析完成 1</span>
+                <span class="meta-chip">反馈回复 1</span>
+                <span class="meta-chip">徽章通知 0</span>
+              </div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">回退规则</div>
+              <div class="info-desc">如果目标内容已失效，应优先回到历史页或我的页继续查看，避免通知列表成为死路。</div>
+            </div>
+
+            <div class="list-card" style="border-color:rgba(31,125,255,.18);">
+              <div class="marker success"></div>
+              <div class="list-main">
+                <div class="list-title">分析已完成 <span class="notice-dot" style="margin-left:6px;font-size:9px;min-width:14px;min-height:14px;">1</span></div>
+                <div class="list-desc">您上传的训练视频已生成报告，可前往查看。</div>
+                <div class="subtle-time" style="margin-top:6px;">07-14 08:37</div>
+              </div>
+              <div class="side-col"><span class="badge">查看报告</span></div>
+            </div>
+
+            <div class="list-card" style="border-color:rgba(31,125,255,.18);">
+              <div class="marker warn"></div>
+              <div class="list-main">
+                <div class="list-title">医护已回复您的反馈 <span class="notice-dot" style="margin-left:6px;font-size:9px;min-width:14px;min-height:14px;">1</span></div>
+                <div class="list-desc">报告疑问已经收到处理说明，建议回到报告页继续练习。</div>
+                <div class="subtle-time" style="margin-top:6px;">07-14 09:05</div>
+              </div>
+              <div class="side-col"><span class="badge badge-orange">查看回复</span></div>
+            </div>
+
+            <div class="list-card" style="opacity:.78;">
+              <div class="marker"></div>
+              <div class="list-main">
+                <div class="list-title">您获得了新徽章</div>
+                <div class="list-desc">连续 7 天训练成就已同步到"我的"页徽章墙。</div>
+                <div class="subtle-time" style="margin-top:6px;">07-14 09:18</div>
+              </div>
+              <div class="side-col"><span class="badge">去我的</span></div>
+            </div>
+
+            <div class="empty-card">
+              <span class="empty-badge">空态示意</span>
+              <div class="big-title">没有新消息时，这里会很安静</div>
+              <div class="big-sub">分析完成、反馈回复和徽章提醒会自动沉淀在这里，患者无需担心错过重要结果。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ P09 反馈详情 ============ -->
+    <section class="phone-wrap">
+      <div class="phone-label">P09 · 反馈详情 <span class="state-tag active-state">已回复态</span></div>
+      <div class="phone">
+        <div class="notch"><div class="notch-pill"></div></div>
+        <div class="phone-inner">
+          <div class="statusbar"><span>9:41</span><span>5G · 86%</span></div>
+          <div class="navbar"><span>反馈结果</span><div class="navbar-actions"><span class="navbar-action-pill"></span></div></div>
+          <div class="screen page-screen page-screen-feedback">
+            <div class="hero hero-soft">
+              <div class="report-hero-top">
+                <span class="hero-badge">反馈结果</span>
+                <span class="entry-time-pill">已回复</span>
+              </div>
+              <div class="hero-title">报告疑问</div>
+              <div class="hero-desc">这里会展示患者提交的问题、当前处理状态和医护最新回复；从不同来源进入，也能回到对应来源页。</div>
+              <div class="chip-row">
+                <span class="meta-chip">状态：已回复</span>
+                <span class="meta-chip">来源：报告页进入</span>
+              </div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">状态流转</div>
+              <div class="chip-row">
+                <span class="record-chip">待处理</span>
+                <span class="record-chip warn">处理中</span>
+                <span class="record-chip success">已回复</span>
+                <span class="record-chip" style="background:rgba(107,122,140,.1);color:#6b7a8c;border-color:rgba(107,122,140,.14);">已关闭</span>
+              </div>
+              <div class="helper-text" style="margin-top:12px;">从消息中心进入默认回消息中心，从报告页进入默认回报告页。</div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">您提交的问题</div>
+              <div class="issue-list">
+                <div class="issue-item">报告里的"动作控制偏弱"是什么意思？我需要重新上传吗？</div>
+              </div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">补充材料</div>
+              <div class="chip-row">
+                <span class="meta-chip">已附图片 2 张</span>
+                <span class="meta-chip">关联训练记录 1 条</span>
+              </div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">医护回复</div>
+              <div class="issue-list">
+                <div class="issue-item">这表示本次训练中有部分动作未达到系统判定标准，但不一定需要立即重传。建议先回看指导页，再按报告建议继续练习一次。</div>
+              </div>
+            </div>
+
+            <div class="surface">
+              <div class="info-title">安全提醒</div>
+              <div class="info-desc">如果反馈类型是"身体不适"，此处应提示患者及时联系医生；反馈闭环只服务于训练相关问题，不替代医疗问诊。</div>
+            </div>
+
+            <div class="list-card">
+              <div class="marker success"></div>
+              <div class="list-main">
+                <div class="list-title">查看关联训练报告</div>
+                <div class="list-desc">本反馈关联了一条训练记录，可点击查看对应的分析报告。</div>
+              </div>
+              <div class="list-arrow">›</div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-ghost">返回上一页</button>
+              <button class="btn btn-secondary">返回报告页</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="state-lab">
+    <div class="state-lab-heading">页面状态独立展示区</div>
+    <div class="state-lab-desc">把状态从单页主稿中拆出来，单独做一块状态专区：主页面只保留当前主状态，状态专区集中展示同页的其他状态版本。这样看稿、评审、开发实现都会更清楚。</div>
+    <div class="state-lab-grid">
+      <div class="state-lab-card">
+        <div class="state-lab-top">
+          <h3>P05 报告页</h3>
+          <span class="delivery-path">阶段与结果状态</span>
+        </div>
+        <div class="state-lab-copy">报告页建议把三阶段和拉取状态全部放到这里独立展示，主页面本体只展示当前实际阶段，避免把策略说明硬塞进页面正文。</div>
+        <div class="phase-grid">
+          <div class="phase-card corrective">
+            <div class="phase-card-top">
+              <div class="phase-kicker">阶段 A</div>
+              <span class="record-chip warn">纠错期</span>
+            </div>
+            <div class="phase-title">优先识别问题，不把信息铺得过满</div>
+            <div class="phase-copy">适合刚开始训练或本次问题较集中的患者，重点是把最关键的错误说清楚，并明确下一步怎么改。</div>
+            <div class="phase-points">
+              <div class="phase-point">只保留 1~2 条关键问题，避免患者被大量术语压住。</div>
+              <div class="phase-point">优先引导回看指导页，对照正确动作和拍摄要求。</div>
+            </div>
+          </div>
+          <div class="phase-card consolidation">
+            <div class="phase-card-top">
+              <div class="phase-kicker">阶段 B</div>
+              <span class="record-chip success">巩固期</span>
+            </div>
+            <div class="phase-title">先肯定已有进步，再给轻量优化建议</div>
+            <div class="phase-copy">适合动作已经基本成型的患者，页面表达更偏向“做对了什么”与“下一步再稳一点”。</div>
+            <div class="phase-points">
+              <div class="phase-point">突出较上次进步、稳定性提升和保持时间改善。</div>
+              <div class="phase-point">只保留 1 条继续优化建议，减少挫败感。</div>
+            </div>
+          </div>
+          <div class="phase-card incentive">
+            <div class="phase-card-top">
+              <div class="phase-kicker">阶段 C</div>
+              <span class="record-chip success">激励期</span>
+            </div>
+            <div class="phase-title">让患者看到连续训练带来的成果</div>
+            <div class="phase-copy">适合已形成稳定习惯的患者，强调连续训练、满周达标、徽章激励和轻量鼓励文案。</div>
+            <div class="phase-points">
+              <div class="phase-point">把成长进度、满周完成和徽章获取放到更前面。</div>
+              <div class="phase-point">建议文案更短、更鼓励，减少重复纠错表达。</div>
+            </div>
+          </div>
+        </div>
+        <div class="state-preview-grid">
+          <div class="state-preview-card warn">
+            <div class="state-preview-top">
+              <div class="state-preview-title">报告加载中</div>
+              <span class="record-chip">轮询等待</span>
+            </div>
+            <div class="state-preview-copy">展示报告详情拉取中的骨架状态，避免页面突然跳空，也让患者知道系统仍在继续处理。</div>
+            <div class="skeleton-card">
+              <div class="skeleton-line w40"></div>
+              <div class="skeleton-line w80"></div>
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line w60"></div>
+            </div>
+          </div>
+          <div class="state-preview-card danger">
+            <div class="state-preview-top">
+              <div class="state-preview-title">报告拉取失败</div>
+              <span class="record-chip danger">可重试</span>
+            </div>
+            <div class="state-preview-copy">保留“重新加载”和“继续等待结果”两个动作，避免患者误判为需要重新训练或重新上传。</div>
+            <div class="phase-points">
+              <div class="phase-point">按钮 1：重新加载当前结果。</div>
+              <div class="phase-point">按钮 2：继续等待，稍后从历史页或消息中心进入。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="state-lab-card">
+        <div class="state-lab-top">
+          <h3>P06 历史页</h3>
+          <span class="delivery-path">结果与空态</span>
+        </div>
+        <div class="state-lab-copy">历史页适合把结果、分析中、需重传、空态单独拆出来，让主页面本体只保留当前样例列表。</div>
+        <div class="state-showcase-grid">
+          <div class="state-showcase-card">
+            <div class="state-showcase-kicker">状态 A</div>
+            <div class="state-showcase-title">已生成结果</div>
+            <div class="state-showcase-desc">用户可直接点击进入报告页，列表卡主打“完成感”和快速回看。</div>
+          </div>
+          <div class="state-showcase-card warn">
+            <div class="state-showcase-kicker">状态 B</div>
+            <div class="state-showcase-title">仍在分析中</div>
+            <div class="state-showcase-desc">保持等待中的轻提示，避免误导用户重复上传。</div>
+          </div>
+          <div class="state-showcase-card danger">
+            <div class="state-showcase-kicker">状态 C</div>
+            <div class="state-showcase-title">需重新上传</div>
+            <div class="state-showcase-desc">更强调问题原因和“按要求重传”动作，而不是笼统失败。</div>
+          </div>
+          <div class="state-showcase-card quiet">
+            <div class="state-showcase-kicker">状态 D</div>
+            <div class="state-showcase-title">完全空态</div>
+            <div class="state-showcase-desc">当还没有训练记录时，单独展示鼓励性空态，不与结果列表混排。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="state-lab-card">
+        <div class="state-lab-top">
+          <h3>P08 消息中心</h3>
+          <span class="delivery-path">未读与空态</span>
+        </div>
+        <div class="state-lab-copy">消息中心建议把未读、已读、空态单独拆成状态卡，页面正文只保留一组当前展示中的消息列表。</div>
+        <div class="state-showcase-grid">
+          <div class="state-showcase-card">
+            <div class="state-showcase-kicker">状态 A</div>
+            <div class="state-showcase-title">存在未读消息</div>
+            <div class="state-showcase-desc">保留红点、时间和行动按钮，优先让用户快速进入报告、反馈或我的页。</div>
+          </div>
+          <div class="state-showcase-card warn">
+            <div class="state-showcase-kicker">状态 B</div>
+            <div class="state-showcase-title">全部已读</div>
+            <div class="state-showcase-desc">保留历史通知列表，但弱化红点和强调色，让信息层级更稳定。</div>
+          </div>
+          <div class="state-showcase-card quiet">
+            <div class="state-showcase-kicker">状态 C</div>
+            <div class="state-showcase-title">暂无消息</div>
+            <div class="state-showcase-desc">空态单独占位，避免和真实消息卡混在一起影响理解。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="state-lab-card">
+        <div class="state-lab-top">
+          <h3>P09 反馈详情</h3>
+          <span class="delivery-path">处理阶段</span>
+        </div>
+        <div class="state-lab-copy">反馈详情页建议把待处理、处理中、已回复、已关闭四种状态拆成独立展示卡，避免把状态说明塞进页面正文。</div>
+        <div class="state-showcase-grid">
+          <div class="state-showcase-card">
+            <div class="state-showcase-kicker">状态 A</div>
+            <div class="state-showcase-title">待处理</div>
+            <div class="state-showcase-desc">突出“已提交，等待医护查看”，页面不展示回复正文，只展示提交内容和回退入口。</div>
+          </div>
+          <div class="state-showcase-card warn">
+            <div class="state-showcase-kicker">状态 B</div>
+            <div class="state-showcase-title">处理中</div>
+            <div class="state-showcase-desc">增加处理中提示，弱化操作按钮，避免患者误以为流程中断。</div>
+          </div>
+          <div class="state-showcase-card">
+            <div class="state-showcase-kicker">状态 C</div>
+            <div class="state-showcase-title">已回复</div>
+            <div class="state-showcase-desc">展示医护回复正文，并把“查看关联报告”放在更靠前位置。</div>
+          </div>
+          <div class="state-showcase-card quiet">
+            <div class="state-showcase-kicker">状态 D</div>
+            <div class="state-showcase-title">已关闭</div>
+            <div class="state-showcase-desc">保留历史问题与回复，但将交互收口为只读态，不再强调继续处理。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="state-lab-card">
+        <div class="state-lab-top">
+          <h3>P07 我的 · 查看全部徽章</h3>
+          <span class="delivery-path">展开态效果</span>
+        </div>
+        <div class="state-lab-copy">用于模拟点击“查看全部徽章”后的承接效果：当前页只露出 3 个核心徽章，点击后进入完整徽章面板，已获得与待获得分层表达更清楚。</div>
+        <div class="badge-gallery-panel">
+          <div class="section-head">
+            <div>
+              <div class="info-title">全部徽章</div>
+              <div class="info-desc">已获得 3 个，待解锁 2 个</div>
+            </div>
+            <span class="badge">成长激励</span>
+          </div>
+          <div class="badge-gallery-grid">
+            <div class="badge-card">
+              <div class="badge-bubble">✓</div>
+              <div class="badge-name">初次尝试</div>
+              <div class="badge-time">07-02 获得</div>
+            </div>
+            <div class="badge-card">
+              <div class="badge-bubble">3</div>
+              <div class="badge-name">连续 3 天</div>
+              <div class="badge-time">07-07 获得</div>
+            </div>
+            <div class="badge-card">
+              <div class="badge-bubble">7</div>
+              <div class="badge-name">7 天满周</div>
+              <div class="badge-time">07-14 获得</div>
+            </div>
+            <div class="badge-card inactive">
+              <div class="badge-bubble">2w</div>
+              <div class="badge-name">连续 2 周达标</div>
+              <div class="badge-time">再完成 1 周</div>
+            </div>
+            <div class="badge-card inactive">
+              <div class="badge-bubble">30</div>
+              <div class="badge-name">坚持 30 天</div>
+              <div class="badge-time">还差 16 天</div>
+            </div>
+          </div>
+          <div class="badge-gallery-meta">
+            <span class="meta-chip">已获得：3 枚</span>
+            <span class="meta-chip">最近获得：7 天满周</span>
+            <span class="meta-chip">下一目标：连续 2 周达标</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 落地映射 ============ -->
+  <section class="delivery-map">
+    <div class="delivery-heading">V3.3 页面级落地映射</div>
+    <div class="delivery-desc">这一区不是新增页面，而是把本次交互细化版中最关键的实施点标出来，便于设计、前端、后端和管理端一起对齐。原则：保留 9 页真实骨架，对照真实 wxml 补全交互状态层。</div>
+
+    <div class="delivery-grid">
+      <div class="delivery-card">
+        <h3>P01 首页</h3>
+        <div class="delivery-path">pages/index/index</div>
+        <div class="delivery-list">
+          <div class="delivery-item"><strong>消息未读角标</strong>Hero 右上角新增 notice-dot，对齐真实工程 hero-notice-entry。</div>
+          <div class="delivery-item"><strong>反馈状态卡</strong>新增 feedback-status-card，对齐真实工程首页已存在的反馈状态展示。</div>
+          <div class="delivery-item"><strong>结果后置</strong>首页只展示最近结果和今日提醒，不提前展开完整报告层。</div>
+        </div>
+      </div>
+
+      <div class="delivery-card">
+        <h3>P02 指导详情</h3>
+        <div class="delivery-path">pages/guidance/detail</div>
+        <div class="delivery-list">
+          <div class="delivery-item"><strong>内容资产升级</strong>步骤图、拍摄示意图、错误素材都需要真实落位。</div>
+          <div class="delivery-item"><strong>结构更清楚</strong>动作怎么做、视频怎么拍、容易错在哪里三块明确拆开。</div>
+        </div>
+      </div>
+
+      <div class="delivery-card">
+        <h3>P03 上传训练</h3>
+        <div class="delivery-path">pages/upload/index</div>
+        <div class="delivery-list">
+          <div class="delivery-item"><strong>步骤进度条</strong>新增 step-strip（1 选择动作 → 2 上传视频 → 3 等待分析），对齐 upload-step-strip。</div>
+          <div class="delivery-item"><strong>拍摄检查</strong>视频预览、时长、格式、拍摄检查和失败原因提示。</div>
+        </div>
+      </div>
+
+      <div class="delivery-card">
+        <h3>P04 分析中 / 失败兜底</h3>
+        <div class="delivery-path">pages/analyzing/index</div>
+        <div class="delivery-list">
+          <div class="delivery-item"><strong>旋转动画环</strong>新增 analysis-ring CSS 动画，对齐 status-ring。</div>
+          <div class="delivery-item"><strong>失败态版本</strong>P04b 展示质量不足和系统异常两种失败场景及重试入口。</div>
+        </div>
+      </div>
+
+      <div class="delivery-card">
+        <h3>P05 报告页</h3>
+        <div class="delivery-path">pages/report/index</div>
+          <div class="delivery-list">
+            <div class="delivery-item"><strong>层级对齐真实工程</strong>Hero→概述→四维→成长进度→阶段重点→操作→指导→问题→建议→反馈。</div>
+            <div class="delivery-item"><strong>置信度展示</strong>成长进度区新增"识别置信度"字段，对齐真实工程 streak-panel。</div>
+            <div class="delivery-item"><strong>三阶段全量示意</strong>补齐纠错期 / 巩固期 / 激励期三种内容重心，便于前端实现条件渲染。</div>
+            <div class="delivery-item"><strong>反馈区块完整化</strong>对齐 report/index.wxml 的反馈 picker + textarea + 图片上传 UI，并补齐加载/失败态预览。</div>
+          </div>
+      </div>
+
+      <div class="delivery-card">
+        <h3>P06 历史页</h3>
+        <div class="delivery-path">pages/history/index</div>
+        <div class="delivery-list">
+            <div class="delivery-item"><strong>空态补全</strong>无记录时展示 empty-card，对齐真实工程 empty-state-card。</div>
+            <div class="delivery-item"><strong>状态展示区</strong>建议把结果 / 分析中 / 重传 / 空态集中到单独区域中，便于走查状态切换。</div>
+        </div>
+      </div>
+
+      <div class="delivery-card">
+        <h3>P07 我的</h3>
+        <div class="delivery-path">pages/mine/index</div>
+        <div class="delivery-list">
+<div class="delivery-item"><strong>徽章墙首页化收口</strong>我的页默认仅展示已获得的 3 枚主徽章，并保留“查看全部徽章”入口，避免列表过挤。</div>
+        </div>
+      </div>
+
+      <div class="delivery-card">
+        <h3>P08 / P09 消息与反馈</h3>
+        <div class="delivery-path">pages/notifications/index · pages/feedback/detail</div>
+        <div class="delivery-list">
+            <div class="delivery-item"><strong>消息未读点</strong>新增 notice-dot，对齐 notification-record__dot。</div>
+            <div class="delivery-item"><strong>反馈状态标签</strong>四种状态（待处理/处理中/已回复/已关闭）完整展示。</div>
+            <div class="delivery-item"><strong>状态展示区</strong>消息页和反馈页都建议单独增加状态展示区，用同页多卡的方式表达已读/未读/空态与处理阶段。</div>
+            <div class="delivery-item"><strong>空态补全</strong>消息列表空态展示。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="delivery-section">
+      <div class="delivery-subtitle">V3.3 新增交互组件</div>
+      <div class="delivery-chip-row">
+        <span class="delivery-chip">StepStrip</span>
+        <span class="delivery-chip">AnalysisRing</span>
+        <span class="delivery-chip">FeedbackStatusCard</span>
+        <span class="delivery-chip">NoticeDot</span>
+        <span class="delivery-chip">SkeletonCard</span>
+        <span class="delivery-chip">PhaseShowcase</span>
+        <span class="delivery-chip">ReportStatePreview</span>
+        <span class="delivery-chip">StateLabSection</span>
+        <span class="delivery-chip">StateShowcaseCard</span>
+        <span class="delivery-chip">StateTag</span>
+      </div>
+    </div>
+
+    <div class="delivery-section">
+      <div class="delivery-subtitle">复用组件（V3.2 继承）</div>
+      <div class="delivery-chip-row">
+        <span class="delivery-chip">TaskHeroCard</span>
+        <span class="delivery-chip">GuidanceMediaPanel</span>
+        <span class="delivery-chip">UploadCompliancePanel</span>
+        <span class="delivery-chip">ReportOverviewGrid</span>
+        <span class="delivery-chip">StageFeedbackBlock</span>
+        <span class="delivery-chip">BadgeWallLite</span>
+        <span class="delivery-chip">NotificationRecordCard</span>
+        <span class="delivery-chip">FeedbackStatusPanel</span>
+      </div>
+    </div>
+
+    <div class="delivery-section">
+      <div class="delivery-subtitle">建议直接对齐的已有 contract</div>
+      <div class="delivery-chip-row">
+        <span class="delivery-chip">ReportDto</span>
+        <span class="delivery-chip">TrainingSummaryDto</span>
+        <span class="delivery-chip">NotificationDto</span>
+        <span class="delivery-chip">FeedbackDto</span>
+        <span class="delivery-chip">WeeklyProgressDto</span>
+      </div>
+    </div>
+
+    <div class="delivery-section">
+      <div class="delivery-subtitle">一期徽章定义（对齐 S2 badge 需求）</div>
+      <div class="delivery-chip-row">
+        <span class="delivery-chip">first-training</span>
+        <span class="delivery-chip">streak-3</span>
+        <span class="delivery-chip">streak-7</span>
+        <span class="delivery-chip">consecutive-week-2</span>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

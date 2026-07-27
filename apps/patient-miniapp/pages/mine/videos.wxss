@@ -1,0 +1,219 @@
+@import '../../app.wxss';
+
+.videos-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.videos-page--elderly {
+  font-size: 34rpx;
+}
+
+.videos-page--standard {
+  font-size: 28rpx;
+}
+
+.videos-hero__title {
+  margin-top: 18rpx;
+  font-size: 42rpx;
+  font-weight: 800;
+  color: #15314f;
+  line-height: 1.35;
+}
+
+.videos-page--standard .videos-hero__title {
+  font-size: 36rpx;
+}
+
+.videos-hero__desc {
+  margin-top: 14rpx;
+  font-size: 26rpx;
+  line-height: 1.8;
+  color: #5d7690;
+}
+
+.videos-page--standard .videos-hero__desc {
+  font-size: 23rpx;
+}
+
+.videos-summary-grid {
+  margin-top: 20rpx;
+}
+
+.videos-hero__sub-line {
+  margin-top: 14rpx;
+  font-size: 22rpx;
+  color: #d0772b;
+}
+
+.videos-page__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.videos-record {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 28rpx 24rpx;
+}
+
+.videos-record__marker {
+  width: 10rpx;
+  align-self: stretch;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+
+.videos-record__marker--success {
+  background: linear-gradient(180deg, #44c084 0%, #9be3bc 100%);
+}
+
+.videos-record__marker--warn {
+  background: linear-gradient(180deg, #ffbd66 0%, #ffd89a 100%);
+}
+
+.videos-record__marker--danger {
+  background: linear-gradient(180deg, #ff8d85 0%, #ffb3ae 100%);
+}
+
+.videos-record__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.videos-record__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.videos-record__title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #16324f;
+}
+
+.videos-page--standard .videos-record__title {
+  font-size: 27rpx;
+}
+
+.videos-record__status {
+  min-height: 42rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.videos-record__status--completed {
+  background: rgba(53, 173, 116, 0.12);
+  color: #1e8a5a;
+}
+
+.videos-record__status--pending,
+.videos-record__status--uploading,
+.videos-record__status--queued,
+.videos-record__status--processing {
+  background: rgba(255, 189, 102, 0.14);
+  color: #c9851c;
+}
+
+.videos-record__status--failed,
+.videos-record__status--quality_insufficient {
+  background: rgba(255, 141, 133, 0.14);
+  color: #d25e57;
+}
+
+.videos-record__meta {
+  margin-top: 8rpx;
+  font-size: 21rpx;
+  color: #95a9be;
+}
+
+.videos-record__detail {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.65;
+  color: #6d849d;
+}
+
+.videos-page--standard .videos-record__detail {
+  font-size: 20rpx;
+}
+
+.videos-record__progress-bar {
+  margin-top: 12rpx;
+  height: 8rpx;
+  border-radius: 999rpx;
+  background: rgba(22, 111, 247, 0.06);
+  overflow: hidden;
+}
+
+.videos-record__progress-fill {
+  height: 100%;
+  border-radius: 999rpx;
+  transition: width 0.35s ease;
+}
+
+.videos-record__progress-fill--success {
+  background: linear-gradient(90deg, #3fc488, #9be3bc);
+}
+
+.videos-record__progress-fill--active {
+  background: linear-gradient(90deg, #1f7dff, #85c5ff);
+}
+
+.videos-record__progress-fill--danger {
+  background: linear-gradient(90deg, #ff8d85, #ffb3ae);
+}
+
+.videos-record__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10rpx;
+}
+
+.videos-record__result {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #166ff7;
+}
+
+.videos-page--standard .videos-record__result {
+  font-size: 23rpx;
+}
+
+.videos-record__action {
+  min-height: 42rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  background: rgba(22, 111, 247, 0.1);
+  color: #166ff7;
+  font-size: 20rpx;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  background: rgba(22, 111, 247, 0.1);
+  color: #166ff7;
+  font-size: 22rpx;
+  font-weight: 700;
+  margin-bottom: 16rpx;
+}

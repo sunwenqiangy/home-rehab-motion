@@ -1,0 +1,30 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/auth/login",
+    "pages/guidance/index",
+    "pages/guidance/detail",
+    "pages/upload/index",
+    "pages/analyzing/index",
+    "pages/report/index",
+    "pages/history/index",
+    "pages/mine/index",
+    "pages/mine/badges",
+    "pages/mine/videos",
+    "pages/mine/privacy",
+    "pages/mine/profile",
+    "pages/mine/about",
+    "pages/notifications/index",
+    "pages/feedback/submit",
+    "pages/feedback/detail"
+  ],
+  "window": {
+    "navigationBarTitleText": "Home Rehab Motion 训练助手",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f7fa",
+    "backgroundTextStyle": "light"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

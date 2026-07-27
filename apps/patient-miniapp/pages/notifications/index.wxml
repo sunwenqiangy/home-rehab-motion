@@ -1,0 +1,73 @@
+<!-- P09 · 消息中心 -->
+<view class="v4-page">
+
+  <view class="v4-top-sticky">
+    <!-- 自定义状态栏 -->
+    <view class="v4-statusbar" style="height: {{statusBarHeight}}px;"></view>
+
+    <!-- 自定义导航栏 -->
+    <view class="v4-navbar">
+      <view class="v4-navbar-left" bindtap="onGoBack">
+        <text class="v4-navbar-back">‹</text>
+      </view>
+      <view class="v4-navbar-title">💬 消息中心</view>
+      <view class="v4-navbar-capsule"></view>
+    </view>
+  </view>
+
+  <!-- 页面内容 -->
+  <view class="v4-screen">
+    <view class="v4-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+
+    <!-- 类型 Chips -->
+    <view class="v4-type-chips">
+      <text
+        wx:for="{{typeChips}}"
+        wx:key="key"
+        class="v4-chip v4-chip--{{item.color}} {{item.active ? 'v4-chip--active' : ''}}"
+        data-filter="{{item.key}}"
+        bindtap="onFilterNotifications"
+      >{{item.label}}</text>
+    </view>
+
+    <!-- 加载状态 -->
+    <view wx:if="{{loading}}" class="v4-empty-state">
+      <view class="v4-empty-icon">⏳</view>
+      <view class="v4-empty-title">正在加载通知...</view>
+    </view>
+
+    <!-- 空态 -->
+    <view wx:elif="{{!filteredItems.length}}" class="v4-empty-state">
+      <view class="v4-empty-icon">📭</view>
+      <view class="v4-empty-title">{{items.length ? '该分类暂时没有消息' : '暂时没有消息'}}</view>
+      <view class="v4-empty-desc">{{items.length ? '点击上方标签可切换查看全部消息' : '等有新的训练结果后，这里会自动更新'}}</view>
+    </view>
+
+    <!-- 消息列表 -->
+    <view class="v4-card" wx:else>
+      <view
+        class="v4-list-row {{item.readFlag ? 'v4-list-row--read' : ''}}"
+        wx:for="{{filteredItems}}"
+        wx:key="notificationId"
+        data-notification-id="{{item.notificationId}}"
+        data-read-flag="{{item.readFlag}}"
+        data-type="{{item.type}}"
+        data-related-id="{{item.relatedId}}"
+        bindtap="onOpenNotification"
+      >
+        <view class="v4-status-dot v4-status-dot--{{item.dotColor}}"></view>
+        <view class="v4-list-body">
+          <view class="v4-list-title-row">
+            <text class="v4-list-title">{{item.title}}</text>
+            <view wx:if="{{!item.readFlag}}" class="v4-notice-dot-sm">{{item.unreadCount}}</view>
+          </view>
+          <view class="v4-list-sub">{{item.detailText}}</view>
+          <view class="v4-list-time">{{item.timeText}}</view>
+        </view>
+        <text class="v4-chip v4-chip--{{item.chipColor}} v4-chip--sm">{{item.actionText}}</text>
+      </view>
+    </view>
+
+  </view>
+
+</view>

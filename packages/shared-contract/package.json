@@ -1,0 +1,10 @@
+{
+  "name": "@home-rehab-motion/shared-contract",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@home-rehab-motion/shared-types": "0.1.0"
+  }
+}

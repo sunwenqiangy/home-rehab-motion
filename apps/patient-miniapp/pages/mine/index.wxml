@@ -1,0 +1,137 @@
+<!-- P08 · 我的 -->
+<view class="v4-page">
+
+  <view class="v4-top-sticky">
+    <!-- 自定义状态栏 -->
+    <view class="v4-statusbar" style="height: {{statusBarHeight}}px;"></view>
+
+    <!-- 自定义导航栏 -->
+    <view class="v4-navbar">
+      <view class="v4-navbar-title">👤 我的</view>
+      <view class="v4-navbar-capsule"></view>
+    </view>
+  </view>
+
+  <!-- 页面内容 -->
+  <view class="v4-screen">
+    <view class="v4-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+
+    <!-- 个人信息 Hero -->
+    <view class="v4-hero-card v4-hero-teal {{!isLoggedIn ? 'v4-guest-hero' : ''}}">
+      <view wx:if="{{!isLoggedIn}}" class="v4-guest-hero__eyebrow">HOME REHAB MOTION · 游客模式</view>
+      <view class="v4-profile-row">
+        <view class="v4-profile-avatar">{{isLoggedIn ? '👩' : '👤'}}</view>
+        <view class="v4-profile-info">
+          <view class="v4-profile-name">{{isLoggedIn ? nickname : '先登录，再保存你的练习'}}</view>
+          <view class="v4-profile-sub">{{isLoggedIn ? profileLine : '登录后可同步训练记录、动作分析和成长进度'}}</view>
+        </view>
+      </view>
+      <button wx:if="{{!isLoggedIn}}" class="v4-hero-login-button" bindtap="goToLogin">微信登录</button>
+    </view>
+
+    <view wx:if="{{!isLoggedIn}}" class="v4-guest-tip">
+      <view class="v4-guest-tip__title">登录后，训练才会被好好记录</view>
+      <view class="v4-guest-tip__desc">同步动作分析、训练记录和成长进度，方便持续练习。</view>
+    </view>
+
+    <!-- 训练概况 3列 -->
+    <view class="v4-stats-grid v4-stats-grid--3">
+      <view class="v4-stats-card">
+        <view class="v4-stats-value v4-stats-value--teal">{{totalCount}}</view>
+        <view class="v4-stats-label">总训练次数</view>
+      </view>
+      <view class="v4-stats-card">
+        <view class="v4-stats-value v4-stats-value--green">{{totalDays}}</view>
+        <view class="v4-stats-label">坚持天数</view>
+      </view>
+      <view class="v4-stats-card">
+        <view class="v4-stats-value v4-stats-value--orange">{{maxScore}}</view>
+        <view class="v4-stats-label">最高评分</view>
+      </view>
+    </view>
+
+    <!-- 徽章入口 -->
+    <view class="v4-info-panel">
+      <view class="v4-info-head">
+        <view class="v4-info-title">🏅 我的徽章</view>
+        <text class="v4-chip v4-chip--teal v4-chip--sm">{{badgeCountText}}</text>
+      </view>
+      <view class="v4-badge-quick" wx:if="{{badgeWallItems.length}}">
+        <view class="v4-badge-item" wx:for="{{badgeWallItems}}" wx:key="badgeCode">
+          <view class="v4-badge-bubble v4-badge-bubble--{{item.colorVar}}">{{item.emoji}}</view>
+          <view class="v4-badge-name">{{item.title}}</view>
+        </view>
+      </view>
+      <view class="v4-badge-all-link" bindtap="onViewAllBadges">📂 进入全部徽章页 ›</view>
+    </view>
+
+    <!-- 功能列表 -->
+    <view class="v4-card v4-menu-card">
+      <view class="v4-list-row" bindtap="onEditProfile">
+        <view class="v4-list-icon v4-list-icon--teal">✏️</view>
+        <view class="v4-list-body">
+          <view class="v4-list-title">个人资料</view>
+          <view class="v4-list-sub">{{phoneBound ? '微信手机号已绑定' : '昵称与微信手机号'}}</view>
+        </view>
+        <text class="v4-list-arrow">›</text>
+      </view>
+      <view class="v4-list-row" bindtap="onViewNotifications">
+        <view class="v4-list-icon v4-list-icon--blue">💬</view>
+        <view class="v4-list-body">
+          <view class="v4-list-title">消息中心</view>
+          <view class="v4-list-sub" wx:if="{{unreadNotificationCount > 0}}">{{unreadNotificationCount}}条未读</view>
+        </view>
+        <view wx:if="{{unreadNotificationCount > 0}}" class="v4-notice-dot">{{unreadNotificationCount}}</view>
+        <text class="v4-list-arrow">›</text>
+      </view>
+      <view class="v4-list-row" bindtap="onViewMyVideos">
+        <view class="v4-list-icon v4-list-icon--teal">📹</view>
+        <view class="v4-list-body">
+          <view class="v4-list-title">我的视频</view>
+        </view>
+        <text class="v4-list-arrow">›</text>
+      </view>
+      <view class="v4-list-row" bindtap="onViewPrivacyPolicy">
+        <view class="v4-list-icon v4-list-icon--green">🔒</view>
+        <view class="v4-list-body">
+          <view class="v4-list-title">隐私政策</view>
+        </view>
+        <text class="v4-list-arrow">›</text>
+      </view>
+      <view class="v4-list-row" bindtap="onViewAboutSystem">
+        <view class="v4-list-icon v4-list-icon--orange">ℹ️</view>
+        <view class="v4-list-body">
+          <view class="v4-list-title">关于系统</view>
+        </view>
+        <text class="v4-list-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 退出 -->
+    <view wx:if="{{isLoggedIn}}" class="v4-logout-wrap">
+      <button class="v4-logout-btn" bindtap="onLogout">退出登录</button>
+    </view>
+
+  </view>
+
+  <!-- TabBar -->
+  <view class="v4-tabbar">
+    <view class="v4-tab-item" bindtap="onTabHome">
+      <text class="v4-tab-icon">🏠</text>
+      <text class="v4-tab-label">首页</text>
+    </view>
+    <view class="v4-tab-item" bindtap="onTabGuidance">
+      <text class="v4-tab-icon">🏋️</text>
+      <text class="v4-tab-label">训练</text>
+    </view>
+    <view class="v4-tab-item" bindtap="onTabHistory">
+      <text class="v4-tab-icon">📊</text>
+      <text class="v4-tab-label">历史</text>
+    </view>
+    <view class="v4-tab-item v4-tab-item--active">
+      <text class="v4-tab-icon">👤</text>
+      <text class="v4-tab-label">我的</text>
+    </view>
+  </view>
+
+</view>

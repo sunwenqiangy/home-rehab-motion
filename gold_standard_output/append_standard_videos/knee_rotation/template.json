@@ -1,0 +1,141 @@
+{
+  "action_type": "knee_rotation",
+  "action_label": "膝关节旋转",
+  "source_type": "video",
+  "source_video": "膝关节旋转.mp4",
+  "video_segment": {
+    "start_sec": 0,
+    "end_sec": 283.31
+  },
+  "version": 1,
+  "status": "pending_review",
+  "template_params": {
+    "trunk_angle_change": {
+      "mean": 2.3535,
+      "std": 1.1801,
+      "min": 0.501,
+      "max": 6.1258,
+      "p5": 0.8957,
+      "p25": 1.7087,
+      "p50": 2.1923,
+      "p75": 3.1354,
+      "p95": 3.4796,
+      "n_cycles": 22
+    },
+    "pelvis_shift": {
+      "mean": 0.6799,
+      "std": 0.2445,
+      "min": 0.2619,
+      "max": 1.1516,
+      "p5": 0.3412,
+      "p25": 0.5328,
+      "p50": 0.6633,
+      "p75": 0.8304,
+      "p95": 1.1123,
+      "n_cycles": 22
+    },
+    "knee_y_excursion": {
+      "mean": 10.0581,
+      "std": 5.1428,
+      "min": 3.4377,
+      "max": 18.5488,
+      "p5": 4.2268,
+      "p25": 5.4013,
+      "p50": 9.0874,
+      "p75": 14.2427,
+      "p95": 17.6855,
+      "n_cycles": 22
+    },
+    "hip_stability": {
+      "mean": 1.0187,
+      "std": 0.7099,
+      "min": 0.1709,
+      "max": 3.3561,
+      "p5": 0.3272,
+      "p25": 0.6177,
+      "p50": 0.7359,
+      "p75": 1.3679,
+      "p95": 2.0802,
+      "n_cycles": 22
+    }
+  },
+  "threshold_config": {
+    "_meta": {
+      "sigma_multiplier": 2.0,
+      "note": "基于 ±2.0σ 自动生成，适用于单视频启动期，建议专家审核后调整",
+      "action_type": "knee_rotation"
+    },
+    "confidence_min": 0.6,
+    "trunk_angle_change": {
+      "valid_range": [
+        0,
+        4.7137
+      ],
+      "warning_range": [
+        0,
+        7.0739
+      ],
+      "gold_mean": 2.3535,
+      "gold_std": 1.1801,
+      "unit": "度",
+      "description": "躯干角度代偿变化量（越小越稳定）",
+      "direction": "smaller_better"
+    },
+    "pelvis_shift": {
+      "valid_range": [
+        0,
+        1.1689
+      ],
+      "warning_range": [
+        0,
+        1.6579
+      ],
+      "gold_mean": 0.6799,
+      "gold_std": 0.2445,
+      "unit": "相对画面宽度 %",
+      "description": "骨盆水平偏移（越小越稳定）",
+      "direction": "smaller_better"
+    },
+    "knee_y_excursion": {
+      "valid_range": [
+        -0.2275,
+        30.6293
+      ],
+      "warning_range": [
+        -5.3703,
+        40.9149
+      ],
+      "gold_mean": 10.0581,
+      "gold_std": 5.1428,
+      "unit": "%",
+      "description": "膝盖Y轴偏移幅度（侧面可见，越大说明倒膝幅度充分）",
+      "direction": "larger_better"
+    },
+    "hip_stability": {
+      "valid_range": [
+        0,
+        2.4385
+      ],
+      "warning_range": [
+        0,
+        3.8583
+      ],
+      "gold_mean": 1.0187,
+      "gold_std": 0.7099,
+      "unit": "%",
+      "description": "倒膝时髋中点Y轴抖动量（越小说明骨盆越稳定，代偿越少）",
+      "direction": "smaller_better"
+    }
+  },
+  "quality_report": {
+    "avg_confidence": 0.7873,
+    "missing_rate": 0.1631,
+    "total_frames": 2834,
+    "valid_cycles": 22,
+    "quality_pass": true,
+    "warnings": [
+      "⚠️ 平均置信度 0.79 低于 0.85，建议检查视频光线/角度"
+    ]
+  },
+  "generated_at": "2026-07-21T10:20:19"
+}

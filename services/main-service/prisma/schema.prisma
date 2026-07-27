@@ -1,0 +1,447 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model UserProfile {
+  user_id        BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  openid         String          @unique @db.VarChar(64)
+  name           String?         @db.VarChar(50)
+  gender         Int?
+  age            Int?
+  phone          String?         @db.VarChar(20)
+  phone_authorized_at DateTime?
+  role           String          @default("patient") @db.VarChar(20)
+  status         Int             @default(1)
+  display_mode   String          @default("elderly") @db.VarChar(20)
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
+  training_videos       TrainingVideo[]
+  training_attendances  TrainingAttendance[]
+  motivation_snapshots  TrainingMotivationSnapshot[]
+  feedbacks             Feedback[]
+  user_badges           UserBadge[]
+  notifications         Notification[]
+  privacy_consent       PatientPrivacyConsent?
+
+  @@index([role], map: "idx_user_role")
+  @@map("user_profile")
+}
+
+model AdminAccount {
+  account_id     BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  username       String   @unique @db.VarChar(50)
+  password_hash  String   @db.VarChar(255)
+  display_name   String?  @db.VarChar(50)
+  role           String   @default("admin") @db.VarChar(20)
+  status         Int      @default(1)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@map("admin_account")
+}
+
+model PatientPrivacyConsent {
+  consent_id       BigInt      @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id          BigInt      @unique @db.UnsignedBigInt
+  policy_version   String      @db.VarChar(32)
+  consented_at     DateTime?
+  withdrawn_at     DateTime?
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+  user             UserProfile @relation(fields: [user_id], references: [user_id])
+
+  @@index([consented_at], map: "idx_privacy_consent_consented_at")
+  @@map("patient_privacy_consent")
+}
+
+model SensitiveAccessAudit {
+  audit_id          BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  actor_account_id  BigInt?  @db.UnsignedBigInt
+  actor_role        String   @db.VarChar(20)
+  action            String   @db.VarChar(80)
+  resource_type     String   @db.VarChar(40)
+  resource_id       String   @db.VarChar(80)
+  patient_id        BigInt?  @db.UnsignedBigInt
+  request_ip        String?  @db.VarChar(64)
+  user_agent        String?  @db.VarChar(255)
+  result            String   @default("success") @db.VarChar(20)
+  created_at        DateTime @default(now())
+
+  @@index([patient_id, created_at], map: "idx_sensitive_access_audit_patient_time")
+  @@index([actor_account_id, created_at], map: "idx_sensitive_access_audit_actor_time")
+  @@map("sensitive_access_audit")
+}
+
+model GuidanceContent {
+  content_id               BigInt                   @id @default(autoincrement()) @db.UnsignedBigInt
+  action_type              String                   @db.VarChar(30)
+  title                    String                   @db.VarChar(100)
+  brief_instruction        String?                  @db.VarChar(100)
+  description              String?                  @db.Text
+  video_key                String?                  @db.VarChar(255)
+  video_url                String?                  @db.VarChar(512)
+  thumbnail_url            String?                  @db.VarChar(512)
+  text_instruction         String?                  @db.Text
+  common_mistakes          String?                  @db.Text
+  shooting_requirement     String?                  @db.Text
+  step_images              Json?
+  shooting_guide_images    Json?
+  common_mistake_images    Json?
+  status                   Int                      @default(0)
+  version                  Int                      @default(0)
+  published_version        Int?
+  draft_snapshot           Json?
+  created_by               BigInt?                  @db.UnsignedBigInt
+  updated_by               BigInt?                  @db.UnsignedBigInt
+  created_at               DateTime                 @default(now())
+  updated_at               DateTime                 @updatedAt
+  versions                 GuidanceContentVersion[]
+
+  @@index([action_type], map: "idx_guidance_action_type")
+  @@map("guidance_content")
+}
+
+model GuidanceContentVersion {
+  version_id    BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  content_id    BigInt          @db.UnsignedBigInt
+  version       Int
+  snapshot      Json?
+  created_by    BigInt?         @db.UnsignedBigInt
+  created_at    DateTime        @default(now())
+  content       GuidanceContent @relation(fields: [content_id], references: [content_id])
+
+  @@unique([content_id, version], map: "uk_guidance_content_version")
+  @@map("guidance_content_version")
+}
+
+model TrainingVideo {
+  video_id               BigInt                 @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id                BigInt                 @db.UnsignedBigInt
+  action_type            String                 @db.VarChar(30)
+  source_type            String?                @db.VarChar(20)
+  video_key              String?                @db.VarChar(255)
+  video_key_720p         String?                @db.VarChar(255)
+  duration               Float?
+  resolution             String?                @db.VarChar(20)
+  upload_time            DateTime               @default(now())
+  confirmed_at           DateTime?
+  analysis_status        String                 @default("pending") @db.VarChar(30)
+  quality_status         String?                @db.VarChar(20)
+  quality_score          Float?
+  quality_issues         Json?
+  fail_reason            String?                @db.VarChar(255)
+  model_version          String?                @db.VarChar(20)
+  created_at             DateTime               @default(now())
+  updated_at             DateTime               @updatedAt
+  user                   UserProfile            @relation(fields: [user_id], references: [user_id])
+  analysis_task          AnalysisTask?
+  motion_feature_results MotionFeatureResult[]
+  rep_evaluation_results RepEvaluationResult[]
+  video_evaluation_result VideoEvaluationResult?
+  manual_review           ManualVideoReview?
+  feedbacks              Feedback[]
+  training_attendance     TrainingAttendance?
+  motivation_snapshot     TrainingMotivationSnapshot?
+  awarded_badges          UserBadge[] @relation("BadgeSourceVideo")
+
+  @@index([user_id], map: "idx_training_video_user_id")
+  @@index([analysis_status], map: "idx_training_video_analysis_status")
+  @@map("training_video")
+}
+
+model AnalysisTask {
+  task_id           BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  video_id          BigInt        @unique @db.UnsignedBigInt
+  provider_task_id  String?       @db.VarChar(64)
+  task_status       String        @default("pending") @db.VarChar(30)
+  retry_count       Int           @default(0)
+  fail_reason       String?       @db.VarChar(255)
+  callback_status   String        @default("pending") @db.VarChar(20)
+  callback_attempt_count Int      @default(0)
+  callback_last_error String?     @db.VarChar(255)
+  callback_next_retry_at DateTime?
+  callback_payload  Json?
+  callback_url      String?       @db.VarChar(512)
+  started_at        DateTime?
+  finished_at       DateTime?
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+  video             TrainingVideo @relation(fields: [video_id], references: [video_id])
+
+  @@map("analysis_task")
+}
+
+model StandardActionTemplate {
+  template_id       BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  action_type       String   @db.VarChar(30)
+  version           String   @db.VarChar(20)
+  description       String?  @db.Text
+  reference_stats   Json?
+  threshold_config  Json?
+  status            Int      @default(1)
+  created_by        String?  @db.VarChar(50)
+  created_at        DateTime @default(now())
+
+  @@unique([action_type, version], map: "uk_action_template_type_version")
+  @@map("standard_action_template")
+}
+
+model MotionFeatureResult {
+  id               BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  video_id         BigInt        @db.UnsignedBigInt
+  rep_id           Int?
+  feature_code     String        @db.VarChar(50)
+  feature_value    Float?
+  unit             String?       @db.VarChar(20)
+  confidence       Float?
+  compare_label    String?       @db.VarChar(20)
+  deviation_sigma  Float?
+  created_at       DateTime      @default(now())
+  video            TrainingVideo @relation(fields: [video_id], references: [video_id])
+
+  @@index([video_id], map: "idx_motion_feature_result_video_id")
+  @@map("motion_feature_result")
+}
+
+model RepEvaluationResult {
+  id                 BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  video_id           BigInt        @db.UnsignedBigInt
+  rep_id             Int
+  accuracy_score     Float?
+  stability_score    Float?
+  control_score      Float?
+  duration_score     Float?
+  total_score        Float?
+  grade              String?       @db.VarChar(20)
+  valid_flag         Boolean       @default(true)
+  compensation_types Json?
+  hold_duration      Float?
+  created_at         DateTime      @default(now())
+  video              TrainingVideo @relation(fields: [video_id], references: [video_id])
+
+  @@index([video_id], map: "idx_rep_evaluation_result_video_id")
+  @@map("rep_evaluation_result")
+}
+
+model VideoEvaluationResult {
+  video_id           BigInt        @id @db.UnsignedBigInt
+  total_reps         Int           @default(0)
+  valid_reps         Int           @default(0)
+  average_score      Float?
+  grade              String?       @db.VarChar(20)
+  accuracy_avg       Float?
+  stability_avg      Float?
+  control_avg        Float?
+  duration_avg       Float?
+  avg_hold_duration  Float?
+  main_issues        Json?
+  advice_summary     Json?
+  confidence_score   Float?
+  analysis_version   String?       @db.VarChar(20)
+  created_at         DateTime      @default(now())
+  video              TrainingVideo @relation(fields: [video_id], references: [video_id])
+
+  @@map("video_evaluation_result")
+}
+
+model ManualVideoReview {
+  review_id                 BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  video_id                  BigInt        @unique @db.UnsignedBigInt
+  algorithm_score           Float?
+  algorithm_grade           String?       @db.VarChar(20)
+  algorithm_main_issues     Json?
+  algorithm_advice_summary  Json?
+  algorithm_valid_reps      Int?
+  algorithm_total_reps      Int?
+  algorithm_confidence      Float?
+  algorithm_version         String?       @db.VarChar(40)
+  accuracy_judgment         String        @db.VarChar(20)
+  disposition               String        @db.VarChar(20)
+  use_manual_result         Boolean       @default(false)
+  manual_score              Float?
+  manual_grade              String?       @db.VarChar(20)
+  manual_main_issues        Json?
+  manual_advice             String?       @db.Text
+  review_note               String?       @db.Text
+  reviewer_account_id       BigInt?       @db.UnsignedBigInt
+  reviewer_name             String?       @db.VarChar(50)
+  reviewed_at               DateTime      @default(now())
+  updated_at                DateTime      @updatedAt
+  video                     TrainingVideo @relation(fields: [video_id], references: [video_id])
+
+  @@index([accuracy_judgment], map: "idx_manual_review_judgment")
+  @@index([reviewed_at], map: "idx_manual_review_reviewed_at")
+  @@map("manual_video_review")
+}
+
+model Feedback {
+  feedback_id      BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id          BigInt         @db.UnsignedBigInt
+  video_id         BigInt?        @db.UnsignedBigInt
+  feedback_type    String         @db.VarChar(30)
+  content          String         @db.Text
+  image_urls       Json?
+  status           String         @default("pending") @db.VarChar(30)
+  priority_level   String         @default("normal") @db.VarChar(20)
+  handling_mode    String         @default("manual") @db.VarChar(20)
+  last_message_at  DateTime       @default(now())
+  first_replied_at DateTime?
+  closed_at        DateTime?
+  closed_by        String?        @db.VarChar(30)
+  close_reason     String?        @db.VarChar(30)
+  created_at       DateTime       @default(now())
+  updated_at       DateTime       @updatedAt
+  user             UserProfile    @relation(fields: [user_id], references: [user_id])
+  video            TrainingVideo? @relation(fields: [video_id], references: [video_id])
+  replies          FeedbackReply[]
+  messages         FeedbackMessage[]
+  status_logs      FeedbackStatusLog[]
+
+  @@index([user_id], map: "idx_feedback_user_id")
+  @@index([status, last_message_at], map: "idx_feedback_status_last_message")
+  @@index([handling_mode, status], map: "idx_feedback_handling_status")
+  @@map("feedback")
+}
+
+model FeedbackReply {
+  reply_id            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  feedback_id         BigInt    @db.UnsignedBigInt
+  replier_account_id  BigInt?   @db.UnsignedBigInt
+  reply_content       String    @db.Text
+  created_at          DateTime  @default(now())
+  feedback            Feedback  @relation(fields: [feedback_id], references: [feedback_id])
+
+  @@index([feedback_id], map: "idx_feedback_reply_feedback_id")
+  @@map("feedback_reply")
+}
+
+model FeedbackMessage {
+  message_id      BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  feedback_id     BigInt       @db.UnsignedBigInt
+  sender_role     String       @db.VarChar(20)
+  sender_id       BigInt?      @db.UnsignedBigInt
+  message_type    String       @default("text") @db.VarChar(30)
+  content         String       @db.Text
+  image_urls      Json?
+  template_code   String?      @db.VarChar(50)
+  created_at      DateTime     @default(now())
+  feedback        Feedback     @relation(fields: [feedback_id], references: [feedback_id])
+
+  @@index([feedback_id, created_at], map: "idx_feedback_message_ticket_time")
+  @@map("feedback_message")
+}
+
+model FeedbackStatusLog {
+  log_id          BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  feedback_id     BigInt   @db.UnsignedBigInt
+  from_status     String?  @db.VarChar(30)
+  to_status       String   @db.VarChar(30)
+  operator_role   String   @db.VarChar(20)
+  operator_id     BigInt?  @db.UnsignedBigInt
+  reason          String?  @db.VarChar(50)
+  created_at      DateTime @default(now())
+  feedback        Feedback @relation(fields: [feedback_id], references: [feedback_id])
+
+  @@index([feedback_id, created_at], map: "idx_feedback_status_log_ticket_time")
+  @@map("feedback_status_log")
+}
+
+model TrainingAttendance {
+  attendance_id            BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id                  BigInt        @db.UnsignedBigInt
+  video_id                 BigInt        @unique @db.UnsignedBigInt
+  training_date            DateTime      @db.Date
+  counted_for_training_day Boolean       @default(false)
+  counted_at               DateTime      @default(now())
+  created_at               DateTime      @default(now())
+  user                     UserProfile   @relation(fields: [user_id], references: [user_id])
+  video                    TrainingVideo @relation(fields: [video_id], references: [video_id])
+
+  @@index([user_id, training_date], map: "idx_training_attendance_user_date")
+  @@map("training_attendance")
+}
+
+model TrainingMotivationSnapshot {
+  snapshot_id                    BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id                        BigInt        @db.UnsignedBigInt
+  video_id                       BigInt        @unique @db.UnsignedBigInt
+  training_count_after           Int
+  training_days_after            Int
+  consecutive_training_days_after Int
+  weekly_training_days_after     Int
+  qualified_count_after          Int
+  improvement_level              String        @default("none") @db.VarChar(20)
+  improvement_type               String?       @db.VarChar(20)
+  improvement_message            String        @db.VarChar(255)
+  newly_unlocked_badge_codes     Json?
+  stage                          String        @db.VarChar(30)
+  created_at                     DateTime      @default(now())
+  user                           UserProfile   @relation(fields: [user_id], references: [user_id])
+  video                          TrainingVideo @relation(fields: [video_id], references: [video_id])
+
+  @@index([user_id, created_at], map: "idx_motivation_snapshot_user_created")
+  @@map("training_motivation_snapshot")
+}
+
+model BadgeDefinition {
+  badge_id       BigInt      @id @default(autoincrement()) @db.UnsignedBigInt
+  badge_code     String      @unique @db.VarChar(50)
+  title          String      @db.VarChar(50)
+  description    String?     @db.Text
+  trigger_rule   Json?
+  status         Int         @default(1)
+  created_at     DateTime    @default(now())
+  user_badges    UserBadge[]
+
+  @@map("badge_definition")
+}
+
+model UserBadge {
+  user_badge_id   BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id         BigInt          @db.UnsignedBigInt
+  badge_id        BigInt          @db.UnsignedBigInt
+  awarded_at       DateTime        @default(now())
+  source_video_id  BigInt?         @db.UnsignedBigInt
+  notified_at      DateTime?
+  seen_at          DateTime?
+  meta             Json?
+  user             UserProfile     @relation(fields: [user_id], references: [user_id])
+  badge            BadgeDefinition @relation(fields: [badge_id], references: [badge_id])
+  source_video     TrainingVideo?  @relation("BadgeSourceVideo", fields: [source_video_id], references: [video_id])
+
+  @@unique([user_id, badge_id], map: "uk_user_badge")
+  @@map("user_badge")
+}
+
+model Notification {
+  notification_id    BigInt      @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id            BigInt      @db.UnsignedBigInt
+  notification_type  String      @db.VarChar(30)
+  title              String      @db.VarChar(100)
+  content            String      @db.Text
+  related_id         String?     @db.VarChar(50)
+  dedupe_key         String?     @unique @db.VarChar(120)
+  read_flag          Boolean     @default(false)
+  created_at         DateTime    @default(now())
+  updated_at         DateTime    @updatedAt
+  user               UserProfile @relation(fields: [user_id], references: [user_id])
+
+  @@index([user_id, read_flag], map: "idx_notification_user_read")
+  @@map("notification")
+}
+
+model SystemConfig {
+  config_id      BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  config_key     String   @unique @db.VarChar(100)
+  config_value   Json
+  description    String?  @db.Text
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@map("system_config")
+}

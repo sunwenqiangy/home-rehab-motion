@@ -1,0 +1,333 @@
+@import '../../app.wxss';
+
+/* ========== 页面基础 ========== */
+page {
+  background: #f7fafc;
+}
+
+.upload-v4-page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f7fafc;
+}
+
+/* ========== 自定义状态栏 ========== */
+.upload-v4-top-sticky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #ffffff;
+}
+
+.upload-v4-statusbar {
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+/* ========== 自定义导航栏 ========== */
+.upload-v4-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx 20rpx 20rpx;
+  background: #ffffff;
+  box-sizing: border-box;
+  gap: 12rpx;
+}
+
+.upload-v4-nav__back {
+  width: 64rpx;
+  height: 64rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12rpx;
+  flex-shrink: 0;
+}
+
+.upload-v4-nav__back-icon {
+  font-size: 48rpx;
+  font-weight: 300;
+  color: #2d3748;
+  line-height: 1;
+}
+
+.upload-v4-nav__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #1a202c;
+  text-align: left;
+}
+
+.upload-v4-nav__capsule {
+  width: 152rpx;
+  height: 60rpx;
+  border-radius: 999rpx;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  flex-shrink: 0;
+}
+
+/* ========== 可滚动主区域 ========== */
+.upload-v4-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.upload-v4-top-placeholder {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.upload-v4-scroll-inner {
+  padding: 20rpx 28rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+/* ========== 步骤条 ========== */
+.step-strip {
+  display: flex;
+  gap: 12rpx;
+}
+
+.step-item {
+  flex: 1;
+  min-height: 68rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  background: rgba(22, 111, 247, 0.06);
+  color: #a0aec0;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.step-item--done {
+  background: rgba(53, 173, 116, 0.1);
+  color: #259160;
+}
+
+.step-item--active {
+  background: rgba(22, 111, 247, 0.12);
+  color: #166ff7;
+}
+
+/* ========== 上传引导 hero ========== */
+.upload-hero-card {
+  padding: 32rpx 28rpx;
+  border-radius: 32rpx;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(237, 245, 255, 0.94));
+  box-shadow: 0 20rpx 48rpx rgba(34, 87, 139, 0.1);
+  border: 1rpx solid rgba(121, 175, 219, 0.18);
+}
+
+.upload-hero-card__title {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #1a202c;
+}
+
+.upload-hero-card__desc {
+  margin-top: 10rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #718096;
+}
+
+/* ========== info-panel 通用面板 ========== */
+.info-panel {
+  padding: 28rpx;
+  border-radius: 32rpx;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 20rpx 48rpx rgba(34, 87, 139, 0.1);
+  border: 1rpx solid rgba(121, 175, 219, 0.18);
+}
+
+.info-title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #1a202c;
+  margin-bottom: 20rpx;
+}
+
+/* ========== 视频预览区 ========== */
+.video-preview-zone {
+  height: 280rpx;
+  border-radius: 24rpx;
+  background: #1a202c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.video-preview-zone__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-preview-zone__icon {
+  font-size: 56rpx;
+}
+
+.video-preview-zone__meta {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.video-preview-thumb {
+  margin-top: 16rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+  border: 2rpx solid rgba(121, 175, 219, 0.18);
+}
+
+.video-preview-thumb__video {
+  width: 100%;
+  height: 320rpx;
+  display: block;
+  background: #0f172a;
+}
+
+/* ========== 拍摄检查结果 ========== */
+.check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.check-item__icon {
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.check-item__icon--pass {
+  color: #38a169;
+}
+
+.check-item__icon--warn {
+  color: #dd6b20;
+}
+
+.check-item__text {
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+.check-item__text--pass {
+  color: #2d3748;
+}
+
+.check-item__text--warn {
+  color: #c05621;
+  font-weight: 700;
+}
+
+/* ========== 问题提醒(橙色面板) ========== */
+.warn-panel {
+  padding: 28rpx;
+  border-radius: 32rpx;
+  background: rgba(255, 189, 102, 0.12);
+  border: 2rpx solid rgba(221, 107, 32, 0.2);
+}
+
+.warn-panel__title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #dd6b20;
+  margin-bottom: 16rpx;
+}
+
+.warn-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.warn-panel__item {
+  font-size: 28rpx;
+  line-height: 1.7;
+  color: #4a5568;
+}
+
+/* ========== 底部操作栏占位 ========== */
+.dock-spacer {
+  height: 280rpx;
+}
+
+/* ========== 底部固定操作栏 ========== */
+.action-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 24rpx 28rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -8rpx 32rpx rgba(34, 87, 139, 0.1);
+  border-top: 1rpx solid rgba(121, 175, 219, 0.14);
+  backdrop-filter: blur(20rpx);
+  z-index: 100;
+}
+
+.action-dock__gap {
+  height: 16rpx;
+}
+
+/* ========== 按钮样式 ========== */
+.btn-big {
+  width: 100%;
+  min-height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  padding: 0 28rpx;
+  box-sizing: border-box;
+  border: none;
+  line-height: 1;
+}
+
+.btn-big::after {
+  border: none;
+}
+
+.btn-teal {
+  background: linear-gradient(135deg, #38b2ac 0%, #2c7a7b 100%);
+  color: #ffffff;
+  box-shadow: 0 12rpx 28rpx rgba(44, 122, 123, 0.28);
+}
+
+.btn-teal[disabled] {
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.9);
+  color: #4a5568;
+  border: 2rpx solid rgba(121, 175, 219, 0.24);
+  box-shadow: 0 8rpx 20rpx rgba(34, 87, 139, 0.06);
+}

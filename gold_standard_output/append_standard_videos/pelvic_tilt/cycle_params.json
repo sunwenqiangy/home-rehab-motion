@@ -1,0 +1,704 @@
+[
+  {
+    "rep_id": 1,
+    "start_frame": 14,
+    "end_frame": 35,
+    "duration_s": 2.1,
+    "params": {
+      "trunk_angle_change": 94.0855,
+      "pelvis_shift": 0.935,
+      "pelvic_tilt_delta": 17.2672,
+      "pelvic_tilt_velocity": 15.6987,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 2,
+    "start_frame": 35,
+    "end_frame": 52,
+    "duration_s": 1.7,
+    "params": {
+      "trunk_angle_change": 60.4869,
+      "pelvis_shift": 0.3857,
+      "pelvic_tilt_delta": 9.5519,
+      "pelvic_tilt_velocity": 19.1054,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 3,
+    "start_frame": 67,
+    "end_frame": 92,
+    "duration_s": 2.5,
+    "params": {
+      "trunk_angle_change": 0.7041,
+      "pelvis_shift": 0.3938,
+      "pelvic_tilt_delta": 3.0427,
+      "pelvic_tilt_velocity": 2.3407,
+      "hold_duration": 0.9
+    }
+  },
+  {
+    "rep_id": 4,
+    "start_frame": 92,
+    "end_frame": 120,
+    "duration_s": 2.8,
+    "params": {
+      "trunk_angle_change": 1.3114,
+      "pelvis_shift": 0.3237,
+      "pelvic_tilt_delta": 6.6867,
+      "pelvic_tilt_velocity": 13.3745,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 5,
+    "start_frame": 120,
+    "end_frame": 138,
+    "duration_s": 1.8,
+    "params": {
+      "trunk_angle_change": 0.7815,
+      "pelvis_shift": 0.4136,
+      "pelvic_tilt_delta": 2.7171,
+      "pelvic_tilt_velocity": 3.8819,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 6,
+    "start_frame": 138,
+    "end_frame": 164,
+    "duration_s": 2.6,
+    "params": {
+      "trunk_angle_change": 0.6139,
+      "pelvis_shift": 0.474,
+      "pelvic_tilt_delta": 5.6896,
+      "pelvic_tilt_velocity": 3.1611,
+      "hold_duration": 0.6
+    }
+  },
+  {
+    "rep_id": 7,
+    "start_frame": 164,
+    "end_frame": 196,
+    "duration_s": 3.2,
+    "params": {
+      "trunk_angle_change": 1.6381,
+      "pelvis_shift": 0.5333,
+      "pelvic_tilt_delta": 2.0949,
+      "pelvic_tilt_velocity": 0.6984,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 8,
+    "start_frame": 196,
+    "end_frame": 242,
+    "duration_s": 4.6,
+    "params": {
+      "trunk_angle_change": 1.2854,
+      "pelvis_shift": 0.3242,
+      "pelvic_tilt_delta": 5.1042,
+      "pelvic_tilt_velocity": 1.7015,
+      "hold_duration": 0.4
+    }
+  },
+  {
+    "rep_id": 9,
+    "start_frame": 254,
+    "end_frame": 272,
+    "duration_s": 1.8,
+    "params": {
+      "trunk_angle_change": 0.5128,
+      "pelvis_shift": 0.58,
+      "pelvic_tilt_delta": 1.5344,
+      "pelvic_tilt_velocity": 1.2788,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 10,
+    "start_frame": 272,
+    "end_frame": 308,
+    "duration_s": 3.6,
+    "params": {
+      "trunk_angle_change": 1.9941,
+      "pelvis_shift": 0.7868,
+      "pelvic_tilt_delta": 2.2455,
+      "pelvic_tilt_velocity": 1.6041,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 11,
+    "start_frame": 308,
+    "end_frame": 329,
+    "duration_s": 2.1,
+    "params": {
+      "trunk_angle_change": 0.2075,
+      "pelvis_shift": 0.0274,
+      "pelvic_tilt_delta": 0.4702,
+      "pelvic_tilt_velocity": 0.2939,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 12,
+    "start_frame": 329,
+    "end_frame": 353,
+    "duration_s": 2.4,
+    "params": {
+      "trunk_angle_change": 0.6268,
+      "pelvis_shift": 0.0595,
+      "pelvic_tilt_delta": 1.6701,
+      "pelvic_tilt_velocity": 0.9825,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 13,
+    "start_frame": 353,
+    "end_frame": 389,
+    "duration_s": 3.6,
+    "params": {
+      "trunk_angle_change": 2.5247,
+      "pelvis_shift": 0.3001,
+      "pelvic_tilt_delta": 3.3285,
+      "pelvic_tilt_velocity": 1.2329,
+      "hold_duration": 0.6
+    }
+  },
+  {
+    "rep_id": 14,
+    "start_frame": 389,
+    "end_frame": 407,
+    "duration_s": 1.8,
+    "params": {
+      "trunk_angle_change": 1.3061,
+      "pelvis_shift": 0.1866,
+      "pelvic_tilt_delta": 0.7209,
+      "pelvic_tilt_velocity": 0.6008,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 15,
+    "start_frame": 407,
+    "end_frame": 457,
+    "duration_s": 5.0,
+    "params": {
+      "trunk_angle_change": 2.7065,
+      "pelvis_shift": 0.5545,
+      "pelvic_tilt_delta": 3.2982,
+      "pelvic_tilt_velocity": 1.8325,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 16,
+    "start_frame": 457,
+    "end_frame": 485,
+    "duration_s": 2.8,
+    "params": {
+      "trunk_angle_change": 1.2473,
+      "pelvis_shift": 0.4572,
+      "pelvic_tilt_delta": 1.5829,
+      "pelvic_tilt_velocity": 1.7589,
+      "hold_duration": 0.0
+    }
+  },
+  {
+    "rep_id": 17,
+    "start_frame": 492,
+    "end_frame": 518,
+    "duration_s": 2.6,
+    "params": {
+      "trunk_angle_change": 1.7361,
+      "pelvis_shift": 0.2041,
+      "pelvic_tilt_delta": 0.9456,
+      "pelvic_tilt_velocity": 0.6755,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 18,
+    "start_frame": 518,
+    "end_frame": 555,
+    "duration_s": 3.7,
+    "params": {
+      "trunk_angle_change": 0.4223,
+      "pelvis_shift": 0.4667,
+      "pelvic_tilt_delta": 0.8911,
+      "pelvic_tilt_velocity": 0.7426,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 19,
+    "start_frame": 555,
+    "end_frame": 574,
+    "duration_s": 1.9,
+    "params": {
+      "trunk_angle_change": 1.4235,
+      "pelvis_shift": 0.1131,
+      "pelvic_tilt_delta": 0.2697,
+      "pelvic_tilt_velocity": 0.6743,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 20,
+    "start_frame": 574,
+    "end_frame": 625,
+    "duration_s": 5.1,
+    "params": {
+      "trunk_angle_change": 1.7049,
+      "pelvis_shift": 0.5607,
+      "pelvic_tilt_delta": 4.4334,
+      "pelvic_tilt_velocity": 1.304,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 21,
+    "start_frame": 625,
+    "end_frame": 687,
+    "duration_s": 6.2,
+    "params": {
+      "trunk_angle_change": 1.7543,
+      "pelvis_shift": 0.2976,
+      "pelvic_tilt_delta": 2.1578,
+      "pelvic_tilt_velocity": 1.66,
+      "hold_duration": 0.6
+    }
+  },
+  {
+    "rep_id": 22,
+    "start_frame": 687,
+    "end_frame": 707,
+    "duration_s": 2.0,
+    "params": {
+      "trunk_angle_change": 2.2658,
+      "pelvis_shift": 0.1335,
+      "pelvic_tilt_delta": 1.1219,
+      "pelvic_tilt_velocity": 1.87,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 23,
+    "start_frame": 707,
+    "end_frame": 735,
+    "duration_s": 2.8,
+    "params": {
+      "trunk_angle_change": 1.7315,
+      "pelvis_shift": 0.0756,
+      "pelvic_tilt_delta": 0.4244,
+      "pelvic_tilt_velocity": 0.7074,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 24,
+    "start_frame": 735,
+    "end_frame": 757,
+    "duration_s": 2.2,
+    "params": {
+      "trunk_angle_change": 1.2306,
+      "pelvis_shift": 0.2192,
+      "pelvic_tilt_delta": 2.8087,
+      "pelvic_tilt_velocity": 1.5605,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 25,
+    "start_frame": 757,
+    "end_frame": 782,
+    "duration_s": 2.5,
+    "params": {
+      "trunk_angle_change": 0.7618,
+      "pelvis_shift": 0.4383,
+      "pelvic_tilt_delta": 3.4765,
+      "pelvic_tilt_velocity": 3.1607,
+      "hold_duration": 0.7
+    }
+  },
+  {
+    "rep_id": 26,
+    "start_frame": 782,
+    "end_frame": 815,
+    "duration_s": 3.3,
+    "params": {
+      "trunk_angle_change": 0.9479,
+      "pelvis_shift": 0.2087,
+      "pelvic_tilt_delta": 0.7135,
+      "pelvic_tilt_velocity": 1.0194,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 27,
+    "start_frame": 825,
+    "end_frame": 886,
+    "duration_s": 6.1,
+    "params": {
+      "trunk_angle_change": 2.236,
+      "pelvis_shift": 0.3488,
+      "pelvic_tilt_delta": 3.045,
+      "pelvic_tilt_velocity": 1.1279,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 28,
+    "start_frame": 886,
+    "end_frame": 912,
+    "duration_s": 2.6,
+    "params": {
+      "trunk_angle_change": 0.8223,
+      "pelvis_shift": 0.0825,
+      "pelvic_tilt_delta": 1.1453,
+      "pelvic_tilt_velocity": 11.4539,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 29,
+    "start_frame": 912,
+    "end_frame": 943,
+    "duration_s": 3.1,
+    "params": {
+      "trunk_angle_change": 1.5652,
+      "pelvis_shift": 0.2541,
+      "pelvic_tilt_delta": 2.3977,
+      "pelvic_tilt_velocity": 1.8445,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 30,
+    "start_frame": 943,
+    "end_frame": 960,
+    "duration_s": 1.7,
+    "params": {
+      "trunk_angle_change": 0.2113,
+      "pelvis_shift": 0.4971,
+      "pelvic_tilt_delta": 1.9489,
+      "pelvic_tilt_velocity": 1.3922,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 31,
+    "start_frame": 960,
+    "end_frame": 982,
+    "duration_s": 2.2,
+    "params": {
+      "trunk_angle_change": 0.5942,
+      "pelvis_shift": 0.4157,
+      "pelvic_tilt_delta": 1.3679,
+      "pelvic_tilt_velocity": 0.9772,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 32,
+    "start_frame": 982,
+    "end_frame": 1018,
+    "duration_s": 3.6,
+    "params": {
+      "trunk_angle_change": 1.2478,
+      "pelvis_shift": 0.3224,
+      "pelvic_tilt_delta": 2.7602,
+      "pelvic_tilt_velocity": 1.7253,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 33,
+    "start_frame": 1027,
+    "end_frame": 1059,
+    "duration_s": 3.2,
+    "params": {
+      "trunk_angle_change": 0.5713,
+      "pelvis_shift": 0.2281,
+      "pelvic_tilt_delta": 1.0271,
+      "pelvic_tilt_velocity": 0.5707,
+      "hold_duration": 0.6
+    }
+  },
+  {
+    "rep_id": 34,
+    "start_frame": 1059,
+    "end_frame": 1079,
+    "duration_s": 2.0,
+    "params": {
+      "trunk_angle_change": 1.725,
+      "pelvis_shift": 0.1467,
+      "pelvic_tilt_delta": 1.6173,
+      "pelvic_tilt_velocity": 2.3106,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 35,
+    "start_frame": 1079,
+    "end_frame": 1107,
+    "duration_s": 2.8,
+    "params": {
+      "trunk_angle_change": 1.1287,
+      "pelvis_shift": 0.0962,
+      "pelvic_tilt_delta": 1.6266,
+      "pelvic_tilt_velocity": 2.0334,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 36,
+    "start_frame": 1120,
+    "end_frame": 1140,
+    "duration_s": 2.0,
+    "params": {
+      "trunk_angle_change": 0.6764,
+      "pelvis_shift": 0.3595,
+      "pelvic_tilt_delta": 2.7662,
+      "pelvic_tilt_velocity": 2.128,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 37,
+    "start_frame": 1153,
+    "end_frame": 1190,
+    "duration_s": 3.7,
+    "params": {
+      "trunk_angle_change": 0.2136,
+      "pelvis_shift": 0.2334,
+      "pelvic_tilt_delta": 4.1219,
+      "pelvic_tilt_velocity": 1.7176,
+      "hold_duration": 0.8
+    }
+  },
+  {
+    "rep_id": 38,
+    "start_frame": 1190,
+    "end_frame": 1268,
+    "duration_s": 7.8,
+    "params": {
+      "trunk_angle_change": 1.7438,
+      "pelvis_shift": 0.9448,
+      "pelvic_tilt_delta": 3.6018,
+      "pelvic_tilt_velocity": 1.2865,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 39,
+    "start_frame": 1295,
+    "end_frame": 1364,
+    "duration_s": 6.9,
+    "params": {
+      "trunk_angle_change": 1.3659,
+      "pelvis_shift": 0.4647,
+      "pelvic_tilt_delta": 4.3312,
+      "pelvic_tilt_velocity": 1.1399,
+      "hold_duration": 0.8
+    }
+  },
+  {
+    "rep_id": 40,
+    "start_frame": 1364,
+    "end_frame": 1433,
+    "duration_s": 6.9,
+    "params": {
+      "trunk_angle_change": 1.5505,
+      "pelvis_shift": 0.5855,
+      "pelvic_tilt_delta": 3.0445,
+      "pelvic_tilt_velocity": 1.0149,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 41,
+    "start_frame": 1433,
+    "end_frame": 1462,
+    "duration_s": 2.9,
+    "params": {
+      "trunk_angle_change": 1.8631,
+      "pelvis_shift": 0.2226,
+      "pelvic_tilt_delta": 1.5773,
+      "pelvic_tilt_velocity": 1.0516,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 42,
+    "start_frame": 1462,
+    "end_frame": 1498,
+    "duration_s": 3.6,
+    "params": {
+      "trunk_angle_change": 1.4239,
+      "pelvis_shift": 0.3506,
+      "pelvic_tilt_delta": 3.5843,
+      "pelvic_tilt_velocity": 1.7923,
+      "hold_duration": 0.9
+    }
+  },
+  {
+    "rep_id": 43,
+    "start_frame": 1498,
+    "end_frame": 1537,
+    "duration_s": 3.9,
+    "params": {
+      "trunk_angle_change": 1.6857,
+      "pelvis_shift": 0.281,
+      "pelvic_tilt_delta": 2.063,
+      "pelvic_tilt_velocity": 1.3754,
+      "hold_duration": 0.5
+    }
+  },
+  {
+    "rep_id": 44,
+    "start_frame": 1537,
+    "end_frame": 1565,
+    "duration_s": 2.8,
+    "params": {
+      "trunk_angle_change": 0.2411,
+      "pelvis_shift": 0.0511,
+      "pelvic_tilt_delta": 0.6389,
+      "pelvic_tilt_velocity": 0.7099,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 45,
+    "start_frame": 1565,
+    "end_frame": 1648,
+    "duration_s": 8.3,
+    "params": {
+      "trunk_angle_change": 3.4681,
+      "pelvis_shift": 0.1481,
+      "pelvic_tilt_delta": 3.1573,
+      "pelvic_tilt_velocity": 1.1695,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 46,
+    "start_frame": 1648,
+    "end_frame": 1669,
+    "duration_s": 2.1,
+    "params": {
+      "trunk_angle_change": 1.3555,
+      "pelvis_shift": 0.0866,
+      "pelvic_tilt_delta": 0.5846,
+      "pelvic_tilt_velocity": 0.4497,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 47,
+    "start_frame": 1669,
+    "end_frame": 1708,
+    "duration_s": 3.9,
+    "params": {
+      "trunk_angle_change": 0.4957,
+      "pelvis_shift": 0.6302,
+      "pelvic_tilt_delta": 3.9829,
+      "pelvic_tilt_velocity": 1.1715,
+      "hold_duration": 0.4
+    }
+  },
+  {
+    "rep_id": 48,
+    "start_frame": 1708,
+    "end_frame": 1747,
+    "duration_s": 3.9,
+    "params": {
+      "trunk_angle_change": 1.2308,
+      "pelvis_shift": 0.497,
+      "pelvic_tilt_delta": 1.9023,
+      "pelvic_tilt_velocity": 0.9059,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 49,
+    "start_frame": 1747,
+    "end_frame": 1785,
+    "duration_s": 3.8,
+    "params": {
+      "trunk_angle_change": 1.1302,
+      "pelvis_shift": 0.1852,
+      "pelvic_tilt_delta": 3.1789,
+      "pelvic_tilt_velocity": 2.2708,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 50,
+    "start_frame": 1785,
+    "end_frame": 1815,
+    "duration_s": 3.0,
+    "params": {
+      "trunk_angle_change": 2.4444,
+      "pelvis_shift": 0.4998,
+      "pelvic_tilt_delta": 1.5133,
+      "pelvic_tilt_velocity": 1.1642,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 51,
+    "start_frame": 1815,
+    "end_frame": 1851,
+    "duration_s": 3.6,
+    "params": {
+      "trunk_angle_change": 1.7825,
+      "pelvis_shift": 0.2807,
+      "pelvic_tilt_delta": 1.7429,
+      "pelvic_tilt_velocity": 0.6704,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 52,
+    "start_frame": 1851,
+    "end_frame": 1883,
+    "duration_s": 3.2,
+    "params": {
+      "trunk_angle_change": 1.4314,
+      "pelvis_shift": 0.6935,
+      "pelvic_tilt_delta": 5.7054,
+      "pelvic_tilt_velocity": 3.0031,
+      "hold_duration": 0.5
+    }
+  },
+  {
+    "rep_id": 53,
+    "start_frame": 1883,
+    "end_frame": 1913,
+    "duration_s": 3.0,
+    "params": {
+      "trunk_angle_change": 1.3216,
+      "pelvis_shift": 0.302,
+      "pelvic_tilt_delta": 2.7424,
+      "pelvic_tilt_velocity": 2.1097,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 54,
+    "start_frame": 1913,
+    "end_frame": 1938,
+    "duration_s": 2.5,
+    "params": {
+      "trunk_angle_change": 0.8609,
+      "pelvis_shift": 0.1787,
+      "pelvic_tilt_delta": 0.9631,
+      "pelvic_tilt_velocity": 2.4079,
+      "hold_duration": 0.4
+    }
+  }
+]

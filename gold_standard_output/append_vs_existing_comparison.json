@@ -1,0 +1,487 @@
+{
+  "abdominal_crunch": {
+    "existing_source_video": "教学视频.mp4",
+    "new_source_video": "缩腹运动.mp4",
+    "metric_diffs": {
+      "abdominal_contraction_ratio": {
+        "existing": {
+          "mean": 58.3053,
+          "std": 37.2388,
+          "valid_range": [
+            -16.1723,
+            132.7829
+          ],
+          "warning_range": [
+            -53.4111,
+            170.0217
+          ]
+        },
+        "new": {
+          "mean": 17.1342,
+          "std": 13.5058,
+          "valid_range": [
+            -9.8774,
+            44.1458
+          ],
+          "warning_range": [
+            -23.3832,
+            57.6516
+          ]
+        },
+        "delta_mean": -41.1711,
+        "delta_std": -23.733,
+        "mean_change_ratio": -0.70613
+      },
+      "contraction_velocity": {
+        "existing": {
+          "mean": 120.8157,
+          "std": 204.1341,
+          "valid_range": [
+            -287.4525,
+            529.0839
+          ],
+          "warning_range": [
+            -491.5866,
+            733.218
+          ]
+        },
+        "new": {
+          "mean": 9.332,
+          "std": 9.0179,
+          "valid_range": [
+            -8.7038,
+            27.3678
+          ],
+          "warning_range": [
+            -17.7217,
+            36.3857
+          ]
+        },
+        "delta_mean": -111.4837,
+        "delta_std": -195.1162,
+        "mean_change_ratio": -0.922758
+      },
+      "hold_duration": {
+        "existing": {
+          "mean": 1.4486,
+          "std": 2.1283,
+          "valid_range": [
+            -2.808,
+            9.9618
+          ],
+          "warning_range": [
+            -4.9363,
+            14.2184
+          ]
+        },
+        "new": {
+          "mean": 0.329,
+          "std": 0.3061,
+          "valid_range": [
+            -0.2832,
+            1.5534
+          ],
+          "warning_range": [
+            -0.5893,
+            2.1656
+          ]
+        },
+        "delta_mean": -1.1196,
+        "delta_std": -1.8222,
+        "mean_change_ratio": -0.772884
+      },
+      "pelvis_shift": {
+        "existing": {
+          "mean": 5.3803,
+          "std": 8.074,
+          "valid_range": [
+            0,
+            21.5283
+          ],
+          "warning_range": [
+            0,
+            37.6763
+          ]
+        },
+        "new": {
+          "mean": 0.2172,
+          "std": 0.1615,
+          "valid_range": [
+            0,
+            0.5402
+          ],
+          "warning_range": [
+            0,
+            0.8632
+          ]
+        },
+        "delta_mean": -5.1631,
+        "delta_std": -7.9125,
+        "mean_change_ratio": -0.959631
+      },
+      "trunk_angle_change": {
+        "existing": {
+          "mean": 28.5924,
+          "std": 39.6623,
+          "valid_range": [
+            0,
+            107.917
+          ],
+          "warning_range": [
+            0,
+            187.2416
+          ]
+        },
+        "new": {
+          "mean": 60.1981,
+          "std": 41.4491,
+          "valid_range": [
+            0,
+            143.0963
+          ],
+          "warning_range": [
+            0,
+            225.9945
+          ]
+        },
+        "delta_mean": 31.6057,
+        "delta_std": 1.7868,
+        "mean_change_ratio": 1.105388
+      },
+      "trunk_max_deviation": {
+        "existing": {
+          "mean": 4.0581,
+          "std": 3.0151,
+          "valid_range": [
+            -1.9721,
+            10.0883
+          ],
+          "warning_range": [
+            -4.9872,
+            13.1034
+          ]
+        },
+        "new": {
+          "mean": 0.7161,
+          "std": 0.3873,
+          "valid_range": [
+            -0.0585,
+            1.4907
+          ],
+          "warning_range": [
+            -0.4458,
+            1.878
+          ]
+        },
+        "delta_mean": -3.342,
+        "delta_std": -2.6278,
+        "mean_change_ratio": -0.823538
+      },
+      "trunk_stability": {
+        "existing": {
+          "mean": 1.6689,
+          "std": 1.3749,
+          "valid_range": [
+            -1.0809,
+            4.4187
+          ],
+          "warning_range": [
+            -2.4558,
+            5.7936
+          ]
+        },
+        "new": {
+          "mean": 0.3662,
+          "std": 0.2416,
+          "valid_range": [
+            -0.117,
+            0.8494
+          ],
+          "warning_range": [
+            -0.3586,
+            1.091
+          ]
+        },
+        "delta_mean": -1.3027,
+        "delta_std": -1.1333,
+        "mean_change_ratio": -0.780574
+      }
+    },
+    "action_label": "缩腹运动"
+  },
+  "pelvic_tilt": {
+    "existing_source_video": "教学视频.mp4",
+    "new_source_video": "骨盆倾斜运动.mp4",
+    "metric_diffs": {
+      "hold_duration": {
+        "existing": {
+          "mean": 3.07,
+          "std": 4.3453,
+          "valid_range": [
+            -5.6206,
+            20.4512
+          ],
+          "warning_range": [
+            -9.9659,
+            29.1418
+          ]
+        },
+        "new": {
+          "mean": 0.3111,
+          "std": 0.2157,
+          "valid_range": [
+            -0.1203,
+            1.1739
+          ],
+          "warning_range": [
+            -0.336,
+            1.6053
+          ]
+        },
+        "delta_mean": -2.7589,
+        "delta_std": -4.1296,
+        "mean_change_ratio": -0.898664
+      },
+      "pelvic_tilt_delta": {
+        "existing": {
+          "mean": 5.1008,
+          "std": 3.9174,
+          "valid_range": [
+            -2.734,
+            20.7704
+          ],
+          "warning_range": [
+            -6.6514,
+            28.6052
+          ]
+        },
+        "new": {
+          "mean": 2.822,
+          "std": 2.6343,
+          "valid_range": [
+            -2.4466,
+            13.3592
+          ],
+          "warning_range": [
+            -5.0809,
+            18.6278
+          ]
+        },
+        "delta_mean": -2.2788,
+        "delta_std": -1.2831,
+        "mean_change_ratio": -0.446753
+      },
+      "pelvic_tilt_velocity": {
+        "existing": {
+          "mean": 7.054,
+          "std": 6.9083,
+          "valid_range": [
+            -6.7626,
+            20.8706
+          ],
+          "warning_range": [
+            -13.6709,
+            27.7789
+          ]
+        },
+        "new": {
+          "mean": 2.4795,
+          "std": 3.6741,
+          "valid_range": [
+            -4.8687,
+            9.8277
+          ],
+          "warning_range": [
+            -8.5428,
+            13.5018
+          ]
+        },
+        "delta_mean": -4.5745,
+        "delta_std": -3.2342,
+        "mean_change_ratio": -0.648497
+      },
+      "pelvis_shift": {
+        "existing": {
+          "mean": 0.485,
+          "std": 0.3162,
+          "valid_range": [
+            0,
+            1.1174
+          ],
+          "warning_range": [
+            0,
+            1.7498
+          ]
+        },
+        "new": {
+          "mean": 0.3489,
+          "std": 0.2112,
+          "valid_range": [
+            0,
+            0.7713
+          ],
+          "warning_range": [
+            0,
+            1.1937
+          ]
+        },
+        "delta_mean": -0.1361,
+        "delta_std": -0.105,
+        "mean_change_ratio": -0.280619
+      },
+      "trunk_angle_change": {
+        "existing": {
+          "mean": 1.7855,
+          "std": 0.8302,
+          "valid_range": [
+            0,
+            3.4459
+          ],
+          "warning_range": [
+            0,
+            5.1063
+          ]
+        },
+        "new": {
+          "mean": 4.1185,
+          "std": 14.7245,
+          "valid_range": [
+            0,
+            33.5675
+          ],
+          "warning_range": [
+            0,
+            63.0165
+          ]
+        },
+        "delta_mean": 2.333,
+        "delta_std": 13.8943,
+        "mean_change_ratio": 1.306637
+      }
+    },
+    "action_label": "骨盆倾斜"
+  },
+  "knee_rotation": {
+    "existing_source_video": "教学视频.mp4",
+    "new_source_video": "膝关节旋转.mp4",
+    "metric_diffs": {
+      "hip_stability": {
+        "existing": {
+          "mean": 2.5128,
+          "std": 1.9199,
+          "valid_range": [
+            0,
+            6.3526
+          ],
+          "warning_range": [
+            0,
+            10.1924
+          ]
+        },
+        "new": {
+          "mean": 1.0187,
+          "std": 0.7099,
+          "valid_range": [
+            0,
+            2.4385
+          ],
+          "warning_range": [
+            0,
+            3.8583
+          ]
+        },
+        "delta_mean": -1.4941,
+        "delta_std": -1.21,
+        "mean_change_ratio": -0.594596
+      },
+      "knee_y_excursion": {
+        "existing": {
+          "mean": 11.3213,
+          "std": 9.3081,
+          "valid_range": [
+            -7.2949,
+            48.5537
+          ],
+          "warning_range": [
+            -16.603,
+            67.1699
+          ]
+        },
+        "new": {
+          "mean": 10.0581,
+          "std": 5.1428,
+          "valid_range": [
+            -0.2275,
+            30.6293
+          ],
+          "warning_range": [
+            -5.3703,
+            40.9149
+          ]
+        },
+        "delta_mean": -1.2632,
+        "delta_std": -4.1653,
+        "mean_change_ratio": -0.111577
+      },
+      "pelvis_shift": {
+        "existing": {
+          "mean": 1.7528,
+          "std": 1.6613,
+          "valid_range": [
+            0,
+            5.0754
+          ],
+          "warning_range": [
+            0,
+            8.398
+          ]
+        },
+        "new": {
+          "mean": 0.6799,
+          "std": 0.2445,
+          "valid_range": [
+            0,
+            1.1689
+          ],
+          "warning_range": [
+            0,
+            1.6579
+          ]
+        },
+        "delta_mean": -1.0729,
+        "delta_std": -1.4168,
+        "mean_change_ratio": -0.612106
+      },
+      "trunk_angle_change": {
+        "existing": {
+          "mean": 2.6519,
+          "std": 1.2597,
+          "valid_range": [
+            0,
+            5.1713
+          ],
+          "warning_range": [
+            0,
+            7.6907
+          ]
+        },
+        "new": {
+          "mean": 2.3535,
+          "std": 1.1801,
+          "valid_range": [
+            0,
+            4.7137
+          ],
+          "warning_range": [
+            0,
+            7.0739
+          ]
+        },
+        "delta_mean": -0.2984,
+        "delta_std": -0.0796,
+        "mean_change_ratio": -0.112523
+      }
+    },
+    "action_label": "膝关节旋转"
+  }
+}

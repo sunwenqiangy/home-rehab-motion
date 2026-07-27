@@ -1,0 +1,168 @@
+{
+  "action_type": "pelvic_tilt",
+  "action_label": "骨盆倾斜",
+  "source_type": "video",
+  "source_video": "骨盆倾斜运动.mp4",
+  "video_segment": {
+    "start_sec": 0,
+    "end_sec": 193.82
+  },
+  "version": 1,
+  "status": "pending_review",
+  "template_params": {
+    "trunk_angle_change": {
+      "mean": 4.1185,
+      "std": 14.7245,
+      "min": 0.2075,
+      "max": 94.0855,
+      "p5": 0.2315,
+      "p25": 0.7667,
+      "p50": 1.3165,
+      "p75": 1.7349,
+      "p95": 2.9731,
+      "n_cycles": 54
+    },
+    "pelvis_shift": {
+      "mean": 0.3489,
+      "std": 0.2112,
+      "min": 0.0274,
+      "max": 0.9448,
+      "p5": 0.07,
+      "p25": 0.191,
+      "p50": 0.3231,
+      "p75": 0.4722,
+      "p95": 0.7262,
+      "n_cycles": 54
+    },
+    "pelvic_tilt_delta": {
+      "mean": 2.822,
+      "std": 2.6343,
+      "min": 0.2697,
+      "max": 17.2672,
+      "p5": 0.5446,
+      "p25": 1.4042,
+      "p50": 2.2016,
+      "p75": 3.3209,
+      "p95": 6.0489,
+      "n_cycles": 54
+    },
+    "pelvic_tilt_velocity": {
+      "mean": 2.4795,
+      "std": 3.6741,
+      "min": 0.2939,
+      "max": 19.1054,
+      "p5": 0.5903,
+      "p25": 0.9906,
+      "p50": 1.3838,
+      "p75": 2.0906,
+      "p95": 12.1261,
+      "n_cycles": 54
+    },
+    "hold_duration": {
+      "mean": 0.3111,
+      "std": 0.2157,
+      "min": 0.0,
+      "max": 0.9,
+      "p5": 0.1,
+      "p25": 0.2,
+      "p50": 0.3,
+      "p75": 0.375,
+      "p95": 0.8,
+      "n_cycles": 54
+    }
+  },
+  "threshold_config": {
+    "_meta": {
+      "sigma_multiplier": 2.0,
+      "note": "基于 ±2.0σ 自动生成，适用于单视频启动期，建议专家审核后调整",
+      "action_type": "pelvic_tilt"
+    },
+    "confidence_min": 0.6,
+    "trunk_angle_change": {
+      "valid_range": [
+        0,
+        33.5675
+      ],
+      "warning_range": [
+        0,
+        63.0165
+      ],
+      "gold_mean": 4.1185,
+      "gold_std": 14.7245,
+      "unit": "度",
+      "description": "躯干角度代偿变化量（越小越稳定）",
+      "direction": "smaller_better"
+    },
+    "pelvis_shift": {
+      "valid_range": [
+        0,
+        0.7713
+      ],
+      "warning_range": [
+        0,
+        1.1937
+      ],
+      "gold_mean": 0.3489,
+      "gold_std": 0.2112,
+      "unit": "相对画面宽度 %",
+      "description": "骨盆水平偏移（越小越稳定）",
+      "direction": "smaller_better"
+    },
+    "pelvic_tilt_delta": {
+      "valid_range": [
+        -2.4466,
+        13.3592
+      ],
+      "warning_range": [
+        -5.0809,
+        18.6278
+      ],
+      "gold_mean": 2.822,
+      "gold_std": 2.6343,
+      "unit": "度",
+      "description": "骨盆倾斜变化量（双髋连线角度变化，代理骨盆前后倾活动度）",
+      "direction": "larger_better"
+    },
+    "pelvic_tilt_velocity": {
+      "valid_range": [
+        -4.8687,
+        9.8277
+      ],
+      "warning_range": [
+        -8.5428,
+        13.5018
+      ],
+      "gold_mean": 2.4795,
+      "gold_std": 3.6741,
+      "unit": "度/秒",
+      "description": "骨盆倾斜速度（不宜过快或过慢）",
+      "direction": "moderate"
+    },
+    "hold_duration": {
+      "valid_range": [
+        -0.1203,
+        1.1739
+      ],
+      "warning_range": [
+        -0.336,
+        1.6053
+      ],
+      "gold_mean": 0.3111,
+      "gold_std": 0.2157,
+      "unit": "秒",
+      "description": "动作保持时长（越长越好）",
+      "direction": "larger_better"
+    }
+  },
+  "quality_report": {
+    "avg_confidence": 0.7984,
+    "missing_rate": 0.154,
+    "total_frames": 1939,
+    "valid_cycles": 54,
+    "quality_pass": true,
+    "warnings": [
+      "⚠️ 平均置信度 0.80 低于 0.85，建议检查视频光线/角度"
+    ]
+  },
+  "generated_at": "2026-07-21T10:19:32"
+}

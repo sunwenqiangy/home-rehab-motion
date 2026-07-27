@@ -1,0 +1,33 @@
+<view class="profile-page">
+  <view class="profile-nav" style="padding-top: {{statusBarHeight}}px;">
+    <view class="profile-back" bindtap="onBack">‹</view>
+    <view class="profile-nav__title">完善个人资料</view>
+    <view class="profile-nav__placeholder"></view>
+  </view>
+
+  <view class="profile-content">
+    <view class="profile-hero">
+      <view class="profile-hero__icon">👋</view>
+      <view class="profile-hero__title">让训练记录更容易识别</view>
+      <view class="profile-hero__desc">昵称和手机号仅用于您的账户识别与训练服务。</view>
+    </view>
+
+    <view class="profile-card">
+      <view class="profile-card__title">昵称</view>
+      <input class="profile-input" value="{{nickname}}" maxlength="50" placeholder="请输入您的昵称" bindinput="onNicknameInput" />
+      <button class="profile-wechat-name" open-type="chooseNickname" bindchoosenickname="onChooseWechatNickname">使用微信昵称</button>
+      <button class="profile-save" loading="{{saving}}" bindtap="onSaveNickname">保存昵称</button>
+    </view>
+
+    <view class="profile-card">
+      <view class="profile-card__title">微信手机号</view>
+      <view class="profile-card__desc">授权后可作为您的快捷身份信息；我们不会在页面展示完整手机号。</view>
+      <view class="profile-phone-status" wx:if="{{phoneBound}}">✓ 已绑定：{{maskedPhone}}</view>
+      <button class="profile-phone-button" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" loading="{{saving}}">
+        {{phoneBound ? '重新授权微信手机号' : '微信手机号快捷登录'}}
+      </button>
+    </view>
+
+    <view class="profile-privacy">点击授权即表示同意将授权资料用于账户识别和训练记录保存。您可随时在此页修改昵称或重新授权手机号。</view>
+  </view>
+</view>

@@ -1,0 +1,186 @@
+<view class="rp-page">
+  <view class="rp-top-sticky">
+    <!-- 自定义状态栏 -->
+    <view class="rp-statusbar" style="height: {{statusBarHeight}}px;"></view>
+
+    <!-- 自定义导航栏 -->
+    <view class="rp-nav">
+      <view class="rp-nav__back" bindtap="onGoBack">
+        <text class="rp-nav__back-icon">‹</text>
+      </view>
+      <text class="rp-nav__title">训练报告</text>
+      <view class="rp-nav__capsule"></view>
+    </view>
+  </view>
+
+  <!-- 加载态 -->
+  <view wx:if="{{loading}}" class="rp-loading">
+    <view class="rp-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+    <view class="rp-loading__text">正在生成报告...</view>
+    <view class="rp-loading__sub">请稍候，系统正在整理本次训练的分析结果。</view>
+  </view>
+
+  <!-- 分析失败结果 -->
+  <view wx:elif="{{isAnalysisFailed}}" class="rp-loading rp-failure-result">
+    <view class="rp-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+    <view class="rp-failure-result__icon">!</view>
+    <view class="rp-loading__text">{{failureTitle}}</view>
+    <view class="rp-loading__sub">{{failureReason}}</view>
+    <view class="rp-failure-result__tip">重新拍摄时请保持画面稳定、光线充足，并确保完整动作始终在画面内。</view>
+    <view class="rp-loading__actions">
+      <button class="btn-big btn-teal" bindtap="onRetryUpload">重新上传训练视频</button>
+      <button class="btn-big btn-outline" bindtap="onViewHistory">返回历史记录</button>
+    </view>
+  </view>
+
+  <!-- 加载失败 -->
+  <view wx:elif="{{loadFailed}}" class="rp-loading">
+    <view class="rp-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+    <view class="rp-loading__text">报告暂时不可用</view>
+    <view class="rp-loading__sub">{{errorMessage}}</view>
+    <view class="rp-loading__actions">
+      <button class="btn-big btn-teal" bindtap="onRetryLoad">重新获取报告</button>
+      <button class="btn-big btn-outline" bindtap="onViewAnalyzing">继续等待分析</button>
+    </view>
+  </view>
+
+  <!-- 主内容 -->
+  <scroll-view wx:else class="rp-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="rp-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+    <view class="rp-scroll-inner">
+      <view wx:if="{{showSafetyNotice}}" class="rp-safety-notice">
+        <view class="rp-safety-notice__title">已记录本次身体不适</view>
+        <view class="rp-safety-notice__desc">请先暂停训练。若不适持续、加重或影响活动，请及时联系主治医生或前往医疗机构评估。</view>
+      </view>
+
+      <view wx:if="{{requiresManualReview}}" class="rp-review-notice">
+        <view class="rp-review-notice__title">本次训练结果待复核</view>
+        <view class="rp-review-notice__desc">{{reviewMessage}}</view>
+        <view class="rp-review-notice__tip">复核完成前，请先参考动作指导中的拍摄要求，不以本次分数或问题判断作为训练结论。</view>
+      </view>
+
+      <!-- 评级 Hero -->
+      <view wx:if="{{!requiresManualReview}}" class="rp-hero">
+        <view class="rp-hero__row">
+          <view class="rp-score-circle">
+            <text class="rp-score-circle__num">{{averageScore}}</text>
+            <text class="rp-score-circle__label">{{grade}}</text>
+          </view>
+          <view class="rp-hero__info">
+            <text class="rp-hero__title">{{actionLabel}}</text>
+            <text wx:if="{{compareToLastText}}" class="rp-hero__compare">{{compareToLastText}}</text>
+            <view class="rp-hero__chips">
+              <text class="rp-hero__chip">{{stageLabel}}</text>
+              <text class="rp-hero__chip">{{confidenceText}} 置信度</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 概要数据 2列 -->
+      <view wx:if="{{!requiresManualReview}}" class="rp-stat-grid">
+        <view class="rp-stat-card">
+          <text class="rp-stat-card__value rp-stat-card__value--green">{{validRepsText}}</text>
+          <text class="rp-stat-card__label">有效次数</text>
+        </view>
+        <view class="rp-stat-card">
+          <text class="rp-stat-card__value rp-stat-card__value--teal">{{holdDurationText}}</text>
+          <text class="rp-stat-card__label">平均保持</text>
+        </view>
+      </view>
+
+      <!-- 四维评分摘要 -->
+      <view wx:if="{{!requiresManualReview}}" class="info-panel">
+        <view class="info-title">📊 四维评分摘要</view>
+        <view class="rp-metric-list">
+          <view class="rp-metric-line">
+            <text class="rp-metric-key">准确性</text>
+            <view class="rp-progress-bar"><view class="rp-progress-bar__fill" style="width: {{accuracyText}}%;"></view></view>
+            <text class="rp-metric-val rp-metric-val--green">{{accuracyText}}</text>
+          </view>
+          <view class="rp-metric-line">
+            <text class="rp-metric-key">稳定性</text>
+            <view class="rp-progress-bar"><view class="rp-progress-bar__fill" style="width: {{stabilityText}}%;"></view></view>
+            <text class="rp-metric-val rp-metric-val--teal">{{stabilityText}}</text>
+          </view>
+          <view class="rp-metric-line">
+            <text class="rp-metric-key">控制力</text>
+            <view class="rp-progress-bar"><view class="rp-progress-bar__fill rp-progress-bar__fill--orange" style="width: {{controlText}}%;"></view></view>
+            <text class="rp-metric-val rp-metric-val--orange">{{controlText}}</text>
+          </view>
+          <view class="rp-metric-line">
+            <text class="rp-metric-key">保持时间</text>
+            <view class="rp-progress-bar"><view class="rp-progress-bar__fill rp-progress-bar__fill--orange" style="width: {{durationMetricText}}%;"></view></view>
+            <text class="rp-metric-val rp-metric-val--orange">{{durationMetricText}}</text>
+          </view>
+        </view>
+        <view class="rp-metric-summary">最需要继续巩固的是<text class="rp-metric-summary__strong">动作控制</text>和<text class="rp-metric-summary__strong">保持时间</text>。</view>
+      </view>
+
+      <!-- 阶段重点 (绿色左边框) -->
+      <view wx:if="{{!requiresManualReview}}" class="rp-stage-focus">
+        <view class="rp-stage-focus__title">🌿 当前阶段：{{stageLabel}}</view>
+        <view class="rp-stage-focus__body">
+          <text class="rp-stage-focus__line">✅ 这次节奏比上次更稳，您已经开始形成正确训练感觉</text>
+          <text class="rp-stage-focus__line">💡 继续把回正动作放慢，保持阶段多坚持1~2秒</text>
+        </view>
+      </view>
+
+      <!-- 阶段对比与下一步 -->
+      <view wx:if="{{!requiresManualReview}}" class="info-panel">
+        <view class="info-title">🔁 阶段对比与下一步</view>
+        <view class="stage-grid">
+          <view class="stage-card stage-card--waiting">
+            <view class="stage-name">{{stagePrevLabel}}</view>
+            <view class="stage-tip">重点是纠正姿势错误，避免代偿动作。</view>
+          </view>
+          <view class="stage-card stage-card--active">
+            <view class="stage-name">当前阶段：{{stageLabel}}（进行中）</view>
+            <view class="stage-tip">{{stageFocusDesc}}</view>
+          </view>
+          <view class="stage-card stage-card--waiting">
+            <view class="stage-name">{{stageNextLabel}}</view>
+            <view class="stage-tip">重点关注连续训练与徽章激励，维持长期习惯。</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 本次进步与新成就 -->
+      <view wx:if="{{!requiresManualReview && (improvementMessage || newlyUnlockedBadges.length)}}" class="rp-motivation-panel">
+        <view wx:if="{{improvementMessage}}" class="rp-motivation-panel__message">{{improvementMessage}}</view>
+        <view wx:for="{{newlyUnlockedBadges}}" wx:key="badgeCode" class="rp-motivation-panel__badge">🏅 解锁「{{item.title}}」</view>
+      </view>
+
+      <!-- 系统建议 -->
+      <view class="info-panel">
+        <view class="info-title">💡 系统建议</view>
+        <view class="rp-advice-list">
+          <block wx:for="{{adviceSummary}}" wx:key="adviceCode">
+            <view class="rp-advice-item">• {{item.patientText}}</view>
+          </block>
+          <view wx:if="{{!adviceSummary.length}}" class="rp-advice-item">• 建议每日2~3组训练，保持节奏</view>
+        </view>
+      </view>
+
+      <!-- 反馈入口 -->
+      <view class="rp-feedback-panel">
+        <view class="rp-feedback-panel__title">对本次训练有疑问？</view>
+        <view class="rp-feedback-panel__desc">可提交训练相关问题。工作人员会在消息中心通知处理结果；本系统不是实时咨询服务。</view>
+        <button class="btn-big rp-feedback-panel__btn" bindtap="onToggleFeedback">{{feedbackEntryLabel}}</button>
+      </view>
+
+      <!-- 页尾返回首页 -->
+      <view class="rp-page-footer">
+        <button class="btn-big btn-ghost" bindtap="onViewHistory">🏠 返回首页</button>
+        </view>
+
+      <!-- 底部操作栏占位 -->
+      <view class="dock-spacer"></view>
+    </view>
+  </scroll-view>
+
+  <!-- 底部固定操作栏 -->
+  <view class="action-dock">
+    <button class="btn-big btn-teal" bindtap="onBackHome">🔄 再练一次</button>
+  </view>
+</view>

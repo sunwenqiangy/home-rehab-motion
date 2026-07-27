@@ -1,0 +1,21 @@
+# Source control and local state
+.git
+.gitignore
+.local-logs
+.local-pids
+.local-storage
+node_modules
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/*.pyc
+.env
+.env.*
+
+# Generated assets and editor files
+apps/admin-web/dist
+coverage
+.DS_Store
+.idea
+.vscode

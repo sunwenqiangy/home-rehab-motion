@@ -1,0 +1,467 @@
+[
+  {
+    "rep_id": 1,
+    "start_frame": 0,
+    "end_frame": 44,
+    "duration_s": 4.4,
+    "params": {
+      "trunk_angle_change": 89.2379,
+      "pelvis_shift": 0.5026,
+      "trunk_stability": 0.824,
+      "trunk_max_deviation": 1.2408,
+      "abdominal_contraction_ratio": 12.032,
+      "contraction_velocity": 2.7348,
+      "hold_duration": 0.0
+    }
+  },
+  {
+    "rep_id": 2,
+    "start_frame": 44,
+    "end_frame": 65,
+    "duration_s": 2.1,
+    "params": {
+      "trunk_angle_change": 0.5759,
+      "pelvis_shift": 0.045,
+      "trunk_stability": 0.2006,
+      "trunk_max_deviation": 0.5759,
+      "abdominal_contraction_ratio": 4.5567,
+      "contraction_velocity": 2.17,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 3,
+    "start_frame": 77,
+    "end_frame": 117,
+    "duration_s": 4.0,
+    "params": {
+      "trunk_angle_change": 0.9493,
+      "pelvis_shift": 0.1231,
+      "trunk_stability": 0.6929,
+      "trunk_max_deviation": 0.9493,
+      "abdominal_contraction_ratio": 2.1567,
+      "contraction_velocity": 0.5392,
+      "hold_duration": 0.0
+    }
+  },
+  {
+    "rep_id": 4,
+    "start_frame": 117,
+    "end_frame": 147,
+    "duration_s": 3.0,
+    "params": {
+      "trunk_angle_change": 90.5432,
+      "pelvis_shift": 0.3989,
+      "trunk_stability": 0.3523,
+      "trunk_max_deviation": 0.768,
+      "abdominal_contraction_ratio": 4.9042,
+      "contraction_velocity": 1.6349,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 5,
+    "start_frame": 147,
+    "end_frame": 177,
+    "duration_s": 3.0,
+    "params": {
+      "trunk_angle_change": 90.4348,
+      "pelvis_shift": 0.6214,
+      "trunk_stability": 0.1433,
+      "trunk_max_deviation": 0.2845,
+      "abdominal_contraction_ratio": 1.3729,
+      "contraction_velocity": 0.8581,
+      "hold_duration": 0.0
+    }
+  },
+  {
+    "rep_id": 6,
+    "start_frame": 190,
+    "end_frame": 227,
+    "duration_s": 3.7,
+    "params": {
+      "trunk_angle_change": 90.371,
+      "pelvis_shift": 0.1989,
+      "trunk_stability": 0.5641,
+      "trunk_max_deviation": 1.4299,
+      "abdominal_contraction_ratio": 20.9295,
+      "contraction_velocity": 5.9803,
+      "hold_duration": 0.9
+    }
+  },
+  {
+    "rep_id": 7,
+    "start_frame": 227,
+    "end_frame": 247,
+    "duration_s": 2.0,
+    "params": {
+      "trunk_angle_change": 90.4237,
+      "pelvis_shift": 0.0428,
+      "trunk_stability": 0.2859,
+      "trunk_max_deviation": 0.5006,
+      "abdominal_contraction_ratio": 23.7402,
+      "contraction_velocity": 11.8711,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 8,
+    "start_frame": 247,
+    "end_frame": 284,
+    "duration_s": 3.7,
+    "params": {
+      "trunk_angle_change": 91.2657,
+      "pelvis_shift": 0.2005,
+      "trunk_stability": 0.4466,
+      "trunk_max_deviation": 1.0882,
+      "abdominal_contraction_ratio": 9.9385,
+      "contraction_velocity": 4.9697,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 9,
+    "start_frame": 311,
+    "end_frame": 339,
+    "duration_s": 2.8,
+    "params": {
+      "trunk_angle_change": 0.5296,
+      "pelvis_shift": 0.688,
+      "trunk_stability": 0.2338,
+      "trunk_max_deviation": 0.5296,
+      "abdominal_contraction_ratio": 24.2619,
+      "contraction_velocity": 18.6645,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 10,
+    "start_frame": 339,
+    "end_frame": 372,
+    "duration_s": 3.3,
+    "params": {
+      "trunk_angle_change": 1.0455,
+      "pelvis_shift": 0.3726,
+      "trunk_stability": 0.7358,
+      "trunk_max_deviation": 1.0455,
+      "abdominal_contraction_ratio": 51.1783,
+      "contraction_velocity": 19.6856,
+      "hold_duration": 0.5
+    }
+  },
+  {
+    "rep_id": 11,
+    "start_frame": 372,
+    "end_frame": 401,
+    "duration_s": 2.9,
+    "params": {
+      "trunk_angle_change": 0.5239,
+      "pelvis_shift": 0.0624,
+      "trunk_stability": 0.3408,
+      "trunk_max_deviation": 0.5239,
+      "abdominal_contraction_ratio": 19.0295,
+      "contraction_velocity": 38.0621,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 12,
+    "start_frame": 401,
+    "end_frame": 445,
+    "duration_s": 4.4,
+    "params": {
+      "trunk_angle_change": 90.4645,
+      "pelvis_shift": 0.2215,
+      "trunk_stability": 1.1545,
+      "trunk_max_deviation": 1.8307,
+      "abdominal_contraction_ratio": 19.7448,
+      "contraction_velocity": 19.7464,
+      "hold_duration": 0.7
+    }
+  },
+  {
+    "rep_id": 13,
+    "start_frame": 445,
+    "end_frame": 465,
+    "duration_s": 2.0,
+    "params": {
+      "trunk_angle_change": 0.1986,
+      "pelvis_shift": 0.1143,
+      "trunk_stability": 0.0766,
+      "trunk_max_deviation": 0.1986,
+      "abdominal_contraction_ratio": 9.6457,
+      "contraction_velocity": 4.8232,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 14,
+    "start_frame": 465,
+    "end_frame": 509,
+    "duration_s": 4.4,
+    "params": {
+      "trunk_angle_change": 89.1991,
+      "pelvis_shift": 0.2055,
+      "trunk_stability": 0.236,
+      "trunk_max_deviation": 0.7273,
+      "abdominal_contraction_ratio": 30.3077,
+      "contraction_velocity": 21.6501,
+      "hold_duration": 0.5
+    }
+  },
+  {
+    "rep_id": 15,
+    "start_frame": 509,
+    "end_frame": 577,
+    "duration_s": 6.8,
+    "params": {
+      "trunk_angle_change": 89.7456,
+      "pelvis_shift": 0.0661,
+      "trunk_stability": 0.2593,
+      "trunk_max_deviation": 0.6594,
+      "abdominal_contraction_ratio": 8.7385,
+      "contraction_velocity": 1.5889,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 16,
+    "start_frame": 577,
+    "end_frame": 618,
+    "duration_s": 4.1,
+    "params": {
+      "trunk_angle_change": 90.5194,
+      "pelvis_shift": 0.2812,
+      "trunk_stability": 0.2121,
+      "trunk_max_deviation": 0.5427,
+      "abdominal_contraction_ratio": 30.4686,
+      "contraction_velocity": 14.51,
+      "hold_duration": 0.4
+    }
+  },
+  {
+    "rep_id": 17,
+    "start_frame": 627,
+    "end_frame": 644,
+    "duration_s": 1.7,
+    "params": {
+      "trunk_angle_change": 90.3757,
+      "pelvis_shift": 0.1813,
+      "trunk_stability": 0.2891,
+      "trunk_max_deviation": 0.5508,
+      "abdominal_contraction_ratio": 0.0234,
+      "contraction_velocity": 0.117,
+      "hold_duration": 0.0
+    }
+  },
+  {
+    "rep_id": 18,
+    "start_frame": 644,
+    "end_frame": 683,
+    "duration_s": 3.9,
+    "params": {
+      "trunk_angle_change": 89.7471,
+      "pelvis_shift": 0.1615,
+      "trunk_stability": 0.466,
+      "trunk_max_deviation": 0.8874,
+      "abdominal_contraction_ratio": 36.9052,
+      "contraction_velocity": 26.363,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 19,
+    "start_frame": 683,
+    "end_frame": 721,
+    "duration_s": 3.8,
+    "params": {
+      "trunk_angle_change": 89.7389,
+      "pelvis_shift": 0.2838,
+      "trunk_stability": 0.55,
+      "trunk_max_deviation": 0.7553,
+      "abdominal_contraction_ratio": 13.8731,
+      "contraction_velocity": 9.2495,
+      "hold_duration": 0.5
+    }
+  },
+  {
+    "rep_id": 20,
+    "start_frame": 721,
+    "end_frame": 753,
+    "duration_s": 3.2,
+    "params": {
+      "trunk_angle_change": 89.348,
+      "pelvis_shift": 0.3042,
+      "trunk_stability": 0.306,
+      "trunk_max_deviation": 1.0246,
+      "abdominal_contraction_ratio": 24.1556,
+      "contraction_velocity": 10.9807,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 21,
+    "start_frame": 753,
+    "end_frame": 785,
+    "duration_s": 3.2,
+    "params": {
+      "trunk_angle_change": 90.3644,
+      "pelvis_shift": 0.0441,
+      "trunk_stability": 0.2958,
+      "trunk_max_deviation": 0.6154,
+      "abdominal_contraction_ratio": 34.5816,
+      "contraction_velocity": 16.4688,
+      "hold_duration": 1.0
+    }
+  },
+  {
+    "rep_id": 22,
+    "start_frame": 800,
+    "end_frame": 834,
+    "duration_s": 3.4,
+    "params": {
+      "trunk_angle_change": 59.8218,
+      "pelvis_shift": 0.2321,
+      "trunk_stability": 0.1392,
+      "trunk_max_deviation": 0.2703,
+      "abdominal_contraction_ratio": 10.1366,
+      "contraction_velocity": 4.055,
+      "hold_duration": 0.3
+    }
+  },
+  {
+    "rep_id": 23,
+    "start_frame": 845,
+    "end_frame": 877,
+    "duration_s": 3.2,
+    "params": {
+      "trunk_angle_change": 89.7462,
+      "pelvis_shift": 0.1724,
+      "trunk_stability": 0.1963,
+      "trunk_max_deviation": 0.3812,
+      "abdominal_contraction_ratio": 6.5732,
+      "contraction_velocity": 3.1303,
+      "hold_duration": 0.6
+    }
+  },
+  {
+    "rep_id": 24,
+    "start_frame": 877,
+    "end_frame": 921,
+    "duration_s": 4.4,
+    "params": {
+      "trunk_angle_change": 89.7447,
+      "pelvis_shift": 0.1597,
+      "trunk_stability": 0.5676,
+      "trunk_max_deviation": 0.8264,
+      "abdominal_contraction_ratio": 23.5514,
+      "contraction_velocity": 6.9274,
+      "hold_duration": 0.7
+    }
+  },
+  {
+    "rep_id": 25,
+    "start_frame": 928,
+    "end_frame": 953,
+    "duration_s": 2.5,
+    "params": {
+      "trunk_angle_change": 0.1862,
+      "pelvis_shift": 0.0753,
+      "trunk_stability": 0.1101,
+      "trunk_max_deviation": 0.1862,
+      "abdominal_contraction_ratio": 3.1089,
+      "contraction_velocity": 1.2437,
+      "hold_duration": 0.1
+    }
+  },
+  {
+    "rep_id": 26,
+    "start_frame": 953,
+    "end_frame": 970,
+    "duration_s": 1.7,
+    "params": {
+      "trunk_angle_change": 0.3664,
+      "pelvis_shift": 0.0651,
+      "trunk_stability": 0.2021,
+      "trunk_max_deviation": 0.3664,
+      "abdominal_contraction_ratio": 28.879,
+      "contraction_velocity": 16.989,
+      "hold_duration": 0.2
+    }
+  },
+  {
+    "rep_id": 27,
+    "start_frame": 970,
+    "end_frame": 997,
+    "duration_s": 2.7,
+    "params": {
+      "trunk_angle_change": 0.4445,
+      "pelvis_shift": 0.33,
+      "trunk_stability": 0.1369,
+      "trunk_max_deviation": 0.4445,
+      "abdominal_contraction_ratio": 10.3563,
+      "contraction_velocity": 10.3571,
+      "hold_duration": 0.9
+    }
+  },
+  {
+    "rep_id": 28,
+    "start_frame": 997,
+    "end_frame": 1060,
+    "duration_s": 6.3,
+    "params": {
+      "trunk_angle_change": 1.4601,
+      "pelvis_shift": 0.2008,
+      "trunk_stability": 0.6154,
+      "trunk_max_deviation": 1.4601,
+      "abdominal_contraction_ratio": 48.0595,
+      "contraction_velocity": 7.7522,
+      "hold_duration": 0.9
+    }
+  },
+  {
+    "rep_id": 29,
+    "start_frame": 1060,
+    "end_frame": 1082,
+    "duration_s": 2.2,
+    "params": {
+      "trunk_angle_change": 89.2882,
+      "pelvis_shift": 0.2416,
+      "trunk_stability": 0.3218,
+      "trunk_max_deviation": 0.6877,
+      "abdominal_contraction_ratio": 3.4046,
+      "contraction_velocity": 1.5477,
+      "hold_duration": 0.0
+    }
+  },
+  {
+    "rep_id": 30,
+    "start_frame": 1082,
+    "end_frame": 1109,
+    "duration_s": 2.7,
+    "params": {
+      "trunk_angle_change": 89.7396,
+      "pelvis_shift": 0.0953,
+      "trunk_stability": 0.1415,
+      "trunk_max_deviation": 0.3776,
+      "abdominal_contraction_ratio": 1.3364,
+      "contraction_velocity": 0.495,
+      "hold_duration": 0.0
+    }
+  },
+  {
+    "rep_id": 31,
+    "start_frame": 1109,
+    "end_frame": 1141,
+    "duration_s": 3.2,
+    "params": {
+      "trunk_angle_change": 89.7413,
+      "pelvis_shift": 0.0425,
+      "trunk_stability": 0.2545,
+      "trunk_max_deviation": 0.4698,
+      "abdominal_contraction_ratio": 13.2082,
+      "contraction_velocity": 4.1279,
+      "hold_duration": 0.2
+    }
+  }
+]

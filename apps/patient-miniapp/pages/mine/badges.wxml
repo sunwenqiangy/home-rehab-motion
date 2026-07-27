@@ -1,0 +1,103 @@
+<!-- P11 · 全部徽章 — V4 高保真 -->
+<view class="v4-page">
+
+  <view class="v4-top-sticky">
+    <!-- 自定义状态栏 -->
+    <view class="v4-statusbar" style="height: {{statusBarHeight}}px;"></view>
+
+    <!-- 自定义导航栏 -->
+    <view class="v4-navbar">
+      <view class="v4-navbar-left" bindtap="onGoBack">
+        <text class="v4-navbar-back">‹</text>
+      </view>
+      <view class="v4-navbar-title">🏅 全部徽章</view>
+      <view class="v4-navbar-capsule"></view>
+    </view>
+  </view>
+
+  <!-- 页面内容 -->
+  <view class="v4-screen">
+    <view class="v4-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+
+    <!-- 徽章统计头部 -->
+    <view class="v4-badge-header">
+      <view class="v4-badge-header__title">🏅 我的成就</view>
+      <text class="v4-chip v4-chip--teal">{{progressText}}</text>
+    </view>
+
+    <!-- 进度条 -->
+    <view class="v4-progress-bar">
+      <view class="v4-progress-fill" style="width: {{progressPercent}}%"></view>
+    </view>
+
+    <!-- 加载状态 -->
+    <view wx:if="{{loading}}" class="v4-empty-state">
+      <view class="v4-empty-icon">⏳</view>
+      <view class="v4-empty-title">正在加载徽章数据...</view>
+    </view>
+
+    <!-- 空态 -->
+    <view wx:elif="{{!unlockedItems.length && !lockedItems.length}}" class="v4-empty-state">
+      <view class="v4-empty-icon">🏅</view>
+      <view class="v4-empty-title">暂无徽章数据</view>
+      <view class="v4-empty-desc">完成训练后即可获得首个徽章</view>
+    </view>
+
+    <!-- 正常内容 -->
+    <block wx:else>
+
+      <!-- 筛选 Chips -->
+      <view class="v4-filter-chips">
+        <text
+          class="v4-chip {{filterMode === 'all' ? 'v4-chip--teal' : 'v4-chip--gray'}}"
+          bindtap="onFilterAll"
+        >全部</text>
+        <text
+          class="v4-chip {{filterMode === 'unlocked' ? 'v4-chip--green' : 'v4-chip--gray'}}"
+          bindtap="onFilterUnlocked"
+        >✅ 已获得</text>
+        <text
+          class="v4-chip {{filterMode === 'locked' ? 'v4-chip--orange' : 'v4-chip--gray'}}"
+          bindtap="onFilterLocked"
+        >🔒 未解锁</text>
+      </view>
+
+      <!-- 已获得 -->
+      <view wx:if="{{filterMode !== 'locked' && unlockedItems.length}}" class="v4-panel">
+        <view class="v4-panel-title v4-panel-title--green">✅ 已获得</view>
+        <view class="v4-badge-grid">
+          <view class="v4-badge-item" wx:for="{{unlockedItems}}" wx:key="badgeCode">
+            <view class="v4-badge-bubble v4-badge-bubble--{{item.bubbleColor}}">{{item.emoji}}</view>
+            <view class="v4-badge-name">{{item.title}}</view>
+            <view class="v4-badge-hint">{{item.description}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 未解锁 -->
+      <view wx:if="{{filterMode !== 'unlocked' && lockedItems.length}}" class="v4-panel">
+        <view class="v4-panel-title v4-panel-title--muted">🔒 未解锁</view>
+        <view class="v4-badge-grid">
+          <view class="v4-badge-item v4-badge-item--locked" wx:for="{{lockedItems}}" wx:key="badgeCode">
+            <view class="v4-badge-bubble v4-badge-bubble--locked">{{item.emoji}}</view>
+            <view class="v4-badge-name v4-badge-name--locked">{{item.title}}</view>
+            <view class="v4-badge-hint v4-badge-hint--locked">{{item.description}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 提示面板 -->
+      <view class="v4-panel v4-panel--teal">
+        <view class="v4-panel-title v4-panel-title--teal">💡 提示</view>
+        <view class="v4-panel-desc">想更快解锁徽章，可优先保持连续训练天数，并关注每次报告中的动作建议。</view>
+        <view class="v4-panel-actions">
+          <button class="v4-btn-sm v4-btn-sm--outline" bindtap="onFilterUnlocked">仅看已获得</button>
+          <button class="v4-btn-sm v4-btn-sm--teal" bindtap="onShowConditions">查看解锁条件</button>
+        </view>
+      </view>
+
+    </block>
+
+  </view>
+
+</view>

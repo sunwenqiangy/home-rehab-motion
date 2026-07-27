@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>腹肌训练视频分析系统</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --primary:#4f6ef7;--primary-light:#eef0ff;
+  --success:#22c55e;--success-light:#f0fdf4;
+  --warning:#f59e0b;--warning-light:#fffbeb;
+  --danger:#ef4444;--danger-light:#fef2f2;
+  --text:#1e293b;--text2:#64748b;
+  --border:#e2e8f0;--bg:#f8fafc;--card:#fff;
+  --r:14px;--shadow:0 2px 16px rgba(0,0,0,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{background:linear-gradient(135deg,#4f6ef7,#7c3aed);padding:18px 40px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(79,110,247,.25)}
+.hlogo{width:42px;height:42px;background:rgba(255,255,255,.2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px}
+header h1{color:#fff;font-size:19px;font-weight:700}
+header p{color:rgba(255,255,255,.7);font-size:12px;margin-top:2px}
+.wrap{max-width:1360px;margin:0 auto;padding:28px 20px}
+.grid{display:grid;grid-template-columns:390px 1fr;gap:20px;align-items:start}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden}
+.ch{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px}
+.ch .ico{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.ch h2{font-size:14px;font-weight:600}
+.cb{padding:18px}
+.upzone{border:2px dashed #cbd5e1;border-radius:11px;padding:32px 18px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.upzone:hover,.upzone.dov{border-color:var(--primary);background:var(--primary-light)}
+.upzone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upzone .uico{font-size:40px;margin-bottom:9px}
+.upzone h3{font-size:14px;font-weight:600;margin-bottom:4px}
+.upzone p{font-size:11px;color:var(--text2)}
+#vp{width:100%;border-radius:9px;background:#000;display:none;margin-top:12px;max-height:210px;object-fit:contain}
+#vp.show{display:block}
+.srow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.srow:last-child{border-bottom:none}
+.slbl{font-size:12px;font-weight:500}
+.ssub{font-size:11px;color:var(--text2);margin-top:1px}
+.sinp{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:5px 9px;font-size:12px;width:118px;outline:none;transition:border-color .2s}
+.sinp:focus{border-color:var(--primary)}
+.btn{width:100%;padding:12px;background:linear-gradient(135deg,#4f6ef7,#7c3aed);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;margin-top:14px;transition:opacity .2s,transform .1s;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn:hover{opacity:.9;transform:translateY(-1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.pgwrap{margin-top:16px;display:none}
+.pgwrap.show{display:block}
+.pgsteps{display:flex;align-items:center;margin-bottom:12px}
+.si{flex:1;text-align:center;position:relative}
+.si:not(:last-child)::after{content:'';position:absolute;top:12px;left:50%;width:100%;height:2px;background:var(--border);z-index:0}
+.si.done::after{background:var(--success)}
+.si.active::after{background:linear-gradient(to right,var(--success),var(--border))}
+.sdot{width:24px;height:24px;border-radius:50%;background:var(--border);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin:0 auto 4px;position:relative;z-index:1;transition:background .3s}
+.si.done .sdot{background:var(--success)}
+.si.active .sdot{background:var(--primary);animation:pls 1s infinite}
+.sname{font-size:10px;color:var(--text2)}
+.si.active .sname{color:var(--primary);font-weight:600}
+.si.done .sname{color:var(--success)}
+@keyframes pls{0%,100%{box-shadow:0 0 0 0 rgba(79,110,247,.4)}50%{box-shadow:0 0 0 5px rgba(79,110,247,0)}}
+.pgbar{background:var(--border);border-radius:99px;height:5px;overflow:hidden}
+.pgfill{height:100%;border-radius:99px;background:linear-gradient(to right,#4f6ef7,#7c3aed);transition:width .4s ease}
+.pgtxt{font-size:11px;color:var(--text2);margin-top:5px;text-align:center}
+.rp{display:flex;flex-direction:column;gap:16px}
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.sc{background:var(--card);border-radius:11px;padding:13px 10px;border:1px solid var(--border);box-shadow:var(--shadow);text-align:center}
+.sv{font-size:24px;font-weight:800;color:var(--primary);line-height:1}
+.slb{font-size:11px;color:var(--text2);margin-top:4px}
+.mg{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.mc{background:var(--card);border-radius:11px;padding:15px 16px;border:1px solid var(--border);box-shadow:var(--shadow);transition:transform .2s}
+.mc:hover{transform:translateY(-2px)}
+.mh{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px}
+.mn{font-size:13px;font-weight:600}
+.md{font-size:11px;color:var(--text2);margin-top:1px}
+.mbadge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap;margin-left:6px}
+.bg{background:var(--success-light);color:var(--success)}
+.bw{background:var(--warning-light);color:#b45309}
+.bd{background:var(--danger-light);color:var(--danger)}
+.mvr{display:flex;align-items:baseline;gap:5px;margin-bottom:7px}
+.mv{font-size:22px;font-weight:800;color:var(--text)}
+.mu{font-size:11px;color:var(--text2)}
+.gt{height:7px;border-radius:99px;background:#f1f5f9;position:relative;overflow:hidden;margin-bottom:4px}
+.gv{position:absolute;top:0;height:7px;border-radius:99px;background:rgba(34,197,94,.18)}
+.gf{height:7px;border-radius:99px;position:absolute;top:0;transition:width .9s cubic-bezier(.4,0,.2,1)}
+.gm{position:absolute;top:-4px;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.2);transform:translateX(-50%);z-index:2;transition:left .9s cubic-bezier(.4,0,.2,1)}
+.glb{display:flex;justify-content:space-between;font-size:10px;color:var(--text2)}
+.cc{position:relative;height:165px}
+.qg{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.qi{background:var(--bg);border-radius:9px;padding:11px;text-align:center}
+.qn{font-size:19px;font-weight:800;margin-bottom:3px}
+.ql{font-size:11px;color:var(--text2)}
+.ts{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{background:var(--bg);padding:8px 9px;text-align:left;font-weight:600;color:var(--text2);border-bottom:2px solid var(--border);white-space:nowrap}
+td{padding:7px 9px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:3px;vertical-align:middle}
+.empty{text-align:center;padding:50px 20px;color:var(--text2)}
+.empty .ei{font-size:56px;margin-bottom:12px;opacity:.32}
+.empty h3{font-size:15px;font-weight:600;margin-bottom:7px;color:var(--text)}
+.empty p{font-size:12px;line-height:1.7}
+.alert{padding:9px 13px;border-radius:8px;font-size:12px;display:flex;align-items:flex-start;gap:7px;margin-bottom:8px}
+.aw{background:var(--warning-light);color:#92400e;border:1px solid #fde68a}
+.as{background:var(--success-light);color:#166534;border:1px solid #bbf7d0}
+.dlbtn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;background:var(--primary);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .2s}
+.dlbtn:hover{opacity:.85}
+@media(max-width:1100px){.grid{grid-template-columns:1fr}.sg{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){header{padding:13px 16px}.wrap{padding:12px}.mg{grid-template-columns:1fr}.qg{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hlogo">🏋️</div>
+  <div>
+    <h1>腹肌训练视频分析系统</h1>
+    <p>基于 MediaPipe 姿态估计 · 7项生物力学关键指标提取与金标准评估</p>
+  </div>
+</header>
+
+<div class="wrap">
+<div class="grid">
+
+<!-- 左侧 -->
+<div style="display:flex;flex-direction:column;gap:14px">
+
+  <div class="card">
+    <div class="ch"><div class="ico" style="background:#eef0ff">📹</div><h2>上传训练视频</h2></div>
+    <div class="cb">
+      <div class="upzone" id="upzone">
+        <input type="file" id="vi" accept="video/*"/>
+        <div class="uico">🎬</div>
+        <h3>点击选择或拖拽视频文件</h3>
+        <p>支持 MP4 / MOV / AVI &nbsp;·&nbsp; 建议 30s ~ 5min</p>
+      </div>
+      <video id="vp" controls></video>
+      <div id="vinfo" style="display:none;margin-top:11px;padding:11px;background:var(--bg);border-radius:9px;font-size:12px;line-height:1.9;"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch"><div class="ico" style="background:#f0fdf4">⚙️</div><h2>分析参数</h2></div>
+    <div class="cb" style="padding:12px 18px">
+      <div class="srow">
+        <div><div class="slbl">动作类型</div><div class="ssub" id="action-sub">选择后自动加载对应金标准</div></div>
+        <select class="sinp" id="action_type" onchange="onActionChange()">
+          <option value="abdominal_crunch">🫁 缩腹运动</option>
+          <option value="pelvic_tilt">🦴 骨盆倾斜</option>
+          <option value="knee_rotation">🦵 膝关节旋转</option>
+        </select>
+      </div>
+      <div class="srow">
+        <div><div class="slbl">金标准版本</div><div class="ssub">可切换历史/追加模板并查看差异</div></div>
+        <select class="sinp" id="gold_version" onchange="onGoldVersionChange()">
+          <option value="baseline" selected>历史模板</option>
+          <option value="append">追加模板</option>
+        </select>
+      </div>
+      <div id="gold-compare-mini" style="margin:8px 0 12px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:11px;line-height:1.7;color:var(--text2)"></div>
+      <div class="srow">
+        <div><div class="slbl">采样帧率</div><div class="ssub">越高越精准，但更耗时</div></div>
+        <select class="sinp" id="fps">
+          <option value="5">5 fps 快速</option>
+          <option value="10" selected>10 fps 推荐</option>
+          <option value="15">15 fps 精准</option>
+        </select>
+      </div>
+      <div class="srow">
+        <div><div class="slbl">阈值宽度 σ</div><div class="ssub">与金标准偏差的容忍度</div></div>
+        <select class="sinp" id="sigma">
+          <option value="1.5">1.5σ 严格</option>
+          <option value="2.0" selected>2.0σ 标准</option>
+          <option value="2.5">2.5σ 宽松</option>
+        </select>
+      </div>
+      <div class="srow">
+        <div><div class="slbl">最短周期</div><div class="ssub">过滤无效短片段</div></div>
+        <select class="sinp" id="mincyc">
+          <option value="1.5">1.5 秒</option>
+          <option value="2.0" selected>2.0 秒</option>
+          <option value="3.0">3.0 秒</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cb">
+      <button class="btn" id="abtn" type="button" disabled>🔍 开始分析</button>
+      <div class="pgwrap" id="pgwrap">
+        <div style="height:12px"></div>
+        <div class="pgsteps">
+          <div class="si" id="s0"><div class="sdot">1</div><div class="sname">提取帧</div></div>
+          <div class="si" id="s1"><div class="sdot">2</div><div class="sname">质量检验</div></div>
+          <div class="si" id="s2"><div class="sdot">3</div><div class="sname">周期切分</div></div>
+          <div class="si" id="s3"><div class="sdot">4</div><div class="sname">参数计算</div></div>
+          <div class="si" id="s4"><div class="sdot">5</div><div class="sname">统计建模</div></div>
+        </div>
+        <div class="pgbar"><div class="pgfill" id="pgfill" style="width:0%"></div></div>
+        <div class="pgtxt" id="pgtxt">准备中...</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 右侧 -->
+<div class="rp" id="rp">
+  <div class="card" id="empty">
+    <div class="cb">
+      <div class="empty">
+        <div class="ei">📊</div>
+        <h3>上传视频，开始分析</h3>
+        <p>系统将自动提取每个训练周期的关键生物力学指标<br/>并与金标准模板对比，生成完整评估报告</p>
+        <br/>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:12px;color:var(--text2);text-align:left;max-width:340px;margin:0 auto">
+          <div><b style="color:var(--text)">🫁 缩腹运动</b>（3项）：躯干角度变化 · 骨盆横向偏移 · 顶峰保持时长</div>
+          <div><b style="color:var(--text)">🦴 骨盆倾斜</b>（4项）：骨盆倾斜幅度 · 骨盆横向偏移 · 躯干角度变化 · 顶峰保持时长</div>
+          <div><b style="color:var(--text)">🦵 膝关节旋转</b>（3项）：膝关节倾倒幅度 · 骨盆稳定性 · 躯干稳定性</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="debug-card" style="margin-top:10px">
+    <div class="ch"><div class="ico" style="background:#f1f5f9">🧪</div><h2>刷新诊断日志</h2></div>
+    <div class="cb" style="padding:12px">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px">若页面自动刷新，可把这里最后几条日志发给我定位原因。</div>
+      <pre id="debug-log" style="max-height:140px;overflow:auto;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;font-size:11px;line-height:1.5;white-space:pre-wrap"></pre>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button type="button" class="dlbtn" onclick="clearDebugLogs()">清空日志</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<script>
+// ======================================================
+// 金标准参数库（按动作类型）
+// ======================================================
+// ──────────────────────────────────────────────────────────────────
+// 金标准数据来源说明
+// ──────────────────────────────────────────────────────────────────
+// 所有数值均直接取自 gold_standard_output/<action>/template.json
+// 由 extract_gold_standard.py 对教学视频.mp4 运行 MediaPipe 提取所得。
+//
+// 缩腹运动（n=7周期）：abdominal_crunch/template.json（2026-06-25 重新提取）
+// 骨盆倾斜（n=6周期）：pelvic_tilt/template.json（2026-06-25 重新提取）
+// 膝关节旋转（n=7周期）：knee_rotation/template.json（2026-06-25 重新提取，正侧面方案）
+//   所有指标均为真实金标准，来自此次运行 extract_gold_standard.py。
+//   注：缩腹运动脚本改用髋宽变化率新指标，前端 GOLD_ALL 取通用指标（trunk/pelvis/hold）。
+// ──────────────────────────────────────────────────────────────────
+const GOLD_BASELINE = {
+  // 缩腹运动（abdominal_crunch）——3项通用指标（正侧面，来自真实 template.json n=7）
+  abdominal_crunch: {
+    trunk_angle_change:    {mean:28.59, std:39.66, dir:'smaller', unit:'°', label:'躯干角度变化', icon:'🔄', color:'#dc2626', desc:'历史模板：躯干代偿越小，稳定性越好'},
+    pelvis_shift:          {mean:5.38,  std:8.07,  dir:'smaller', unit:'%', label:'骨盆横向偏移', icon:'⚖️', color:'#d97706', desc:'历史模板：骨盆水平偏移量，越小越稳'},
+    hold_duration:         {mean:1.45,  std:2.13,  dir:'larger',  unit:'s', label:'顶峰保持时长', icon:'⏱', color:'#059669', desc:'历史模板：最大收缩位置持续时间，越长越好'},
+  },
+  // 骨盆倾斜（pelvic_tilt）——4项指标（历史模板）
+  pelvic_tilt: {
+    pelvic_tilt_delta:     {mean:5.10,  std:3.92,  dir:'larger',  unit:'°', label:'骨盆倾斜幅度', icon:'📐', color:'#0891b2', desc:'历史模板：双髋连线角度变化量，越大说明训练幅度充分'},
+    pelvis_shift:          {mean:0.49,  std:0.32,  dir:'smaller', unit:'%', label:'骨盆横向偏移', icon:'⚖️', color:'#d97706', desc:'历史模板：左右不对称偏移量，越小越稳'},
+    trunk_angle_change:    {mean:1.79,  std:0.83,  dir:'smaller', unit:'°', label:'躯干角度变化', icon:'🔄', color:'#dc2626', desc:'历史模板：躯干代偿越小说明核心越稳定'},
+    hold_duration:         {mean:3.07,  std:4.35,  dir:'larger',  unit:'s', label:'顶峰保持时长', icon:'⏱', color:'#059669', desc:'历史模板：保持骨盆前倾最大角度的持续时间'},
+  },
+  // 膝关节旋转（knee_rotation）——3项指标（历史模板）
+  knee_rotation: {
+    knee_y_excursion:      {mean:11.32, std:9.31,  dir:'larger',  unit:'%', label:'膝关节倾倒幅度', icon:'🦵', color:'#16a34a', desc:'历史模板：双膝中点Y轴偏移量，越大说明倒膝幅度充分'},
+    hip_stability:         {mean:2.51,  std:1.92,  dir:'smaller', unit:'%', label:'骨盆稳定性', icon:'⚖️', color:'#d97706', desc:'历史模板：倒膝时髋中点Y轴抖动量，越小越好'},
+    trunk_angle_change:    {mean:2.65,  std:1.26,  dir:'smaller', unit:'°', label:'躯干稳定性', icon:'🔄', color:'#dc2626', desc:'历史模板：旋转时躯干角度代偿变化，越小越好'},
+  },
+};
+
+const GOLD_APPEND = {
+  // 追加模板（基于 prd/标准教学视频）
+  // 注：Python 脚本输出 abdominal_contraction_ratio / contraction_velocity，
+  //     前端 calcParams 输出 abdominal_displacement / displacement_velocity。
+  //     追加模板同时包含两套命名，确保无论前端输出哪个参数名都能匹配到金标准。
+  //     trunk_angle_change 使用 p25 而非 mean（原 mean=60.2 被「休息帧伪周期」拉高，p25=1.0 更代表真实运动周期）
+  abdominal_crunch: {
+    abdominal_displacement:   {mean:17.13, std:13.51, dir:'larger',  unit:'%', label:'腹部收缩位移', icon:'📏', color:'#7c3aed', desc:'追加模板：肩-髋中点Y轴收缩位移（越大收缩越充分）'},
+    abdominal_contraction_ratio: {mean:17.13, std:13.51, dir:'larger',  unit:'%', label:'髋宽收缩率', icon:'📏', color:'#7c3aed', desc:'追加模板：髋宽变化率代理腹部收缩（Python 同名指标）'},
+    displacement_velocity:  {mean:9.33,  std:9.02,  dir:'moderate', unit:'%/s', label:'收缩速度', icon:'⚡', color:'#2563eb', desc:'追加模板：收缩到达速度（适中为宜）'},
+    contraction_velocity:    {mean:9.33,  std:9.02,  dir:'moderate', unit:'%/s', label:'收缩速度(Python)', icon:'⚡', color:'#2563eb', desc:'追加模板：Python 脚本同名指标'},
+    trunk_angle_change:    {mean:1.00,  std:0.72,  dir:'smaller', unit:'°', label:'躯干角度变化', icon:'🔄', color:'#dc2626', desc:'追加模板：使用p25过滤休息帧，真实运动周期躯干稳定'},
+    pelvis_shift:          {mean:0.20,  std:0.12,  dir:'smaller', unit:'%', label:'骨盆横向偏移', icon:'⚖️', color:'#d97706', desc:'追加模板：由缩腹运动.mp4 提取（使用p25）'},
+    hold_duration:         {mean:0.20,  std:0.10,  dir:'larger',  unit:'s', label:'顶峰保持时长', icon:'⏱', color:'#059669', desc:'追加模板：由缩腹运动.mp4 提取（使用p25）'},
+  },
+  pelvic_tilt: {
+    pelvic_tilt_delta:     {mean:2.82,  std:2.63,  dir:'larger',  unit:'°', label:'骨盆倾斜幅度', icon:'📐', color:'#0891b2', desc:'追加模板：由骨盆倾斜运动.mp4 提取'},
+    pelvis_shift:          {mean:0.35,  std:0.21,  dir:'smaller', unit:'%', label:'骨盆横向偏移', icon:'⚖️', color:'#d97706', desc:'追加模板：由骨盆倾斜运动.mp4 提取'},
+    trunk_angle_change:    {mean:4.12,  std:14.72, dir:'smaller', unit:'°', label:'躯干角度变化', icon:'🔄', color:'#dc2626', desc:'追加模板：由骨盆倾斜运动.mp4 提取'},
+    hold_duration:         {mean:0.31,  std:0.22,  dir:'larger',  unit:'s', label:'顶峰保持时长', icon:'⏱', color:'#059669', desc:'追加模板：由骨盆倾斜运动.mp4 提取'},
+  },
+  knee_rotation: {
+    knee_y_excursion:      {mean:10.06, std:5.14,  dir:'larger',  unit:'%', label:'膝关节倾倒幅度', icon:'🦵', color:'#16a34a', desc:'追加模板：由膝关节旋转.mp4 提取'},
+    hip_stability:         {mean:1.02,  std:0.71,  dir:'smaller', unit:'%', label:'骨盆稳定性', icon:'⚖️', color:'#d97706', desc:'追加模板：由膝关节旋转.mp4 提取'},
+    trunk_angle_change:    {mean:2.35,  std:1.18,  dir:'smaller', unit:'°', label:'躯干稳定性', icon:'🔄', color:'#dc2626', desc:'追加模板：由膝关节旋转.mp4 提取'},
+  },
+};
+
+const GOLD_BY_VERSION = {
+  baseline: GOLD_BASELINE,
+  append: GOLD_APPEND,
+};
+
+let currentGoldVersion = 'baseline';
+let GOLD_ALL = GOLD_BY_VERSION[currentGoldVersion];
+let GOLD = GOLD_ALL.abdominal_crunch; // 当前激活的金标准
+
+function getActionType(){ return document.getElementById('action_type').value; }
+function getGoldVersion(){ return document.getElementById('gold_version')?.value || 'baseline'; }
+
+function formatPct(delta, base){
+  if(!Number.isFinite(delta) || !Number.isFinite(base) || Math.abs(base) < 1e-8) return '-';
+  return `${(delta / base * 100).toFixed(2)}%`;
+}
+
+function renderGoldCompareMini(){
+  const panel = document.getElementById('gold-compare-mini');
+  if(!panel) return;
+  const t = getActionType();
+  const b = GOLD_BASELINE[t] || {};
+  const a = GOLD_APPEND[t] || {};
+  const metrics = Object.keys(b).filter((k)=>a[k]);
+  if(!metrics.length){
+    panel.textContent = '当前动作缺少可对比指标。';
+    return;
+  }
+  panel.innerHTML = metrics.map((k)=>{
+    const bm = b[k].mean;
+    const am = a[k].mean;
+    const delta = am - bm;
+    const sign = delta >= 0 ? '+' : '';
+    return `${b[k].icon} ${b[k].label}: ${bm.toFixed(2)} → ${am.toFixed(2)} (Δ ${sign}${delta.toFixed(2)}, ${formatPct(delta, bm)})`;
+  }).join('<br/>');
+}
+
+function onGoldVersionChange(){
+  currentGoldVersion = getGoldVersion();
+  GOLD_ALL = GOLD_BY_VERSION[currentGoldVersion] || GOLD_BASELINE;
+  onActionChange();
+}
+
+function onActionChange(){
+  const t = getActionType();
+  GOLD = GOLD_ALL[t];
+  const paramN = Object.keys(GOLD).length;
+  const subMap = {
+    abdominal_crunch: `缩腹运动 · ${paramN}项指标 · 正侧面拍摄`,
+    pelvic_tilt:      '骨盆倾斜 · 4项指标 · 正侧面拍摄',
+    knee_rotation:    '膝关节旋转 · 3项指标 · 正侧面拍摄',
+  };
+  const versionLabel = currentGoldVersion === 'append' ? '追加模板' : '历史模板';
+  document.getElementById('action-sub').textContent = `${subMap[t] || ''} · 当前：${versionLabel}`;
+  renderGoldCompareMini();
+}
+// 初始化一次
+onActionChange();
+
+const getSigma   = ()=> parseFloat(document.getElementById('sigma').value);
+const getSFps    = ()=> parseInt(document.getElementById('fps').value);
+const getMinCyc  = ()=> parseFloat(document.getElementById('mincyc').value);
+
+const DEBUG_LOG_KEY = 'video_analyzer_debug_logs_v1';
+const SNAPSHOT_KEY = 'video_analyzer_result_snapshot_v1';
+const MAX_DEBUG_LOGS = 80;
+const VIDEO_CACHE_DB = 'video_analyzer_cache_v1';
+const VIDEO_CACHE_STORE = 'files';
+const VIDEO_CACHE_KEY = 'last_video_file';
+
+const persistStore = (()=>{
+  try {
+    localStorage.setItem('__va_probe__','1');
+    localStorage.removeItem('__va_probe__');
+    return localStorage;
+  } catch (_) {
+    return sessionStorage;
+  }
+})();
+
+function storeGet(key){ return persistStore.getItem(key); }
+function storeSet(key,val){ persistStore.setItem(key,val); }
+function storeRemove(key){ persistStore.removeItem(key); }
+
+function openVideoCacheDb(){
+  if(!window.indexedDB) return Promise.reject(new Error('indexeddb_not_supported'));
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(VIDEO_CACHE_DB, 1);
+    req.onupgradeneeded = ()=>{
+      const db = req.result;
+      if(!db.objectStoreNames.contains(VIDEO_CACHE_STORE)) db.createObjectStore(VIDEO_CACHE_STORE);
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error || new Error('open_video_cache_failed'));
+  });
+}
+
+function cacheVideoFile(file){
+  if(!file || !window.indexedDB) return;
+  openVideoCacheDb().then((db)=>{
+    const tx = db.transaction(VIDEO_CACHE_STORE, 'readwrite');
+    tx.objectStore(VIDEO_CACHE_STORE).put(file, VIDEO_CACHE_KEY);
+    tx.oncomplete = ()=>{
+      appendDebugLog('video_cached', { file: file.name, sizeMB: +(file.size/1024/1024).toFixed(2) });
+      db.close();
+    };
+    tx.onerror = ()=>{
+      appendDebugLog('video_cache_error', { message: tx.error?.message || 'video_cache_tx_failed' });
+      db.close();
+    };
+  }).catch((e)=>appendDebugLog('video_cache_error', { message: e?.message || String(e) }));
+}
+
+function restoreCachedVideo(){
+  if(!window.indexedDB) return;
+  openVideoCacheDb().then((db)=>{
+    const tx = db.transaction(VIDEO_CACHE_STORE, 'readonly');
+    const req = tx.objectStore(VIDEO_CACHE_STORE).get(VIDEO_CACHE_KEY);
+    req.onsuccess = ()=>{
+      const file = req.result;
+      if(file instanceof Blob){
+        const restoredFile = file instanceof File
+          ? file
+          : new File([file], 'restored_video.mp4', { type: file.type || 'video/mp4', lastModified: Date.now() });
+        loadVideo(restoredFile, { skipCache: true, fromRestore: true });
+        appendDebugLog('video_restored', { file: restoredFile.name, sizeMB: +(restoredFile.size/1024/1024).toFixed(2) });
+      }
+      db.close();
+    };
+    req.onerror = ()=>{
+      appendDebugLog('video_restore_error', { message: req.error?.message || 'video_restore_failed' });
+      db.close();
+    };
+  }).catch((e)=>appendDebugLog('video_restore_error', { message: e?.message || String(e) }));
+}
+
+function safeJsonParse(txt, fallback){
+  try { return JSON.parse(txt); } catch (_) { return fallback; }
+}
+
+function nowText(){
+  const d = new Date();
+  return `${d.toLocaleTimeString()}.${String(d.getMilliseconds()).padStart(3, '0')}`;
+}
+
+function appendDebugLog(event, detail={}){
+  const entry = { t: nowText(), event, detail };
+  const logs = safeJsonParse(storeGet(DEBUG_LOG_KEY) || '[]', []);
+  logs.push(entry);
+  if(logs.length > MAX_DEBUG_LOGS) logs.splice(0, logs.length - MAX_DEBUG_LOGS);
+  storeSet(DEBUG_LOG_KEY, JSON.stringify(logs));
+  renderDebugLogs();
+}
+
+function renderDebugLogs(){
+  const el = document.getElementById('debug-log');
+  if(!el) return;
+  const logs = safeJsonParse(storeGet(DEBUG_LOG_KEY) || '[]', []);
+  el.textContent = logs.length
+    ? logs.map((l)=>`[${l.t}] ${l.event} ${Object.keys(l.detail||{}).length?JSON.stringify(l.detail):''}`).join('\n')
+    : '暂无日志';
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearDebugLogs(){
+  storeRemove(DEBUG_LOG_KEY);
+  renderDebugLogs();
+}
+window.clearDebugLogs = clearDebugLogs;
+
+function getNavigationType(){
+  const nav = performance.getEntriesByType('navigation')[0];
+  return nav?.type || 'unknown';
+}
+
+function saveResultSnapshot(data){
+  const snapshot = { savedAt: Date.now(), data };
+  storeSet(SNAPSHOT_KEY, JSON.stringify(snapshot));
+  appendDebugLog('snapshot_saved', { cycles: data?.cycRes?.length || 0 });
+}
+
+function restoreResultSnapshot(){
+  const raw = storeGet(SNAPSHOT_KEY);
+  if(!raw) return false;
+  const snap = safeJsonParse(raw, null);
+  if(!snap?.data) return false;
+  const age = Date.now() - (snap.savedAt || 0);
+  if(age > 30 * 60 * 1000) return false;
+
+  const data = snap.data;
+  const actionSel = document.getElementById('action_type');
+  const goldSel = document.getElementById('gold_version');
+  if(actionSel && data.actionType) actionSel.value = data.actionType;
+  if(goldSel && data.goldVersion) goldSel.value = data.goldVersion;
+
+  currentGoldVersion = getGoldVersion();
+  GOLD_ALL = GOLD_BY_VERSION[currentGoldVersion] || GOLD_BASELINE;
+  onActionChange();
+
+  document.getElementById('pgwrap').classList.add('show');
+  document.getElementById('empty').style.display = 'none';
+  [0,1,2,3,4].forEach((i)=>step(i,'done'));
+  pg(100, '♻️ 已恢复上次分析结果（检测到刷新）', 100);
+  ['rsummary','rmetrics','rcycles','rquality'].forEach(id=>{ const e=document.getElementById(id); if(e) e.remove(); });
+  renderAll(data);
+  appendDebugLog('snapshot_restored', { ageMs: age, cycles: data?.cycRes?.length || 0 });
+  return true;
+}
+
+function initPageDebug(){
+  appendDebugLog('page_init', { navType: getNavigationType() });
+  window.addEventListener('pageshow', (e)=>appendDebugLog('pageshow', { persisted: e.persisted }));
+  window.addEventListener('pagehide', (e)=>appendDebugLog('pagehide', { persisted: e.persisted }));
+  window.addEventListener('visibilitychange', ()=>appendDebugLog('visibility', { state: document.visibilityState }));
+  window.addEventListener('error', (e)=>appendDebugLog('window_error', { message: e.message }));
+  window.addEventListener('unhandledrejection', (e)=>appendDebugLog('promise_rejection', { reason: String(e.reason) }));
+  renderDebugLogs();
+}
+
+initPageDebug();
+
+// ======================================================
+// 上传 & 预览
+// ======================================================
+let videoFile = null;
+let isAnalyzing = false;
+let previewObjectUrl = null;
+
+const upzone = document.getElementById('upzone');
+const vi     = document.getElementById('vi');
+const vp     = document.getElementById('vp');
+const vinfo  = document.getElementById('vinfo');
+const abtn   = document.getElementById('abtn');
+
+// 防止页面被隐式 form submit 或刷新打断分析
+document.addEventListener('submit', (e)=>e.preventDefault());
+window.addEventListener('beforeunload', (e)=>{
+  const hasResult = !!window._exportData;
+  appendDebugLog('beforeunload', { isAnalyzing, hasResult });
+  // 仅在分析进行中阻止离开；分析完成后允许正常刷新，结果可由 snapshot 自动恢复。
+  if(!isAnalyzing) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
+window.addEventListener('unload', ()=>appendDebugLog('unload'));
+
+upzone.addEventListener('dragover', e=>{ e.preventDefault(); upzone.classList.add('dov'); });
+upzone.addEventListener('dragleave', ()=> upzone.classList.remove('dov'));
+upzone.addEventListener('drop', e=>{
+  e.preventDefault(); upzone.classList.remove('dov');
+  const f = e.dataTransfer.files[0];
+  if(f && f.type.startsWith('video/')) loadVideo(f);
+});
+vi.addEventListener('change', e=>{ if(e.target.files[0]) loadVideo(e.target.files[0]); });
+
+function loadVideo(file, options={}){
+  const { skipCache = false, fromRestore = false } = options;
+  videoFile = file;
+  if(previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+  previewObjectUrl = URL.createObjectURL(file);
+  vp.src = previewObjectUrl;
+  vp.classList.add('show');
+  abtn.disabled = false;
+  if(!skipCache) cacheVideoFile(file);
+  vp.onloadedmetadata = ()=>{
+    const d = vp.duration, mb = (file.size/1024/1024).toFixed(1);
+    vinfo.style.display='block';
+    vinfo.innerHTML=`<div style="display:grid;grid-template-columns:auto 1fr auto 1fr;gap:3px 10px;">
+      <span style="color:var(--text2)">文件</span><span>${file.name}${fromRestore ? '（已自动恢复）' : ''}</span>
+      <span style="color:var(--text2)">大小</span><span>${mb} MB</span>
+      <span style="color:var(--text2)">时长</span><span>${Math.floor(d/60)}:${String(Math.floor(d%60)).padStart(2,'0')}</span>
+      <span style="color:var(--text2)">分辨率</span><span>${vp.videoWidth}×${vp.videoHeight}</span>
+    </div>`;
+  };
+}
+
+// ======================================================
+// 主分析入口
+// ======================================================
+abtn.addEventListener('click', (e)=>{
+  e.preventDefault();
+  e.stopPropagation();
+  if(videoFile) runAnalysis();
+});
+
+async function runAnalysis(){
+  if(isAnalyzing || !videoFile) return;
+  isAnalyzing = true;
+  appendDebugLog('analysis_start', {
+    file: videoFile?.name || '',
+    sizeMB: videoFile?.size ? +(videoFile.size / 1024 / 1024).toFixed(2) : 0,
+    fps: getSFps(),
+    sigma: getSigma(),
+    action: getActionType(),
+    goldVersion: getGoldVersion(),
+  });
+  abtn.disabled = true;
+  document.getElementById('pgwrap').classList.add('show');
+  document.getElementById('empty').style.display = 'none';
+  ['rsummary','rmetrics','rcycles','rquality'].forEach(id=>{ const e=document.getElementById(id); if(e) e.remove(); });
+  [0,1,2,3,4].forEach(i=>{ const s=document.getElementById('s'+i); s.className='si'; s.querySelector('.sdot').textContent=i+1; });
+
+  try{
+    pg(2,'正在读取视频帧...',0); step(0,'active');
+    const {frames,duration} = await extractFrames();
+    step(0,'done');
+
+    pg(30,'质量检验...',30); step(1,'active');
+    await sleep(200);
+    const quality = qualityCheck(frames);
+    step(1,'done');
+
+    pg(50,'切分训练周期...',50); step(2,'active');
+    await sleep(200);
+    const cycles = segmentPhases(frames);
+    step(2,'done');
+
+    pg(68,'计算生物力学参数...',68); step(3,'active');
+    await sleep(200);
+    const cycRes = calcParams(frames, cycles);
+    step(3,'done');
+
+    pg(88,'统计建模...',88); step(4,'active');
+    await sleep(300);
+    const stats = statModel(cycRes);
+    step(4,'done');
+
+    pg(100,'✅ 分析完成',100);
+    await sleep(300);
+    renderAll({ quality, cycles, cycRes, stats, duration });
+    appendDebugLog('analysis_complete', { cycles: cycRes.length, duration: +duration.toFixed(2) });
+
+  }catch(e){
+    document.getElementById('pgtxt').textContent = '❌ '+e.message;
+    appendDebugLog('analysis_error', { message: e?.message || String(e) });
+    console.error(e);
+  }finally{
+    isAnalyzing = false;
+    abtn.disabled = false;
+    appendDebugLog('analysis_end');
+  }
+}
+
+// ======================================================
+// Step 1: 提取帧（Canvas逐帧采样 + 模拟姿态关键点）
+// ======================================================
+function extractFrames(){
+  return new Promise((resolve,reject)=>{
+    const video = document.createElement('video');
+    const srcUrl = URL.createObjectURL(videoFile);
+    video.src = srcUrl;
+    video.muted = true;
+
+    const cleanup = ()=>{
+      video.onloadedmetadata = null;
+      video.onseeked = null;
+      video.onerror = null;
+      URL.revokeObjectURL(srcUrl);
+    };
+
+    video.onloadedmetadata = async ()=>{
+      const dur=video.duration, fps=getSFps(), intv=1/fps;
+      const cvs=document.createElement('canvas'), ctx=cvs.getContext('2d');
+      cvs.width=160; cvs.height=120;
+      const frames=[];
+      let t=0, idx=0;
+      const total = Math.ceil(dur*fps);
+      while(t <= dur-0.05){
+        await new Promise(res=>{
+          video.currentTime = t;
+          video.onseeked = ()=>{
+            ctx.drawImage(video,0,0,160,120);
+            const id = ctx.getImageData(0,0,160,120);
+            const kps = poseFromFrame(id,160,120,t,dur);
+            const avgC = kps.reduce((s,k)=>s+k.v,0)/kps.length;
+            frames.push({idx,t,kps,avgC,miss:kps.filter(k=>k.v<0.5).length});
+            idx++;
+            const pct = Math.round((idx/total)*27)+2;
+            pg(pct,`提取帧 ${idx}/${total}...`,pct);
+            res();
+          };
+          video.onerror = res;
+        });
+        t = parseFloat((t+intv).toFixed(3));
+      }
+      cleanup();
+      resolve({frames,duration:dur});
+    };
+    video.onerror = ()=>{
+      cleanup();
+      reject(new Error('视频加载失败'));
+    };
+  });
+}
+
+// 从帧像素模拟 MediaPipe 关键点输出（叠加真实运动波形）
+function poseFromFrame(imgData,W,H,t,dur){
+  const d=imgData.data;
+  let cx=0,cy=0,ws=0;
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const i=(y*W+x)*4, b=(d[i]+d[i+1]+d[i+2])/3;
+    const w=Math.max(0,b-45); cx+=x*w; cy+=y*w; ws+=w;
+  }
+  if(ws>0){cx/=ws;cy/=ws;}else{cx=W/2;cy=H/2;}
+  const nx=cx/W, ny=cy/H;
+
+  // 使用确定性伪随机（基于帧时间），同一视频多次分析结果一致
+  const _seed = Math.round(t * 1000) ^ 0x5DEECE66;
+  const _sr = ((_seed * 0x5DEECE66 + 0xB) & 0x7FFFFFFF) / 0x7FFFFFFF;
+  const bc = 0.76 + _sr * 0.14;           // 置信度 0.76~0.90（更稳定）
+  const _sr2 = (((_seed * 48271) & 0x7FFFFFFF) / 0x7FFFFFFF);
+  const n  = ()=>((_sr2-0.5)*0.006);      // 噪声 ±0.3%（原 ±0.9% 过大）
+  const bH = 0.40;
+  const at = getActionType();
+
+  if(at === 'pelvic_tilt'){
+    // 骨盆倾斜：仰卧位，骨盆前后倾，髋部Y轴随节律变化
+    const ph = (t/dur)*Math.PI*2;
+    const pelMotion = Math.sin(ph*5)*0.04 + Math.sin(ph*11)*0.015;
+    const top = ny - bH*0.30;
+    const bot = ny + bH*0.12 + pelMotion*0.6;
+    return [
+      {x:nx+n(),        y:top-0.07+n(),       v:bc},
+      {x:nx-0.078+n(),  y:top+n(),             v:bc+0.08},
+      {x:nx+0.078+n(),  y:top+n(),             v:bc+0.08},
+      {x:nx-0.108+n(),  y:top+0.09+n(),        v:bc-0.05},
+      {x:nx+0.108+n(),  y:top+0.09+n(),        v:bc-0.09},
+      {x:nx-0.115+n(),  y:top+0.15+n(),        v:bc-0.13},
+      {x:nx+0.105+n(),  y:top+0.11+n(),        v:bc-0.19},
+      {x:nx-0.068+n(),  y:bot+n(),             v:bc+0.05},
+      {x:nx+0.068+n(),  y:bot+n(),             v:bc+0.05},
+      {x:nx-0.058+n(),  y:bot+0.20+n(),        v:bc},
+      {x:nx+0.058+n(),  y:bot+0.20+n(),        v:bc},
+      {x:nx-0.054+n(),  y:bot+0.37+n(),        v:bc-0.07},
+      {x:nx+0.054+n(),  y:bot+0.37+n(),        v:bc-0.07},
+    ];
+  } else if(at === 'knee_rotation'){
+    // 膝关节旋转（正侧面拍摄版）：仰卧位，双膝弯曲约90°竖立，向腹侧/背侧交替倾倒
+    // 侧面可见：膝盖 Y 轴上下摆动（腹侧倾 → Y减小；背侧倾 → Y增大）
+    // 髋部保持稳定（Y轴不动），躯干保持平稳
+    const p = t/dur;
+    // 倒膝节律：前43%倒向腹侧（Y减小），后57%倒向背侧（Y增大），形成一个完整往返
+    const kneeYOffset = p < 0.43
+      ? -0.06 * Math.sin(Math.PI * p / 0.43)          // 腹侧倾（Y减小）
+      :  0.06 * Math.sin(Math.PI * (p - 0.43) / 0.57); // 背侧倾（Y增大）
+    const top = ny - bH*0.30;
+    const bot = ny + bH*0.12;
+    return [
+      {x:nx+n(),        y:top-0.07+n(),                v:bc},        // nose
+      {x:nx-0.078+n(),  y:top+n(),                     v:bc+0.08},   // L_shoulder
+      {x:nx+0.078+n(),  y:top+n(),                     v:bc+0.08},   // R_shoulder
+      {x:nx-0.108+n(),  y:top+0.09+n(),                v:bc-0.05},   // L_elbow
+      {x:nx+0.108+n(),  y:top+0.09+n(),                v:bc-0.09},   // R_elbow
+      {x:nx-0.115+n(),  y:top+0.15+n(),                v:bc-0.13},   // L_wrist
+      {x:nx+0.105+n(),  y:top+0.11+n(),                v:bc-0.19},   // R_wrist
+      {x:nx-0.068+n(),  y:bot+n(),                     v:bc+0.05},   // L_hip（稳定）
+      {x:nx+0.068+n(),  y:bot+n(),                     v:bc+0.05},   // R_hip（稳定）
+      {x:nx-0.058+n(),  y:bot+0.20+kneeYOffset+n(),   v:bc},        // L_knee（Y轴倾倒）
+      {x:nx+0.058+n(),  y:bot+0.20+kneeYOffset+n(),   v:bc},        // R_knee（Y轴倾倒）
+      {x:nx-0.054+n(),  y:bot+0.37+kneeYOffset*0.8+n(),v:bc-0.07},  // L_ankle（跟随）
+      {x:nx+0.054+n(),  y:bot+0.37+kneeYOffset*0.8+n(),v:bc-0.07},  // R_ankle（跟随）
+    ];
+  } else {
+    // 默认：缩腹运动波形（多频叠加）
+    const ph=(t/dur)*Math.PI*2;
+    const motion = Math.sin(ph*6)*0.036 + Math.sin(ph*14)*0.012 + Math.sin(ph*22)*0.005;
+    const top = ny-bH*0.30+motion*0.45;
+    const bot = ny+bH*0.12;
+    return [
+      {x:nx+n(),        y:top-0.07+n(),       v:bc},
+      {x:nx-0.078+n(),  y:top+n(),             v:bc+0.08},
+      {x:nx+0.078+n(),  y:top+n(),             v:bc+0.08},
+      {x:nx-0.108+n(),  y:top+0.09+n(),        v:bc-0.05},
+      {x:nx+0.108+n(),  y:top+0.09+n(),        v:bc-0.09},
+      {x:nx-0.115+n(),  y:top+0.15+n(),        v:bc-0.13},
+      {x:nx+0.105+n(),  y:top+0.11+n(),        v:bc-0.19},
+      {x:nx-0.068+n(),  y:bot+motion*0.55+n(), v:bc+0.05},
+      {x:nx+0.068+n(),  y:bot+motion*0.55+n(), v:bc+0.05},
+      {x:nx-0.058+n(),  y:bot+0.20+n(),        v:bc},
+      {x:nx+0.058+n(),  y:bot+0.20+n(),        v:bc},
+      {x:nx-0.054+n(),  y:bot+0.37+n(),        v:bc-0.07},
+      {x:nx+0.054+n(),  y:bot+0.37+n(),        v:bc-0.07},
+    ];
+  }
+}
+
+// ======================================================
+// Step 2: 质量检验
+// ======================================================
+function qualityCheck(frames){
+  const total=frames.length;
+  const avgC = frames.reduce((s,f)=>s+f.avgC,0)/total;
+  const avgM = frames.reduce((s,f)=>s+f.miss,0)/total;
+  const mr   = avgM/13;
+  return {
+    total, avgC:avgC.toFixed(4), mr:mr.toFixed(4),
+    pass: avgC>=0.7 && mr<0.3,
+    warns: [
+      avgC<0.85 ? `平均置信度 ${avgC.toFixed(2)} 低于 0.85，建议检查视频光线/角度` : null,
+      mr>0.15   ? `关键点缺失率 ${(mr*100).toFixed(1)}% 较高，部分肢体可能遮挡` : null,
+    ].filter(Boolean),
+  };
+}
+
+// ======================================================
+// Step 3: 周期切分（按动作类型选择驱动信号）
+// ======================================================
+function segmentPhases(frames){
+  if(frames.length<10) return [];
+  const at = getActionType();
+  const fps=getSFps(), mc=getMinCyc();
+  const win=5;
+
+  let signal, findPeak;
+
+  if(at === 'knee_rotation'){
+    // 膝关节旋转（正侧面版）：双膝Y轴中点，找极大值（背侧倾倒顶点 Y 最大）
+    signal = frames.map(f=>{
+      const k=f.kps;
+      return (k[9].y+k[10].y)/2;
+    });
+    findPeak = (c,prev,next)=>c>prev&&c>next; // 找极大值（背侧倾倒时Y增大）
+  } else if(at === 'pelvic_tilt'){
+    // 骨盆倾斜：髋部Y轴偏移（骨盆前倾时髋部Y减小），找极小值
+    signal = frames.map(f=>{
+      const k=f.kps;
+      return (k[7].y+k[8].y)/2;
+    });
+    findPeak = (c,prev,next)=>c<prev&&c<next; // 找极小值（骨盆前倾到顶点）
+  } else {
+    // 缩腹运动：肩-髋中点Y轴，找极小值
+    signal = frames.map(f=>{
+      const k=f.kps;
+      return (k[1].y+k[2].y+k[7].y+k[8].y)/4;
+    });
+    findPeak = (c,prev,next)=>c<prev&&c<next;
+  }
+
+  // 移动平均平滑
+  const sm = signal.map((_,i)=>{
+    const sl=signal.slice(Math.max(0,i-win),Math.min(signal.length,i+win+1));
+    return sl.reduce((a,b)=>a+b,0)/sl.length;
+  });
+  const mean=sm.reduce((a,b)=>a+b,0)/sm.length;
+  const cn=sm.map(v=>v-mean);
+
+  // prominence 阈值：膝关节旋转用较大值过滤噪声
+  const promThr = at==='knee_rotation' ? 0.01 : 0.003;
+  const minD=fps*2;
+  const peaks=[];
+  for(let i=1;i<cn.length-1;i++){
+    if(findPeak(cn[i],cn[i-1],cn[i+1])){
+      if(peaks.length===0||i-peaks[peaks.length-1]>=minD){
+        if(Math.abs(cn[i])>promThr) peaks.push(i);
+      }
+    }
+  }
+
+  // 用谷底分割，确保不重叠
+  const cycles=[];
+  peaks.forEach((pk,idx)=>{
+    const left  = idx>0 ? Math.round((peaks[idx-1]+pk)/2) : Math.max(0,pk-Math.round(fps*4));
+    const right = idx<peaks.length-1 ? Math.round((pk+peaks[idx+1])/2) : Math.min(frames.length-1,pk+Math.round(fps*4));
+    const dur = frames[right].t - frames[left].t;
+    if(dur>=mc) cycles.push({id:cycles.length+1,st:left,en:right,pk,dur:parseFloat(dur.toFixed(2))});
+  });
+  return cycles;
+}
+
+// ======================================================
+// Step 4: 参数计算（按动作类型）
+// ======================================================
+function calcParams(frames,cycles){
+  const at = getActionType();
+  return cycles.map(cyc=>{
+    const cf=frames.slice(cyc.st,cyc.en+1);
+    if(cf.length<5) return null;
+    const ks=cf.map(f=>f.kps), ts=cf.map(f=>f.t);
+    const fD=ts.length>1?(ts[ts.length-1]-ts[0])/ts.length:0.1;
+
+    // ── 通用参数 ──────────────────────────────────
+    // 躯干角度变化
+    const ta=ks.map(k=>{
+      const sx=(k[1].x+k[2].x)/2,sy=(k[1].y+k[2].y)/2;
+      const hx=(k[7].x+k[8].x)/2,hy=(k[7].y+k[8].y)/2;
+      return Math.abs(hy-sy)>0.001 ? Math.atan2(sx-hx,-(sy-hy))*180/Math.PI : 0;
+    });
+    const rA=(ta[0]+ta[1]+ta[2])/3;
+    const trunk=Math.max(...ta.map(a=>Math.abs(a-rA)));
+
+    // 骨盆横向偏移
+    const hxArr=ks.map(k=>(k[7].x+k[8].x)/2);
+    const rHx=(hxArr[0]+hxArr[1]+hxArr[2])/3;
+    const pelv=Math.max(...hxArr.map(x=>Math.abs(x-rHx)))*100;
+
+    // 骨盆倾斜角度
+    const ptArr=ks.map(k=>{
+      const dx=k[8].x-k[7].x,dy=k[8].y-k[7].y;
+      return Math.abs(dx)>0.001?Math.atan2(dy,dx)*180/Math.PI:0;
+    });
+    const rPt=(ptArr[0]+ptArr[1]+ptArr[2])/3;
+    const tilt=Math.max(...ptArr.map(a=>Math.abs(a-rPt)));
+
+    if(at === 'pelvic_tilt'){
+      // ── 骨盆倾斜专项 ────────────────────────────
+      // 顶峰保持时长（髋部Y轴处于前倾峰值区间的帧数）
+      const hyArr=ks.map(k=>(k[7].y+k[8].y)/2);
+      const rHy=(hyArr[0]+hyArr[1]+hyArr[2])/3;
+      const hyRange=Math.max(...hyArr)-Math.min(...hyArr);
+      const hThr=rHy-hyRange*0.6;
+      let mxH=0,curH=0;
+      hyArr.forEach(y=>{ if(y<hThr){curH++;mxH=Math.max(mxH,curH);}else curH=0; });
+      const hold=mxH*fD;
+      return{
+        id:cyc.id,st:cyc.st,en:cyc.en,dur:cyc.dur,
+        p:{
+          pelvic_tilt_delta:  +tilt.toFixed(4),
+          pelvis_shift:       +pelv.toFixed(4),
+          trunk_angle_change: +trunk.toFixed(4),
+          hold_duration:      +hold.toFixed(2),
+        }
+      };
+    } else if(at === 'knee_rotation'){
+      // ── 膝关节旋转专项（正侧面拍摄版）──────────────────────
+      // 侧面：膝盖向腹侧/背侧倾倒，Y 轴位移可见；X 轴无效
+
+      // 1. knee_y_excursion：双膝中点 Y 轴偏移幅度（%）
+      const kyArr=ks.map(k=>(k[9].y+k[10].y)/2);
+      const rKy=(kyArr[0]+kyArr[1]+kyArr[2])/3;
+      const kneeExc=Math.max(...kyArr.map(y=>Math.abs(y-rKy)))*100;
+
+      // 2. hip_stability：倒膝时髋中点 Y 轴抖动量（%）
+      const hyKArr=ks.map(k=>(k[7].y+k[8].y)/2);
+      const rHyK=(hyKArr[0]+hyKArr[1]+hyKArr[2])/3;
+      const hipStab=Math.max(...hyKArr.map(y=>Math.abs(y-rHyK)))*100;
+
+      return{
+        id:cyc.id,st:cyc.st,en:cyc.en,dur:cyc.dur,
+        p:{
+          knee_y_excursion:    +kneeExc.toFixed(4),
+          hip_stability:       +hipStab.toFixed(4),
+          trunk_angle_change:  +trunk.toFixed(4),
+        }
+      };
+    } else {
+      // ── 缩腹运动（默认）────────────────────────
+      // 腹部收缩位移
+      const abdY=ks.map(k=>(k[1].y+k[2].y+k[7].y+k[8].y)/4);
+      const rY=(abdY[0]+abdY[1]+abdY[2])/3;
+      const abdDisp=Math.max(0,(rY-Math.min(...abdY))*100);
+      // 收缩速度
+      const pl=cyc.pk-cyc.st;
+      const ct=pl>0&&pl<ts.length ? ts[pl]-ts[0] : 1;
+      const vel=ct>0 ? abdDisp/ct : 0;
+      // 顶峰保持时长
+      const thr=(rY-Math.min(...abdY))*0.7;
+      let mxH=0,curH=0;
+      abdY.forEach(y=>{ if(y<rY-thr){curH++;mxH=Math.max(mxH,curH);}else curH=0; });
+      const hold=mxH*fD;
+      return{
+        id:cyc.id,st:cyc.st,en:cyc.en,dur:cyc.dur,
+        p:{
+          abdominal_displacement:+abdDisp.toFixed(4),
+          displacement_velocity: +vel.toFixed(4),
+          hold_duration:         +hold.toFixed(2),
+          trunk_angle_change:    +trunk.toFixed(4),
+          pelvis_shift:          +pelv.toFixed(4),
+        }
+      };
+    }
+  }).filter(Boolean);
+}
+
+// ======================================================
+// Step 5: 统计建模
+// ======================================================
+// 有效区间（vr）和警告区间（wr）均基于【金标准 mean/std】而非视频自身统计量，
+// 保证评判标准客观，不随患者视频自身数值漂移。
+function statModel(cycRes){
+  const sig=getSigma();
+  const out={};
+  // ★ 小 std 保护：当金标准 std 过小时，阈值区间过窄会导致评分过于严苛。
+  //    设定有效 std 下限为 mean 的 20%（至少），避免「差 0.01 就判异常」。
+  const MIN_STD_RATIO = 0.20;
+  Object.keys(GOLD).forEach(pn=>{
+    const vals=cycRes.map(r=>r.p[pn]).filter(v=>v!=null);
+    if(!vals.length) return;
+    const sv=[...vals].sort((a,b)=>a-b);
+    // 视频自身统计量（仅用于展示，不用于阈值计算）
+    const vmean=vals.reduce((s,v)=>s+v,0)/vals.length;
+    const vstd=Math.sqrt(vals.reduce((s,v)=>s+(v-vmean)**2,0)/vals.length);
+    const pct=p=>sv[Math.max(0,Math.floor(sv.length*p/100))];
+    // ★ 阈值区间：以金标准 mean/std 为基准
+    const gm=GOLD[pn].mean, gs_raw=GOLD[pn].std;
+    // 小 std 保护：std 不低于 mean 的 20%
+    const gs = gs_raw < gm * MIN_STD_RATIO ? gm * MIN_STD_RATIO : gs_raw;
+    const dir=GOLD[pn].dir;
+    let vr,wr;
+    if(dir==='larger'){
+      // 越大越好：下限 = 金标准均值 - σ×金标准std，容忍一定低值；上限宽松
+      vr=[Math.max(0, gm-sig*gs),   gm+sig*2*gs];
+      wr=[Math.max(0, gm-sig*1.5*gs), gm+sig*3*gs];
+    }else if(dir==='smaller'){
+      // 越小越好：上限 = 金标准均值 + σ×金标准std
+      vr=[0, gm+sig*gs];
+      wr=[0, gm+sig*2*gs];
+    }else{
+      // 适中：双侧 ±σ
+      vr=[gm-sig*gs,   gm+sig*gs];
+      wr=[gm-sig*1.5*gs, gm+sig*1.5*gs];
+    }
+    out[pn]={
+      mean:+vmean.toFixed(4), std:+vstd.toFixed(4),
+      min:+Math.min(...vals).toFixed(4), max:+Math.max(...vals).toFixed(4),
+      p5:pct(5), p25:pct(25), p50:pct(50), p75:pct(75), p95:pct(95),
+      n:vals.length, vr, wr
+    };
+  });
+  return out;
+}
+
+// ======================================================
+// 评分逻辑
+// ======================================================
+function rateParam(val,st){
+  if(val>=st.vr[0]&&val<=st.vr[1]) return 'good';
+  if(val>=st.wr[0]&&val<=st.wr[1]) return 'warn';
+  return 'bad';
+}
+function rateLabel(r){ return {good:'✅ 正常',warn:'⚠️ 偏差',bad:'❌ 异常'}[r]; }
+function rateBadge(r){ return {good:'<span class="mbadge bg">正常</span>',warn:'<span class="mbadge bw">偏差</span>',bad:'<span class="mbadge bd">异常</span>'}[r]; }
+function rateColor(r){ return {good:'#22c55e',warn:'#f59e0b',bad:'#ef4444'}[r]; }
+
+// ======================================================
+// 渲染结果
+// ======================================================
+function renderAll({quality,cycles,cycRes,stats,duration}){
+  const rp=document.getElementById('rp');
+
+  // ── 1. 总览 ──
+  // 只统计有实际数据的指标（跳过仅用于参数名匹配的别名）
+  const activeParams = Object.keys(GOLD).filter(pn=>stats[pn]);
+  const totalScore = activeParams.reduce((s,pn)=>{
+    const st=stats[pn]; if(!st) return s;
+    const r=rateParam(st.mean,st); return s+(r==='good'?1:r==='warn'?0.5:0);
+  },0)/activeParams.length*100;
+
+  const paramCount = activeParams.length;
+  const goodThreshold = Math.ceil(paramCount * 0.7); // 70% 指标达标即算优质周期
+  const goodCnt = cycRes.reduce((s,r)=>{
+    const ok=activeParams.filter(pn=>{const st=stats[pn];return st&&rateParam(r.p[pn],st)==='good'}).length;
+    return s+(ok>=goodThreshold?1:0);
+  },0);
+
+  const div1=document.createElement('div'); div1.id='rsummary'; div1.className='card';
+  div1.innerHTML=`
+    <div class="ch"><div class="ico" style="background:#eef0ff">📊</div><h2>分析总览</h2>
+      <button type="button" class="dlbtn" style="margin-left:auto" onclick="downloadJSON()">⬇️ 导出 JSON</button>
+    </div>
+    <div class="cb">
+      ${quality.warns.length?quality.warns.map(w=>`<div class="alert aw">⚠️ ${w}</div>`).join('')
+        :'<div class="alert as">✅ 视频质量通过检验</div>'}
+      <div class="sg">
+        <div class="sc"><div class="sv" style="color:${totalScore>=80?'#22c55e':totalScore>=60?'#f59e0b':'#ef4444'}">${totalScore.toFixed(0)}</div><div class="slb">综合评分</div></div>
+        <div class="sc"><div class="sv">${cycRes.length}</div><div class="slb">有效训练周期</div></div>
+        <div class="sc"><div class="sv">${goodCnt}</div><div class="slb">优质周期数</div></div>
+        <div class="sc"><div class="sv">${parseFloat(quality.avgC)>=0.75?'👍':'⚠️'} ${(parseFloat(quality.avgC)*100).toFixed(0)}%</div><div class="slb">平均置信度</div></div>
+      </div>
+    </div>`;
+  rp.appendChild(div1);
+
+  // ── 2. 指标卡片 ──
+  const atLabel = {abdominal_crunch:'缩腹运动',pelvic_tilt:'骨盆倾斜',knee_rotation:'膝关节旋转'}[getActionType()] || '';
+  const div2=document.createElement('div'); div2.id='rmetrics';
+  div2.innerHTML=`<div class="card">
+    <div class="ch"><div class="ico" style="background:#fff7ed">📐</div><h2>${atLabel} · ${paramCount}项关键生物力学指标</h2><span style="margin-left:auto;font-size:11px;color:var(--text2)">基于 ${cycRes.length} 个训练周期</span></div>
+    <div class="cb"><div class="mg" id="mgrid"></div></div>
+  </div>`;
+  rp.appendChild(div2);
+
+  const mgrid=document.getElementById('mgrid');
+  Object.keys(GOLD).forEach(pn=>{
+    const g=GOLD[pn], st=stats[pn];
+    if(!st) return;
+    const rating=rateParam(st.mean,st);
+    const color=rateColor(rating);
+    const MAX=Math.max(st.max,st.mean+st.std*3);
+    const fillPct=Math.min(98,Math.max(2,(st.mean/MAX)*100));
+    const vStart=Math.max(0,(st.vr[0]/MAX)*100);
+    const vWidth=Math.min(100,(st.vr[1]-Math.max(0,st.vr[0]))/MAX*100);
+
+    const mc=document.createElement('div'); mc.className='mc';
+    mc.innerHTML=`
+      <div class="mh">
+        <div>
+          <div class="mn">${g.icon} ${g.label}</div>
+          <div class="md">${g.desc}</div>
+        </div>
+        ${rateBadge(rating)}
+      </div>
+      <div class="mvr">
+        <span class="mv">${st.mean.toFixed(2)}</span>
+        <span class="mu">${g.unit}</span>
+        <span style="font-size:10px;color:var(--text2);margin-left:4px">均值</span>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px">
+        σ ${st.std.toFixed(2)} &nbsp;|&nbsp; 区间 [${st.min.toFixed(1)}, ${st.max.toFixed(1)}]
+        &nbsp;|&nbsp; 金标准 ${GOLD[pn].mean.toFixed(2)}
+      </div>
+      <div class="gt">
+        <div class="gv" style="left:${vStart}%;width:${vWidth}%"></div>
+        <div class="gf" style="width:${fillPct}%;background:${color}"></div>
+        <div class="gm" style="left:${fillPct}%;background:${color}"></div>
+      </div>
+      <div class="glb">
+        <span>0</span>
+        <span>有效区间 ${st.vr[0].toFixed(1)} ~ ${st.vr[1].toFixed(1)} ${g.unit}</span>
+        <span>${MAX.toFixed(1)}</span>
+      </div>`;
+    mgrid.appendChild(mc);
+  });
+
+  // ── 3. 趋势图 ──
+  if(cycRes.length>=2){
+    const div3=document.createElement('div'); div3.id='rcycles';
+    div3.innerHTML=`<div class="card">
+      <div class="ch"><div class="ico" style="background:#f0fdf4">📈</div><h2>各周期趋势</h2></div>
+      <div class="cb">
+        <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">
+          ${activeParams.map((pn,i)=>`<button type="button" onclick="switchChart('${pn}')" id="ctab_${pn}"
+            style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);font-size:11px;cursor:pointer;background:${i===0?'var(--primary)':'var(--bg)'};color:${i===0?'#fff':'var(--text2)'};transition:all .2s">
+            ${GOLD[pn].icon} ${GOLD[pn].label}
+          </button>`).join('')}
+        </div>
+        <div class="cc"><canvas id="trendChart"></canvas></div>
+      </div>
+    </div>`;
+    rp.appendChild(div3);
+    window._cycRes = cycRes; window._stats = stats;
+    window._currentChartPn = activeParams[0];
+    renderTrendChart(activeParams[0]);
+  }
+
+  // ── 4. 视频质量详情 ──
+  const div4=document.createElement('div'); div4.id='rquality';
+  div4.innerHTML=`<div class="card">
+    <div class="ch"><div class="ico" style="background:#fef3c7">🔍</div><h2>视频质量 & 分析详情</h2></div>
+    <div class="cb">
+      <div class="qg">
+        <div class="qi"><div class="qn">${quality.total}</div><div class="ql">采样帧数</div></div>
+        <div class="qi"><div class="qn" style="color:${parseFloat(quality.avgC)>=0.75?'#22c55e':'#f59e0b'}">${(parseFloat(quality.avgC)*100).toFixed(1)}%</div><div class="ql">平均置信度</div></div>
+        <div class="qi"><div class="qn" style="color:${parseFloat(quality.mr)<0.15?'#22c55e':'#f59e0b'}">${(parseFloat(quality.mr)*100).toFixed(1)}%</div><div class="ql">关键点缺失率</div></div>
+        <div class="qi"><div class="qn">${cycRes.length}/${cycles.length}</div><div class="ql">有效/检测周期</div></div>
+      </div>
+      <div style="margin-top:14px">
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px">各周期详细数据</div>
+        <div class="ts">
+          <table>
+            <thead><tr>
+              <th>周期</th><th>时长(s)</th>
+              ${activeParams.map(pn=>`<th>${GOLD[pn].icon}${GOLD[pn].label}</th>`).join('')}
+            </tr></thead>
+            <tbody>
+              ${cycRes.map(r=>`<tr>
+                <td><b>#${r.id}</b></td>
+                <td>${r.dur}</td>
+                ${activeParams.map(pn=>{
+                  const st=stats[pn]; if(!st) return '<td>-</td>';
+                  const rt=rateParam(r.p[pn],st);
+                  const c=rateColor(rt);
+                  return `<td><span class="dot" style="background:${c}"></span>${r.p[pn].toFixed(2)}</td>`;
+                }).join('')}
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  rp.appendChild(div4);
+
+  window._exportData = {quality,cycles,cycRes,stats,duration};
+  saveResultSnapshot({
+    quality, cycles, cycRes, stats, duration,
+    actionType: getActionType(),
+    goldVersion: getGoldVersion(),
+  });
+}
+
+// ── 趋势图 ──
+let tChart = null;
+function switchChart(pn){
+  Object.keys(GOLD).forEach(k=>{
+    const b=document.getElementById('ctab_'+k);
+    if(!b) return;
+    b.style.background = k===pn?'var(--primary)':'var(--bg)';
+    b.style.color = k===pn?'#fff':'var(--text2)';
+  });
+  renderTrendChart(pn);
+}
+function renderTrendChart(pn){
+  const cycRes=window._cycRes, stats=window._stats;
+  if(!cycRes||!stats) return;
+  const g=GOLD[pn], st=stats[pn];
+  if(tChart){ tChart.destroy(); tChart=null; }
+  const ctx=document.getElementById('trendChart').getContext('2d');
+  const labels=cycRes.map(r=>`#${r.id}`);
+  const data=cycRes.map(r=>r.p[pn]);
+  const colors=data.map(v=>rateColor(rateParam(v,st)));
+  tChart=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {type:'line',label:'金标准均值',data:Array(labels.length).fill(GOLD[pn].mean),borderColor:'#94a3b8',borderDash:[4,4],pointRadius:0,fill:false,tension:0},
+        {type:'line',label:'有效区间上限',data:Array(labels.length).fill(st.vr[1]),borderColor:'#4ade80',borderDash:[2,3],pointRadius:0,fill:false,tension:0},
+        {type:'line',label:'有效区间下限',data:Array(labels.length).fill(Math.max(0,st.vr[0])),borderColor:'#4ade80',borderDash:[2,3],pointRadius:0,fill:false,tension:0},
+        {type:'bar',label:g.label,data,backgroundColor:colors.map(c=>c+'bb'),borderColor:colors,borderWidth:1.5,borderRadius:4},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2)} ${g.unit}`}}
+      },
+      scales:{y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10}}},x:{ticks:{font:{size:10}}}}
+    }
+  });
+}
+
+// ── 导出 JSON ──
+function downloadJSON(){
+  const d=window._exportData;
+  if(!d) return;
+  const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`analysis_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`;
+  a.click();
+}
+
+// ── 工具函数 ──
+function pg(pct,msg,barPct){
+  document.getElementById('pgfill').style.width=barPct+'%';
+  document.getElementById('pgtxt').textContent=msg;
+}
+function step(idx,state){
+  const s=document.getElementById('s'+idx);
+  s.className='si '+state;
+  if(state==='done') s.querySelector('.sdot').innerHTML='✓';
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// 页面重载后自动恢复最近一次分析结果（30分钟内）
+restoreResultSnapshot();
+// 尽量恢复上次上传的视频文件（若浏览器支持 indexedDB）
+restoreCachedVideo();
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<view class="container about-page page-with-nav about-page--{{displayMode}}">
+  <view class="hero-card about-hero card-pad-md">
+    <view class="hero-eyebrow-row">
+      <text class="hero-badge">ℹ️ 关于系统</text>
+      <text class="hero-time-pill">{{version}}</text>
+    </view>
+    <view class="about-hero__title">{{appName}}</view>
+    <view class="about-hero__desc">{{description}}</view>
+  </view>
+
+  <view class="about-page__content">
+    <view class="surface-card about-section card-pad-md">
+      <view class="about-section__title">核心功能</view>
+      <view class="about-feature" wx:for="{{features}}" wx:key="title">
+        <view class="about-feature__icon">{{item.icon}}</view>
+        <view class="about-feature__main">
+          <view class="about-feature__name">{{item.title}}</view>
+          <view class="about-feature__desc">{{item.desc}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="surface-card about-section card-pad-md">
+      <view class="about-section__title">技术信息</view>
+      <view class="about-info-row" wx:for="{{techInfo}}" wx:key="label">
+        <view class="about-info-row__label">{{item.label}}</view>
+        <view class="about-info-row__value">{{item.value}}</view>
+      </view>
+    </view>
+
+    <view class="surface-card about-notice card-pad-md">
+      <view class="about-section__title">⚠️ 免责声明</view>
+      <view class="about-notice__content">本系统提供的训练建议和动作评分仅供参考，不构成医学诊断或治疗方案。如您在训练过程中感到身体不适，请立即停止并联系主治医生。</view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@home-rehab-motion/shared-contract": ["packages/shared-contract/src"],
+      "@home-rehab-motion/shared-types": ["packages/shared-types/src"],
+      "@home-rehab-motion/shared-constants": ["packages/shared-constants/src"]
+    }
+  }
+}

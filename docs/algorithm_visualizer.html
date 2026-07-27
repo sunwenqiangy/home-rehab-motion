@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>动作分析规则计算可视化</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+:root{
+  --primary:#4fc3f7;--success:#52c41a;--warning:#faad14;--error:#ff4d4f;
+  --orange:#fa8c16;--purple:#722ed1;--bg:#0f1117;--card:#161b2e;
+  --border:rgba(255,255,255,0.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'PingFang SC',sans-serif;background:var(--bg);color:#e8eaf0;min-height:100vh;}
+.hdr{background:linear-gradient(135deg,#0d1117,#161b2e);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;}
+.hdr h1{font-size:18px;font-weight:700;}
+.hdr h1 span{color:var(--primary);}
+.htag{padding:3px 10px;border-radius:20px;font-size:12px;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.6);margin-left:6px;}
+.tab-nav{display:flex;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);padding:0 28px;overflow-x:auto;}
+.tbtn{padding:12px 18px;cursor:pointer;border:none;background:none;color:rgba(255,255,255,0.45);font-size:13px;font-weight:500;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;}
+.tbtn:hover{color:rgba(255,255,255,0.8);}
+.tbtn.active{color:var(--primary);border-bottom-color:var(--primary);}
+.page{display:none;padding:24px 28px;}
+.page.active{display:block;}
+.card{background:var(--card);border-radius:12px;padding:20px;border:1px solid var(--border);}
+.card-title{font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.card-sub{font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:14px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:18px;}
+.info-box{background:rgba(79,195,247,0.06);border-left:3px solid var(--primary);padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:10px;font-size:12px;color:rgba(255,255,255,0.6);line-height:1.7;}
+.warn-box{background:rgba(250,173,20,0.06);border-left:3px solid var(--warning);padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:10px;font-size:12px;color:rgba(255,255,255,0.55);line-height:1.7;}
+.ok-box{background:rgba(82,196,26,0.06);border-left:3px solid var(--success);padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:10px;font-size:12px;color:rgba(255,255,255,0.55);line-height:1.7;}
+/* ─── 关键点页面 ─── */
+.kp-layout{display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start;}
+.skeleton-wrap{background:var(--card);border-radius:12px;padding:16px;border:1px solid var(--border);position:sticky;top:20px;}
+.skeleton-wrap h3{font-size:13px;font-weight:700;color:#fff;margin-bottom:10px;text-align:center;}
+.action-sel{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;justify-content:center;}
+.asel-btn{padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:rgba(255,255,255,0.5);font-size:11px;cursor:pointer;transition:all .2s;}
+.asel-btn.active{border-color:var(--primary);color:var(--primary);background:rgba(79,195,247,0.1);}
+/* SVG骨架 */
+.skeleton-svg{width:100%;height:440px;}
+.bone{stroke:rgba(255,255,255,0.15);stroke-width:2;fill:none;}
+.bone.active{stroke:#4fc3f7;stroke-width:2.5;}
+.kp-dot{cursor:pointer;transition:all .2s;}
+.kp-dot circle{fill:#2a3050;stroke:rgba(255,255,255,0.3);stroke-width:1.5;}
+.kp-dot text{fill:rgba(255,255,255,0.5);font-size:8px;font-family:monospace;}
+.kp-dot.used circle{fill:rgba(79,195,247,0.2);stroke:var(--primary);stroke-width:2;}
+.kp-dot.used text{fill:var(--primary);}
+.kp-dot.key circle{fill:rgba(255,77,79,0.25);stroke:#ff4d4f;stroke-width:2.5;}
+.kp-dot.key text{fill:#ff4d4f;font-weight:700;}
+.kp-dot:hover circle{stroke:#fff;stroke-width:2.5;}
+/* 右侧详情 */
+.detail-panel{display:flex;flex-direction:column;gap:16px;}
+.action-tabs{display:flex;gap:0;background:rgba(255,255,255,0.04);border-radius:8px;padding:3px;margin-bottom:4px;}
+.atab{flex:1;padding:8px;border:none;background:none;color:rgba(255,255,255,0.45);border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;}
+.atab.active{background:rgba(79,195,247,0.15);color:var(--primary);}
+/* 计算步骤 */
+.calc-steps{display:flex;flex-direction:column;gap:0;}
+.step{display:flex;gap:0;align-items:stretch;}
+.step-line{display:flex;flex-direction:column;align-items:center;width:32px;flex-shrink:0;}
+.step-num{width:24px;height:24px;border-radius:50%;background:rgba(79,195,247,0.15);border:1px solid rgba(79,195,247,0.4);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--primary);flex-shrink:0;}
+.step-vline{flex:1;width:1px;background:rgba(79,195,247,0.2);margin:2px 0;}
+.step-content{flex:1;padding:0 0 18px 10px;}
+.step-title{font-size:12px;font-weight:700;color:#fff;margin-bottom:6px;}
+.step-body{font-size:11px;color:rgba(255,255,255,0.55);line-height:1.7;}
+.code-block{background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:10px 12px;font-family:'SF Mono','Fira Code',monospace;font-size:11px;color:#b0e0f7;line-height:1.7;margin:6px 0;overflow-x:auto;white-space:pre;}
+.code-hl{color:#ff9057;font-weight:700;}
+.code-comment{color:rgba(255,255,255,0.3);}
+.code-green{color:#52c41a;}
+.code-yellow{color:#faad14;}
+/* 关键点列表 */
+.kp-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.kp-tag{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;border:1px solid;}
+.kp-tag.primary{border-color:rgba(79,195,247,0.4);color:var(--primary);background:rgba(79,195,247,0.08);}
+.kp-tag.danger{border-color:rgba(255,77,79,0.4);color:#ff4d4f;background:rgba(255,77,79,0.08);}
+.kp-tag.warning{border-color:rgba(250,173,20,0.4);color:#faad14;background:rgba(250,173,20,0.08);}
+.kp-tag .dot{width:7px;height:7px;border-radius:50%;}
+/* 指标结果卡 */
+.param-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.param-card{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+.pc-name{font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:3px;}
+.pc-val{font-size:14px;font-weight:700;color:#fff;}
+.pc-desc{font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;line-height:1.5;}
+/* pipeline */
+.pipeline{display:flex;align-items:stretch;gap:0;margin-bottom:18px;flex-wrap:nowrap;overflow-x:auto;}
+.pipe-step{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 12px;min-width:130px;flex:1;position:relative;transition:all .2s;}
+.pipe-step:hover{border-color:var(--primary);background:rgba(79,195,247,0.06);}
+.pipe-step .ps-num{font-size:10px;font-weight:700;color:var(--primary);letter-spacing:.5px;margin-bottom:4px;}
+.pipe-step .ps-name{font-size:12px;font-weight:600;color:#fff;margin-bottom:4px;}
+.pipe-step .ps-desc{font-size:10px;color:rgba(255,255,255,0.4);line-height:1.6;}
+.pipe-step .ps-code{font-size:9px;color:rgba(255,255,255,0.25);font-family:monospace;margin-top:5px;background:rgba(255,255,255,0.04);padding:3px 6px;border-radius:4px;}
+.pipe-arrow{display:flex;align-items:center;padding:0 5px;color:rgba(255,255,255,0.2);font-size:16px;flex-shrink:0;}
+/* formula */
+.formula-box{background:rgba(79,195,247,0.06);border:1px solid rgba(79,195,247,0.2);border-radius:8px;padding:12px;font-family:monospace;font-size:11px;color:#b0e0f7;line-height:1.8;margin-bottom:12px;}
+.formula-highlight{color:var(--primary);font-weight:700;}
+/* threshold bar */
+.tbar-wrap{margin-bottom:8px;}
+.tbar-label{font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:3px;display:flex;justify-content:space-between;}
+/* 名词解释 tooltip —— 用 fixed 浮层，避免被 overflow:hidden 父容器裁剪 */
+.term{border-bottom:1px dashed rgba(255,255,255,0.35);cursor:help;}
+#g-tooltip{position:fixed;background:#1a2040;border:1px solid rgba(79,195,247,0.4);color:#d0e8ff;font-size:12px;line-height:1.7;padding:9px 13px;border-radius:8px;white-space:pre-line;max-width:240px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
+/* 英文指标名后的中文角标 */
+.en-label{font-size:9px;color:rgba(255,255,255,0.35);margin-left:4px;vertical-align:middle;}
+.tbar-track{height:10px;border-radius:5px;position:relative;background:rgba(255,255,255,0.06);overflow:hidden;}
+.tbar-valid{position:absolute;top:0;bottom:0;background:rgba(79,195,247,0.35);}
+.tbar-marker{position:absolute;top:-2px;bottom:-2px;width:3px;background:#fff;border-radius:2px;}
+.tbar-nums{display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,0.3);margin-top:2px;}
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;}
+.tag-sm{background:rgba(82,196,26,0.15);color:#52c41a;border:1px solid rgba(82,196,26,0.3);}
+.tag-lg{background:rgba(250,173,20,0.15);color:#faad14;border:1px solid rgba(250,173,20,0.3);}
+.tag-md{background:rgba(79,195,247,0.15);color:#4fc3f7;border:1px solid rgba(79,195,247,0.3);}
+.ptable{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px;}
+.ptable th{background:rgba(255,255,255,0.04);padding:8px 10px;text-align:left;color:rgba(255,255,255,0.4);font-weight:500;border-bottom:1px solid var(--border);}
+.ptable td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.04);color:#e0e0e0;font-size:11px;}
+.ptable tr:hover td{background:rgba(255,255,255,0.02);}
+.conf-meter{height:12px;border-radius:6px;background:linear-gradient(90deg,#ff4d4f 0%,#faad14 40%,#52c41a 75%,#1677ff 100%);position:relative;margin-bottom:4px;}
+.conf-needle{position:absolute;top:-3px;bottom:-3px;width:4px;border-radius:2px;background:#fff;box-shadow:0 0 6px rgba(0,0,0,0.6);}
+.score-circle{width:80px;height:80px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px solid;flex-shrink:0;}
+.sc-green{border-color:#52c41a;color:#52c41a;}
+.sc-blue{border-color:#1677ff;color:#1677ff;}
+.sc-orange{border-color:#faad14;color:#faad14;}
+.sc-red{border-color:#ff4d4f;color:#ff4d4f;}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <h1>🧠 动作分析 · <span>规则计算可视化</span></h1>
+  <div>
+    <span class="htag">关键点示意</span>
+    <span class="htag">计算逻辑</span>
+    <span class="htag">MediaPipe 33点</span>
+    <span class="htag">正侧面拍摄</span>
+  </div>
+</header>
+
+<nav class="tab-nav">
+  <button class="tbtn active"  onclick="switchPage('keypoints')">🦴 关键点 &amp; 计算逻辑</button>
+  <button class="tbtn" onclick="switchPage('pipeline')">🔄 分析流程总览</button>
+  <button class="tbtn" onclick="switchPage('signal')">📊 信号提取与切分</button>
+  <button class="tbtn" onclick="switchPage('threshold')">🎯 阈值判定规则</button>
+  <button class="tbtn" onclick="switchPage('score')">🏆 评分合成算法</button>
+  <button class="tbtn" onclick="switchPage('confidence')">🔬 <span class="term" data-tip="置信度（visibility）：MediaPipe 对每个关键点是否可见、定位是否可靠给出的 0~1 分值。值越高说明该点越清晰可用。系统平均置信度低于 0.85 时会触发质量警告。">置信度</span>模型</button>
+</nav>
+
+<!-- ══════════════════════════════════════════════════
+     TAB 1：关键点 & 计算逻辑（新核心页）
+══════════════════════════════════════════════════ -->
+<div id="page-keypoints" class="page active">
+
+  <div class="kp-layout">
+
+    <!-- ── 左：SVG骨架图 ── -->
+    <div class="skeleton-wrap">
+      <h3>MediaPipe Pose · 33 个关键点</h3>
+
+      <!-- 动作选择 -->
+      <div class="action-sel">
+        <button class="asel-btn active" onclick="setAction('all')">全部点</button>
+        <button class="asel-btn" onclick="setAction('abdomen')">🫁 缩腹运动</button>
+        <button class="asel-btn" onclick="setAction('pelvic')">🦴 骨盆倾斜</button>
+        <button class="asel-btn" onclick="setAction('knee')">🦵 膝关节旋转</button>
+      </div>
+
+      <!-- 图例 -->
+      <div style="display:flex;gap:14px;justify-content:center;margin-bottom:10px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(255,255,255,0.5);">
+          <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="rgba(255,77,79,0.25)" stroke="#ff4d4f" stroke-width="2"/></svg>
+          核心驱动点
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(255,255,255,0.5);">
+          <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="rgba(79,195,247,0.2)" stroke="#4fc3f7" stroke-width="2"/></svg>
+          参与计算点
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(255,255,255,0.5);">
+          <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#2a3050" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/></svg>
+          未使用点
+        </div>
+      </div>
+
+      <!-- 骨架SVG（正侧面卧姿人体） -->
+      <svg id="skeletonSvg" viewBox="0 0 320 440" class="skeleton-svg">
+        <!-- 身体骨骼连线 -->
+        <!-- 头颈 -->
+        <line id="bone-nose-L_eye" class="bone" x1="160" y1="38" x2="150" y2="32"/>
+        <line id="bone-nose-R_eye" class="bone" x1="160" y1="38" x2="170" y2="32"/>
+        <line id="bone-L_eye-L_ear" class="bone" x1="150" y1="32" x2="138" y2="36"/>
+        <line id="bone-R_eye-R_ear" class="bone" x1="170" y1="32" x2="182" y2="36"/>
+        <!-- 肩 -->
+        <line id="bone-L_sho-R_sho" class="bone" x1="120" y1="88" x2="200" y2="88"/>
+        <line id="bone-nose-neck" class="bone" x1="160" y1="38" x2="160" y2="88"/>
+        <!-- 左臂 -->
+        <line id="bone-L_sho-L_elb" class="bone" x1="120" y1="88" x2="104" y2="138"/>
+        <line id="bone-L_elb-L_wri" class="bone" x1="104" y1="138" x2="100" y2="186"/>
+        <!-- 右臂 -->
+        <line id="bone-R_sho-R_elb" class="bone" x1="200" y1="88" x2="216" y2="138"/>
+        <line id="bone-R_elb-R_wri" class="bone" x1="216" y1="138" x2="220" y2="186"/>
+        <!-- 躯干 -->
+        <line id="bone-L_sho-L_hip" class="bone" x1="120" y1="88" x2="126" y2="210"/>
+        <line id="bone-R_sho-R_hip" class="bone" x1="200" y1="88" x2="194" y2="210"/>
+        <line id="bone-L_hip-R_hip" class="bone" x1="126" y1="210" x2="194" y2="210"/>
+        <!-- 左腿 -->
+        <line id="bone-L_hip-L_kne" class="bone" x1="126" y1="210" x2="118" y2="302"/>
+        <line id="bone-L_kne-L_ank" class="bone" x1="118" y1="302" x2="114" y2="380"/>
+        <line id="bone-L_ank-L_foo" class="bone" x1="114" y1="380" x2="106" y2="400"/>
+        <!-- 右腿 -->
+        <line id="bone-R_hip-R_kne" class="bone" x1="194" y1="210" x2="202" y2="302"/>
+        <line id="bone-R_kne-R_ank" class="bone" x1="202" y1="302" x2="206" y2="380"/>
+        <line id="bone-R_ank-R_foo" class="bone" x1="206" y1="380" x2="214" y2="400"/>
+
+        <!-- ── 关键点 ── -->
+        <!-- 注释格式：id="kp-N" data-name="名称" data-idx="N" -->
+
+        <!-- 面部 0-10 -->
+        <g class="kp-dot" id="kp-0" data-name="鼻尖 Nose" data-idx="0" onclick="showKpInfo(0)">
+          <circle cx="160" cy="38" r="7"/>
+          <text x="160" y="34" text-anchor="middle">0</text>
+        </g>
+        <g class="kp-dot" id="kp-1" data-name="左眼内角" data-idx="1" onclick="showKpInfo(1)">
+          <circle cx="153" cy="32" r="5"/>
+          <text x="153" y="28" text-anchor="middle" font-size="7">1</text>
+        </g>
+        <g class="kp-dot" id="kp-2" data-name="左眼" data-idx="2" onclick="showKpInfo(2)">
+          <circle cx="150" cy="30" r="5"/>
+          <text x="150" y="26" text-anchor="middle" font-size="7">2</text>
+        </g>
+        <g class="kp-dot" id="kp-3" data-name="左眼外角" data-idx="3" onclick="showKpInfo(3)">
+          <circle cx="146" cy="32" r="5"/>
+          <text x="146" y="28" text-anchor="middle" font-size="7">3</text>
+        </g>
+        <g class="kp-dot" id="kp-4" data-name="右眼内角" data-idx="4" onclick="showKpInfo(4)">
+          <circle cx="167" cy="32" r="5"/>
+          <text x="167" y="28" text-anchor="middle" font-size="7">4</text>
+        </g>
+        <g class="kp-dot" id="kp-5" data-name="右眼" data-idx="5" onclick="showKpInfo(5)">
+          <circle cx="170" cy="30" r="5"/>
+          <text x="170" y="26" text-anchor="middle" font-size="7">5</text>
+        </g>
+        <g class="kp-dot" id="kp-6" data-name="右眼外角" data-idx="6" onclick="showKpInfo(6)">
+          <circle cx="174" cy="32" r="5"/>
+          <text x="174" y="28" text-anchor="middle" font-size="7">6</text>
+        </g>
+        <g class="kp-dot" id="kp-7" data-name="左耳" data-idx="7" onclick="showKpInfo(7)">
+          <circle cx="136" cy="36" r="6"/>
+          <text x="136" y="32" text-anchor="middle" font-size="7">7</text>
+        </g>
+        <g class="kp-dot" id="kp-8" data-name="右耳" data-idx="8" onclick="showKpInfo(8)">
+          <circle cx="184" cy="36" r="6"/>
+          <text x="184" y="32" text-anchor="middle" font-size="7">8</text>
+        </g>
+        <g class="kp-dot" id="kp-9" data-name="嘴左角" data-idx="9" onclick="showKpInfo(9)">
+          <circle cx="155" cy="45" r="5"/>
+          <text x="155" y="41" text-anchor="middle" font-size="7">9</text>
+        </g>
+        <g class="kp-dot" id="kp-10" data-name="嘴右角" data-idx="10" onclick="showKpInfo(10)">
+          <circle cx="165" cy="45" r="5"/>
+          <text x="165" y="41" text-anchor="middle" font-size="7">10</text>
+        </g>
+
+        <!-- 上肢 11-22 -->
+        <g class="kp-dot" id="kp-11" data-name="左肩 L_Shoulder" data-idx="11" onclick="showKpInfo(11)">
+          <circle cx="120" cy="88" r="8"/>
+          <text x="120" y="83" text-anchor="middle">11</text>
+        </g>
+        <g class="kp-dot" id="kp-12" data-name="右肩 R_Shoulder" data-idx="12" onclick="showKpInfo(12)">
+          <circle cx="200" cy="88" r="8"/>
+          <text x="200" y="83" text-anchor="middle">12</text>
+        </g>
+        <g class="kp-dot" id="kp-13" data-name="左肘 L_Elbow" data-idx="13" onclick="showKpInfo(13)">
+          <circle cx="104" cy="138" r="7"/>
+          <text x="104" y="133" text-anchor="middle">13</text>
+        </g>
+        <g class="kp-dot" id="kp-14" data-name="右肘 R_Elbow" data-idx="14" onclick="showKpInfo(14)">
+          <circle cx="216" cy="138" r="7"/>
+          <text x="216" y="133" text-anchor="middle">14</text>
+        </g>
+        <g class="kp-dot" id="kp-15" data-name="左腕 L_Wrist" data-idx="15" onclick="showKpInfo(15)">
+          <circle cx="100" cy="186" r="7"/>
+          <text x="100" y="181" text-anchor="middle">15</text>
+        </g>
+        <g class="kp-dot" id="kp-16" data-name="右腕 R_Wrist" data-idx="16" onclick="showKpInfo(16)">
+          <circle cx="220" cy="186" r="7"/>
+          <text x="220" y="181" text-anchor="middle">16</text>
+        </g>
+        <g class="kp-dot" id="kp-17" data-name="左手小指" data-idx="17" onclick="showKpInfo(17)">
+          <circle cx="95" cy="200" r="5"/>
+          <text x="95" y="196" text-anchor="middle" font-size="7">17</text>
+        </g>
+        <g class="kp-dot" id="kp-18" data-name="右手小指" data-idx="18" onclick="showKpInfo(18)">
+          <circle cx="225" cy="200" r="5"/>
+          <text x="225" y="196" text-anchor="middle" font-size="7">18</text>
+        </g>
+        <g class="kp-dot" id="kp-19" data-name="左手食指" data-idx="19" onclick="showKpInfo(19)">
+          <circle cx="94" cy="194" r="5"/>
+          <text x="94" y="190" text-anchor="middle" font-size="7">19</text>
+        </g>
+        <g class="kp-dot" id="kp-20" data-name="右手食指" data-idx="20" onclick="showKpInfo(20)">
+          <circle cx="226" cy="194" r="5"/>
+          <text x="226" y="190" text-anchor="middle" font-size="7">20</text>
+        </g>
+        <g class="kp-dot" id="kp-21" data-name="左手拇指" data-idx="21" onclick="showKpInfo(21)">
+          <circle cx="97" cy="193" r="5"/>
+          <text x="97" y="189" text-anchor="middle" font-size="7">21</text>
+        </g>
+        <g class="kp-dot" id="kp-22" data-name="右手拇指" data-idx="22" onclick="showKpInfo(22)">
+          <circle cx="223" cy="193" r="5"/>
+          <text x="223" y="189" text-anchor="middle" font-size="7">22</text>
+        </g>
+
+        <!-- 髋 23-24 -->
+        <g class="kp-dot" id="kp-23" data-name="左髋 L_Hip" data-idx="23" onclick="showKpInfo(23)">
+          <circle cx="126" cy="210" r="9"/>
+          <text x="126" y="205" text-anchor="middle">23</text>
+        </g>
+        <g class="kp-dot" id="kp-24" data-name="右髋 R_Hip" data-idx="24" onclick="showKpInfo(24)">
+          <circle cx="194" cy="210" r="9"/>
+          <text x="194" y="205" text-anchor="middle">24</text>
+        </g>
+
+        <!-- 下肢 25-32 -->
+        <g class="kp-dot" id="kp-25" data-name="左膝 L_Knee" data-idx="25" onclick="showKpInfo(25)">
+          <circle cx="118" cy="302" r="9"/>
+          <text x="118" y="297" text-anchor="middle">25</text>
+        </g>
+        <g class="kp-dot" id="kp-26" data-name="右膝 R_Knee" data-idx="26" onclick="showKpInfo(26)">
+          <circle cx="202" cy="302" r="9"/>
+          <text x="202" y="297" text-anchor="middle">26</text>
+        </g>
+        <g class="kp-dot" id="kp-27" data-name="左踝 L_Ankle" data-idx="27" onclick="showKpInfo(27)">
+          <circle cx="114" cy="380" r="8"/>
+          <text x="114" y="375" text-anchor="middle">27</text>
+        </g>
+        <g class="kp-dot" id="kp-28" data-name="右踝 R_Ankle" data-idx="28" onclick="showKpInfo(28)">
+          <circle cx="206" cy="380" r="8"/>
+          <text x="206" y="375" text-anchor="middle">28</text>
+        </g>
+        <g class="kp-dot" id="kp-29" data-name="左脚跟" data-idx="29" onclick="showKpInfo(29)">
+          <circle cx="112" cy="395" r="6"/>
+          <text x="112" y="391" text-anchor="middle" font-size="7">29</text>
+        </g>
+        <g class="kp-dot" id="kp-30" data-name="右脚跟" data-idx="30" onclick="showKpInfo(30)">
+          <circle cx="208" cy="395" r="6"/>
+          <text x="208" y="391" text-anchor="middle" font-size="7">30</text>
+        </g>
+        <g class="kp-dot" id="kp-31" data-name="左脚尖" data-idx="31" onclick="showKpInfo(31)">
+          <circle cx="104" cy="404" r="6"/>
+          <text x="104" y="414" text-anchor="middle" font-size="7">31</text>
+        </g>
+        <g class="kp-dot" id="kp-32" data-name="右脚尖" data-idx="32" onclick="showKpInfo(32)">
+          <circle cx="216" cy="404" r="6"/>
+          <text x="216" y="414" text-anchor="middle" font-size="7">32</text>
+        </g>
+
+        <!-- 辅助标注文字 -->
+        <text x="74" y="92" fill="rgba(255,255,255,0.3)" font-size="9">Left 左</text>
+        <text x="202" y="92" fill="rgba(255,255,255,0.3)" font-size="9">Right 右</text>
+        <text x="46" y="214" fill="rgba(255,255,255,0.2)" font-size="9">← 身体左侧</text>
+        <text x="224" y="214" fill="rgba(255,255,255,0.2)" font-size="9">身体右侧 →</text>
+
+        <!-- 坐标系说明 -->
+        <rect x="6" y="6" width="82" height="42" rx="4" fill="rgba(0,0,0,0.4)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+        <text x="12" y="19" fill="rgba(255,255,255,0.5)" font-size="8">x: 左→右 [0,1]</text>
+        <text x="12" y="30" fill="rgba(255,255,255,0.5)" font-size="8">y: 上→下 [0,1]</text>
+        <text x="12" y="41" fill="rgba(255,255,255,0.5)" font-size="8"><span class="term" data-tip="归一化坐标：MediaPipe 将图像分辨率映射到 [0,1] 区间。x=0 为画面最左，x=1 为最右；y=0 为画面最上，y=1 为最下。不受视频分辨率影响，可跨设备通用。">归一化坐标</span></text>
+      </svg>
+
+      <!-- 点击信息气泡 -->
+      <div id="kpInfoBox" style="background:rgba(0,0,0,0.5);border:1px solid rgba(79,195,247,0.3);border-radius:8px;padding:8px 12px;font-size:11px;color:#ccc;min-height:32px;text-align:center;margin-top:6px;">
+        👆 点击任意关键点查看编号和坐标说明
+      </div>
+    </div>
+
+    <!-- ── 右：动作计算逻辑详情 ── -->
+    <div class="detail-panel">
+
+      <!-- 动作Tab -->
+      <div class="action-tabs">
+        <button class="atab active" onclick="switchAction('abdomen')">🫁 缩腹运动</button>
+        <button class="atab" onclick="switchAction('pelvic')">🦴 骨盆倾斜</button>
+        <button class="atab" onclick="switchAction('knee')">🦵 膝关节旋转</button>
+      </div>
+
+      <!-- ═══ 缩腹运动 ═══ -->
+      <div id="detail-abdomen">
+        <div class="info-box" style="margin-bottom:14px;">
+          <b style="color:var(--primary);">拍摄要求</b>：患者平躺，身体一侧紧贴摄像头，<b style="color:#fff;">正侧面 90°</b> 拍摄 · 全身入镜 · 充足自然光
+        </div>
+
+        <!-- 用到的点 -->
+        <div class="card" style="margin-bottom:14px;">
+          <div class="card-title">🔵 涉及的 MediaPipe 关键点</div>
+          <div class="card-sub">仰卧侧面视角，Y 轴代表腹背方向深度，X 轴代表头脚方向</div>
+          <div class="kp-list">
+            <div class="kp-tag danger"><div class="dot" style="background:#ff4d4f;"></div> #11 左肩 L_Shoulder</div>
+            <div class="kp-tag danger"><div class="dot" style="background:#ff4d4f;"></div> #12 右肩 R_Shoulder</div>
+            <div class="kp-tag danger"><div class="dot" style="background:#ff4d4f;"></div> #23 左髋 L_Hip</div>
+            <div class="kp-tag danger"><div class="dot" style="background:#ff4d4f;"></div> #24 右髋 R_Hip</div>
+            <div class="kp-tag warning"><div class="dot" style="background:#faad14;"></div> #25 左膝 L_Knee（辅助）</div>
+            <div class="kp-tag warning"><div class="dot" style="background:#faad14;"></div> #26 右膝 R_Knee（辅助）</div>
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px;">
+            ↑ 红色 = 驱动切分 + 核心参数；黄色 = 辅助验证
+          </div>
+        </div>
+
+        <!-- 逐步计算 -->
+        <div class="card">
+          <div class="card-title">🧮 逐步计算逻辑</div>
+          <div class="card-sub">从原始坐标到最终指标的完整链路</div>
+
+          <div class="calc-steps">
+            <div class="step">
+              <div class="step-line"><div class="step-num">1</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">提取肩部中点 &amp; 髋部中点</div>
+                <div class="step-body">MediaPipe 给出每帧 x,y∈[0,1] 的<span class="term" data-tip="归一化坐标：MediaPipe 将图像分辨率映射到 [0,1] 区间。x=0 为画面最左，x=1 为最右；y=0 为画面最上，y=1 为最下。不受视频分辨率影响，可跨设备通用。">归一化坐标</span>，先计算两侧的中点</div>
+                <div class="code-block"><span class="code-comment"># 肩中点</span>
+shoulder_mid_x = (kps[11].x + kps[12].x) / 2
+shoulder_mid_y = (kps[11].y + kps[12].y) / 2
+
+<span class="code-comment"># 髋中点</span>
+hip_mid_x = (kps[23].x + kps[24].x) / 2
+hip_mid_y = (kps[23].y + kps[24].y) / 2</div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">2</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">计算躯干角度（驱动切分用）</div>
+                <div class="step-body">肩-髋连线与垂直轴的夹角，侧面拍摄时腹肌收缩会让脊柱微微弯曲，角度产生变化</div>
+                <div class="code-block"><span class="code-comment"># 向量：从髋指向肩</span>
+dx = shoulder_mid_x - hip_mid_x
+dy = shoulder_mid_y - hip_mid_y   <span class="code-comment"># y轴向下为正</span>
+
+<span class="code-comment"># 与垂直轴（0,-1）的夹角</span>
+<span class="code-hl">trunk_angle = degrees(arctan2(dx, -(dy + 1e-8)))</span>
+<span class="code-comment"># 单位：度。收缩时角度增大 → 信号出现波峰</span></div>
+                <div class="ok-box" style="margin:6px 0 0;font-size:10px;">📍 <b>切分信号</b> = trunk_angle 时间序列，找极大值 → 每个波峰 = 一个完整收缩周期</div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">3</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">计算骨盆偏移（稳定性指标）</div>
+                <div class="step-body">正确缩腹时骨盆应保持稳定不偏移，偏移量越大说明<span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span>越多</div>
+                <div class="code-block"><span class="code-comment"># 左右髋关节 X 坐标差（代理骨盆横向偏移）</span>
+<span class="code-hl">pelvis_shift = |mean(kps[23].x) - mean(kps[24].x)| × 100</span>
+<span class="code-comment"># 单位：% 画面宽度。越小越稳定</span></div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">4</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">计算躯干角度变化量（<span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span>指标）</div>
+                <div class="step-body">整个周期内躯干角度的最大变化量，越小说明核心稳定、无<span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span></div>
+                <div class="code-block"><span class="code-comment"># 周期内最大值 - 最小值</span>
+<span class="code-hl">trunk_angle_change = max(trunk_angle_arr) - min(trunk_angle_arr)</span>
+<span class="code-comment"># <span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span>：mean=28.59°, std=39.66（来自教学视频 n=7 周期）</span></div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">5</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">识别「保持阶段」→ hold_duration</div>
+                <div class="step-body">用<span class="term" data-tip="速度方差法：计算信号的逐帧变化速度，当速度持续低于标准差×0.5的阈值时，判定为动作顶峰的"保持阶段"，统计连续低速帧数即为 hold_duration。">速度方差法</span>：当髋宽变化速度连续低于阈值，判定为在顶峰保持</div>
+                <div class="code-block"><span class="code-comment"># 计算逐帧速度</span>
+vel = diff(trunk_angle_arr)             <span class="code-comment"># 帧间差</span>
+thr = std(vel) × <span class="code-yellow">0.5</span>                  <span class="code-comment"># 阈值 = 半个标准差</span>
+in_hold = [v ≤ thr for v in abs(vel)]
+
+<span class="code-hl">hold_duration = count(in_hold) / sample_fps</span>
+<span class="code-comment"># 单位：秒。越长越好。<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span> mean=1.45s</span></div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">6</div></div>
+              <div class="step-content">
+                <div class="step-title">输出参数汇总</div>
+                <div class="param-cards">
+                  <div class="param-card">
+                    <div class="pc-name">trunk_angle_change <span style="font-size:9px;color:rgba(255,255,255,0.3);font-family:'PingFang SC',sans-serif;">躯干角度变化量</span></div>
+                    <div class="pc-val" style="color:#ff7875;">28.59° <span style="font-size:10px;color:rgba(255,255,255,0.4);">±39.66</span></div>
+                    <div class="pc-desc">躯干<span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span>变化 · ↓越小越好</div>
+                  </div>
+                  <div class="param-card">
+                    <div class="pc-name">pelvis_shift <span style="font-size:9px;color:rgba(255,255,255,0.3);font-family:'PingFang SC',sans-serif;">骨盆横向偏移</span></div>
+                    <div class="pc-val" style="color:#ffc069;">5.38% <span style="font-size:10px;color:rgba(255,255,255,0.4);">±8.07</span></div>
+                    <div class="pc-desc">骨盆横向偏移 · ↓越小越好</div>
+                  </div>
+                  <div class="param-card">
+                    <div class="pc-name">hold_duration <span style="font-size:9px;color:rgba(255,255,255,0.3);font-family:'PingFang SC',sans-serif;">顶峰保持时长</span></div>
+                    <div class="pc-val" style="color:#95de64;">1.45s <span style="font-size:10px;color:rgba(255,255,255,0.4);">±2.13</span></div>
+                    <div class="pc-desc">顶峰保持时长 · ↑越大越好</div>
+                  </div>
+                  <div class="param-card" style="border-color:rgba(79,195,247,0.2);">
+                    <div class="pc-name" style="color:rgba(79,195,247,0.6);">数据来源</div>
+                    <div class="pc-val" style="font-size:12px;color:var(--primary);">真实<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span></div>
+                    <div class="pc-desc">教学视频 n=7 周期<br>2026-06-25 提取</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div><!-- /calc-steps -->
+        </div>
+      </div><!-- /detail-abdomen -->
+
+      <!-- ═══ 骨盆倾斜 ═══ -->
+      <div id="detail-pelvic" style="display:none;">
+        <div class="info-box" style="margin-bottom:14px;">
+          <b style="color:var(--primary);">拍摄要求</b>：患者平躺，身体一侧紧贴摄像头，<b style="color:#fff;">正侧面 90°</b> 拍摄 · 髋部到头部清晰入镜
+        </div>
+
+        <div class="card" style="margin-bottom:14px;">
+          <div class="card-title">🔵 涉及的 MediaPipe 关键点</div>
+          <div class="card-sub">骨盆前倾/后倾时，髋关节在侧面的 Y 轴坐标发生变化</div>
+          <div class="kp-list">
+            <div class="kp-tag danger"><div class="dot" style="background:#ff4d4f;"></div> #23 左髋 L_Hip</div>
+            <div class="kp-tag danger"><div class="dot" style="background:#ff4d4f;"></div> #24 右髋 R_Hip</div>
+            <div class="kp-tag primary"><div class="dot" style="background:#4fc3f7;"></div> #11 左肩 L_Shoulder</div>
+            <div class="kp-tag primary"><div class="dot" style="background:#4fc3f7;"></div> #12 右肩 R_Shoulder</div>
+            <div class="kp-tag warning"><div class="dot" style="background:#faad14;"></div> #25 左膝 L_Knee（参考）</div>
+            <div class="kp-tag warning"><div class="dot" style="background:#faad14;"></div> #26 右膝 R_Knee（参考）</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🧮 逐步计算逻辑</div>
+          <div class="card-sub">骨盆倾斜的核心信号是双髋连线的角度变化</div>
+          <div class="calc-steps">
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">1</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">计算双髋连线角度（<span class="term" data-tip="驱动信号：用于检测动作周期（一次完整动作的开始到结束）的时间序列数据。不同动作使用不同的计算公式，目的是让每次完整动作在信号上呈现为一个波峰，从而自动切分周期。">驱动信号</span>）</div>
+                <div class="step-body">左髋→右髋向量与水平轴的夹角，骨盆前倾时一侧髋部抬起，角度增大</div>
+                <div class="code-block"><span class="code-comment"># 双髋连线向量</span>
+dx = kps[24].x - kps[23].x   <span class="code-comment"># 右髋 - 左髋</span>
+dy = kps[24].y - kps[23].y
+
+<span class="code-hl">pelvis_angle = degrees(arctan2(dy, dx + 1e-8))</span>
+<span class="code-comment"># 平躺静息时 ≈ 0°；前倾/后倾时角度绝对值增大</span></div>
+                <div class="ok-box" style="margin:6px 0 0;font-size:10px;">📍 <b>切分信号</b> = pelvis_angle 绝对值时间序列，找极大值 → 每个波峰 = 一次完整倾斜动作</div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">2</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">计算骨盆倾斜幅度 pelvic_tilt_delta（活动度）</div>
+                <div class="step-body">周期内髋部角度变化量，代表骨盆活动度，越大越好（但需在正常范围）</div>
+                <div class="code-block"><span class="code-comment"># 周期内角度的极差</span>
+<span class="code-hl">pelvic_tilt_delta = max(pelvis_angle_arr) - min(pelvis_angle_arr)</span>
+<span class="code-comment"># <span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span>：mean=5.10°, std=3.92（n=6 周期）</span></div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">3</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">计算骨盆横向偏移 pelvis_shift（左右位移量）</div>
+                <div class="step-body">骨盆中点 X 坐标的偏移量，正确骨盆倾斜不应带动身体横向移动</div>
+                <div class="code-block">hip_mid_x_arr = [(kps[23].x + kps[24].x)/2 for each frame]
+rest_x = mean(hip_mid_x_arr[:3])   <span class="code-comment"># 静息参考</span>
+
+<span class="code-hl">pelvis_shift = max(|hip_mid_x_arr - rest_x|) × 100</span>
+<span class="code-comment"># 单位：%。<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span> mean=0.49%, std=0.32</span></div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">4</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">计算躯干<span class="term" data-tip="<span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span>：身体用错误的肌肉或姿势完成本应由特定肌群完成的动作。<span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span>越多说明目标肌群越弱，动作越不规范。">代偿</span>角度 trunk_angle_change（躯干稳定性指标）</div>
+                <div class="step-body">骨盆动时躯干若跟着旋转说明有<span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span>，值越小核心越稳定</div>
+                <div class="code-block">sx = (kps[11].x + kps[12].x)/2
+sy = (kps[11].y + kps[12].y)/2
+hx = (kps[23].x + kps[24].x)/2
+hy = (kps[23].y + kps[24].y)/2
+
+trunk_angle = degrees(arctan2(sx-hx, -(hy-sy+1e-8)))
+<span class="code-hl">trunk_angle_change = max(trunk_angle) - min(trunk_angle)</span>
+<span class="code-comment"># <span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span> mean=1.79°, std=0.83（越小越好）</span></div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">5</div></div>
+              <div class="step-content">
+                <div class="step-title">输出参数汇总</div>
+                <div class="param-cards">
+                  <div class="param-card">
+                    <div class="pc-name">pelvic_tilt_delta <span style="font-size:9px;color:rgba(255,255,255,0.3);font-family:'PingFang SC',sans-serif;">骨盆倾斜幅度</span></div>
+                    <div class="pc-val" style="color:#69b1ff;">5.10° <span style="font-size:10px;color:rgba(255,255,255,0.4);">±3.92</span></div>
+                    <div class="pc-desc">骨盆倾斜幅度 · ↑越大越好</div>
+                  </div>
+                  <div class="param-card">
+                    <div class="pc-name">pelvis_shift <span style="font-size:9px;color:rgba(255,255,255,0.3);font-family:'PingFang SC',sans-serif;">骨盆横向偏移</span></div>
+                    <div class="pc-val" style="color:#ffc069;">0.49% <span style="font-size:10px;color:rgba(255,255,255,0.4);">±0.32</span></div>
+                    <div class="pc-desc">骨盆横向偏移 · ↓越小越好</div>
+                  </div>
+                  <div class="param-card">
+                    <div class="pc-name">trunk_angle_change <span style="font-size:9px;color:rgba(255,255,255,0.3);font-family:'PingFang SC',sans-serif;">躯干角度变化量</span></div>
+                    <div class="pc-val" style="color:#ff7875;">1.79° <span style="font-size:10px;color:rgba(255,255,255,0.4);">±0.83</span></div>
+                    <div class="pc-desc">躯干<span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span>角度 · ↓越小越好</div>
+                  </div>
+                  <div class="param-card">
+                    <div class="pc-name">hold_duration <span style="font-size:9px;color:rgba(255,255,255,0.3);font-family:'PingFang SC',sans-serif;">顶峰保持时长</span></div>
+                    <div class="pc-val" style="color:#95de64;">3.07s <span style="font-size:10px;color:rgba(255,255,255,0.4);">±4.35</span></div>
+                    <div class="pc-desc">顶峰保持时长 · ↑越大越好</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div><!-- /detail-pelvic -->
+
+      <!-- ═══ 膝关节旋转 ═══ -->
+      <div id="detail-knee" style="display:none;">
+        <div class="info-box" style="margin-bottom:14px;">
+          <b style="color:var(--primary);">拍摄要求</b>：患者平躺，身体一侧紧贴摄像头，<b style="color:#fff;">正侧面 90°</b> 拍摄 · 全身入镜含双脚 · 膝关节区域清晰
+        </div>
+
+        <div class="card" style="margin-bottom:14px;">
+          <div class="card-title">🔵 涉及的 MediaPipe 关键点</div>
+          <div class="card-sub">侧面视角：膝盖向腹侧/背侧倾倒时，Y 轴坐标（腹背方向）发生位移，X 轴（头脚方向）无效</div>
+          <div class="kp-list">
+            <div class="kp-tag danger"><div class="dot" style="background:#ff4d4f;"></div> #25 左膝 L_Knee ← 核心驱动点</div>
+            <div class="kp-tag danger"><div class="dot" style="background:#ff4d4f;"></div> #26 右膝 R_Knee ← 核心驱动点</div>
+            <div class="kp-tag primary"><div class="dot" style="background:#4fc3f7;"></div> #23 左髋 L_Hip（骨盆稳定性参考）</div>
+            <div class="kp-tag primary"><div class="dot" style="background:#4fc3f7;"></div> #24 右髋 R_Hip（骨盆稳定性参考）</div>
+            <div class="kp-tag warning"><div class="dot" style="background:#faad14;"></div> #11 左肩（躯干稳定性）</div>
+            <div class="kp-tag warning"><div class="dot" style="background:#faad14;"></div> #12 右肩（躯干稳定性）</div>
+          </div>
+          <div class="warn-box" style="margin:8px 0 0;font-size:10px;">
+            ⚠️ <b>为何不用 X 轴？</b> 侧面拍摄时，膝关节倒向腹侧/背侧是 <b>垂直于镜头的运动</b>，摄像头看到的是 Y 轴（深度）变化，X 轴（头脚方向）基本不动。
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🧮 逐步计算逻辑</div>
+          <div class="card-sub">侧面正确方案：用双膝 Y 轴坐标检测倒膝幅度</div>
+          <div class="calc-steps">
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">1</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">计算双膝中点 Y 轴坐标（<span class="term" data-tip="驱动信号：用于检测动作周期（一次完整动作的开始到结束）的时间序列数据。不同动作使用不同的计算公式，目的是让每次完整动作在信号上呈现为一个波峰，从而自动切分周期。">驱动信号</span>）</div>
+                <div class="step-body">两侧膝盖的 Y 坐标均值，倒向腹侧时 Y 减小，倒向背侧时 Y 增大，形成正弦波</div>
+                <div class="code-block"><span class="code-comment"># 双膝中点 Y（侧面有效轴）</span>
+<span class="code-hl">knee_mid_y = (kps[25].y + kps[26].y) / 2</span>
+
+<span class="code-comment"># 静息参考值（前3帧均值）</span>
+rest_y = mean(knee_mid_y[:3])
+
+<span class="code-comment"># <span class="term" data-tip="驱动信号：用于检测动作周期（一次完整动作的开始到结束）的时间序列数据。不同动作使用不同的计算公式，目的是让每次完整动作在信号上呈现为一个波峰，从而自动切分周期。">驱动信号</span> = Y 偏移序列</span>
+signal = [y - rest_y for y in knee_mid_y]
+峰值）</span></div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">2</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">计算 knee_y_excursion（倒膝幅度 · Y轴偏移）</div>
+                <div class="step-body">双膝中点 Y 轴最大偏移量，归一化为画面高度百分比，越大说明倒膝动作越充分</div>
+                <div class="code-block">knee_y_arr = [(kps[25].y + kps[26].y)/2 for each frame]
+rest_ky = mean(knee_y_arr[:3])   <span class="code-comment"># 静息值</span>
+
+<span class="code-hl">knee_y_excursion = max(|knee_y_arr - rest_ky|) × 100</span>
+<span class="code-comment"># 单位：%。<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span> mean=11.32%, std=9.31（n=7 周期）</span></div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">3</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">计算 hip_stability（骨盆稳定性 · <span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span>检测）</div>
+                <div class="step-body">倒膝时髋关节中点 Y 轴的抖动量，骨盆若随膝盖一起动则此值增大（<span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span>）</div>
+                <div class="code-block">hip_y_arr = [(kps[23].y + kps[24].y)/2 for each frame]
+rest_hy = mean(hip_y_arr[:3])
+
+<span class="code-hl">hip_stability = max(|hip_y_arr - rest_hy|) × 100</span>
+<span class="code-comment"># 单位：%。越小越好。<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span> mean=2.51%, std=1.92</span></div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">4</div><div class="step-vline"></div></div>
+              <div class="step-content">
+                <div class="step-title">计算<span class="term" data-tip="躯干稳定性：核心肌群（腹肌、背肌）维持脊柱中立位的能力。稳定性越好，做动作时脊柱旋转越小。">躯干稳定性</span> trunk_angle_change（角度变化量）</div>
+                <div class="step-body">肩-髋连线角度变化量，倒膝时若扭腰此值增大</div>
+                <div class="code-block">trunk_angle = degrees(arctan2(sx-hx, -(hy-sy+1e-8)))
+<span class="code-hl">trunk_angle_change = max(trunk_angle) - min(trunk_angle)</span>
+<span class="code-comment"># <span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span> mean=2.65°, std=1.26</span></div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-line"><div class="step-num">5</div></div>
+              <div class="step-content">
+                <div class="step-title">输出参数汇总</div>
+                <div class="param-cards">
+                  <div class="param-card">
+                    <div class="pc-name">knee_y_excursion <span style="font-size:9px;color:rgba(255,255,255,0.3);font-family:'PingFang SC',sans-serif;">倒膝幅度（Y轴）</span></div>
+                    <div class="pc-val" style="color:#95de64;">11.32% <span style="font-size:10px;color:rgba(255,255,255,0.4);">±9.31</span></div>
+                    <div class="pc-desc">倒膝幅度（Y轴）· ↑越大越好</div>
+                  </div>
+                  <div class="param-card">
+                    <div class="pc-name">hip_stability <span style="font-size:9px;color:rgba(255,255,255,0.3);font-family:'PingFang SC',sans-serif;">骨盆稳定性</span></div>
+                    <div class="pc-val" style="color:#ffc069;">2.51% <span style="font-size:10px;color:rgba(255,255,255,0.4);">±1.92</span></div>
+                    <div class="pc-desc">骨盆<span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span>量 · ↓越小越好</div>
+                  </div>
+                  <div class="param-card">
+                    <div class="pc-name">trunk_angle_change <span style="font-size:9px;color:rgba(255,255,255,0.3);font-family:'PingFang SC',sans-serif;">躯干角度变化量</span></div>
+                    <div class="pc-val" style="color:#ff7875;">2.65° <span style="font-size:10px;color:rgba(255,255,255,0.4);">±1.26</span></div>
+                    <div class="pc-desc">躯干<span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span>角度 · ↓越小越好</div>
+                  </div>
+                  <div class="param-card" style="border-color:rgba(79,195,247,0.2);">
+                    <div class="pc-name" style="color:rgba(79,195,247,0.6);">数据来源</div>
+                    <div class="pc-val" style="font-size:12px;color:var(--primary);">真实<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span></div>
+                    <div class="pc-desc">教学视频 n=7 周期<br>2026-06-25 正侧面提取</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /calc-steps -->
+        </div>
+      </div><!-- /detail-knee -->
+
+    </div><!-- /detail-panel -->
+  </div><!-- /kp-layout -->
+
+</div><!-- /page-keypoints -->
+
+<!-- TAB 2：分析流程总览 -->
+<div id="page-pipeline" class="page">
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:6px;">🔄 端到端分析流程</h2>
+  <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:18px;">从用户上传视频到生成报告的完整计算流水线</p>
+  <div class="pipeline">
+    <div class="pipe-step"><div class="ps-num">STEP 01</div><div class="ps-name">📹 视频接入</div><div class="ps-desc">MP4/MOV 验证；时长 10~300s；≤200MB</div><div class="ps-code">OSS → 视频ID</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="ps-num">STEP 02</div><div class="ps-name">🎞 关键点提取</div><div class="ps-desc">MediaPipe Pose 逐帧提取 33 个关键点，10 FPS</div><div class="ps-code">pose.process(frame)</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="ps-num">STEP 03</div><div class="ps-name">✅ 质量评估</div><div class="ps-desc"><span class="term" data-tip="置信度（visibility）：MediaPipe 对每个关键点是否可见、定位是否可靠给出的 0~1 分值。值越高说明该点越清晰可用。系统平均置信度低于 0.85 时会触发质量警告。">置信度</span>≥0.85 + 缺失率≤15%</div><div class="ps-code">avg_conf ≥ 0.85</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="ps-num">STEP 04</div><div class="ps-name">📈 信号提取</div><div class="ps-desc">按动作计算<span class="term" data-tip="驱动信号：用于检测动作周期（一次完整动作的开始到结束）的时间序列数据。不同动作使用不同的计算公式，目的是让每次完整动作在信号上呈现为一个波峰，从而自动切分周期。">驱动信号</span>，移动平均0.5s</div><div class="ps-code">signal=smooth(raw)</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="ps-num">STEP 05</div><div class="ps-name">✂ 周期切分</div><div class="ps-desc">find_peaks，2~30s有效周期</div><div class="ps-code">find_peaks(sig,dist=15)</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="ps-num">STEP 06</div><div class="ps-name">📐 参数计算</div><div class="ps-desc">每周期计算生物力学参数</div><div class="ps-code">calc_cycle(kps,t1,t2)</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="ps-num">STEP 07</div><div class="ps-name">🎯 阈值判定</div><div class="ps-desc">与<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span>±2<span class="term" data-tip="σ（西格玛）：统计学中的标准差符号，表示数据的离散程度。均值±2σ 包含约95%的正常样本，是判定"正常"范围的常用方法。">σ</span>对比，三级判定</div><div class="ps-code">valid=mean±2<span class="term" data-tip="σ（西格玛）：统计学中的标准差符号，表示数据的离散程度。均值±2σ 包含约95%的正常样本，是判定"正常"范围的常用方法。">σ</span></div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="ps-num">STEP 08</div><div class="ps-name">🏆 评分合成</div><div class="ps-desc">四维加权→总分0~100</div><div class="ps-code">score=Σ(wi×si)×conf</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step" style="border-color:rgba(82,196,26,0.4);"><div class="ps-num" style="color:#52c41a;">OUTPUT</div><div class="ps-name">📋 生成报告</div><div class="ps-desc">总分+等级+雷达图+建议</div><div class="ps-code">report={score,grade}</div></div>
+  </div>
+  <div class="grid3">
+    <div class="card">
+      <div class="card-title">🫁 缩腹运动</div><div class="card-sub">abdominal_crunch · 正侧面</div>
+      <div class="info-box">
+        <b style="color:var(--primary);"><span class="term" data-tip="驱动信号：用于检测动作周期（一次完整动作的开始到结束）的时间序列数据。不同动作使用不同的计算公式，目的是让每次完整动作在信号上呈现为一个波峰，从而自动切分周期。">驱动信号</span></b>：躯干角度（肩-髋连线角）<br>
+        <b style="color:var(--primary);">核心点</b>：#11 #12 肩 · #23 #24 髋<br><br>
+        <b style="color:#faad14;">指标</b>：trunk_angle_change · pelvis_shift · hold_duration
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);">找极大值切分 · 真实<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span> n=7</div>
+    </div>
+    <div class="card">
+      <div class="card-title">🦴 骨盆倾斜</div><div class="card-sub">pelvic_tilt · 正侧面</div>
+      <div class="info-box">
+        <b style="color:var(--primary);"><span class="term" data-tip="驱动信号：用于检测动作周期（一次完整动作的开始到结束）的时间序列数据。不同动作使用不同的计算公式，目的是让每次完整动作在信号上呈现为一个波峰，从而自动切分周期。">驱动信号</span></b>：双髋连线角度（arctan2）<br>
+        <b style="color:var(--primary);">核心点</b>：#23 #24 髋 · #11 #12 肩<br><br>
+        <b style="color:#faad14;">指标</b>：pelvic_tilt_delta · pelvis_shift · trunk_angle_change · hold_duration
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);">找极大值切分 · 真实<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span> n=6</div>
+    </div>
+    <div class="card">
+      <div class="card-title">🦵 膝关节旋转</div><div class="card-sub">knee_rotation · 正侧面</div>
+      <div class="info-box">
+        <b style="color:var(--primary);"><span class="term" data-tip="驱动信号：用于检测动作周期（一次完整动作的开始到结束）的时间序列数据。不同动作使用不同的计算公式，目的是让每次完整动作在信号上呈现为一个波峰，从而自动切分周期。">驱动信号</span></b>：双膝中点 <b>Y 轴</b>坐标<br>
+        <b style="color:var(--primary);">核心点</b>：#25 #26 膝 · #23 #24 髋<br><br>
+        <b style="color:#faad14;">指标</b>：knee_y_excursion · hip_stability · trunk_angle_change
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);">找极大值切分 · 真实<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span> n=7</div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3：信号提取与切分 -->
+<div id="page-signal" class="page">
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:6px;">📊 信号提取与周期切分</h2>
+  <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:18px;">从关键点坐标序列提取<span class="term" data-tip="驱动信号：用于检测动作周期（一次完整动作的开始到结束）的时间序列数据。不同动作使用不同的计算公式，目的是让每次完整动作在信号上呈现为一个波峰，从而自动切分周期。">驱动信号</span>并切分动作周期</p>
+  <div class="pipeline" style="margin-bottom:18px;">
+    <div class="pipe-step"><div class="ps-num">S1</div><div class="ps-name">原始关键点</div><div class="ps-desc">x,y∈[0,1]，10 FPS</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="ps-num">S2</div><div class="ps-name">计算<span class="term" data-tip="驱动信号：用于检测动作周期（一次完整动作的开始到结束）的时间序列数据。不同动作使用不同的计算公式，目的是让每次完整动作在信号上呈现为一个波峰，从而自动切分周期。">驱动信号</span></div><div class="ps-desc">按动作类型用不同公式算每帧标量</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="ps-num">S3</div><div class="ps-name"><span class="term" data-tip="移动平均平滑：对时间序列中每个点，取其前后若干帧的均值，消除姿态检测中的短暂抖动和噪声，让信号曲线更光滑。">移动平均平滑</span></div><div class="ps-desc">窗口 max(3, 0.5s×FPS)</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="ps-num">S4</div><div class="ps-name">去均值中心化</div><div class="ps-desc">smooth - mean(smooth)</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="ps-num">S5</div><div class="ps-name"><span class="term" data-tip="极值检测（find_peaks）：在信号序列中找到局部最高点（波峰）或最低点（波谷）的算法。每个波峰对应一次完整的动作。">极值检测</span></div><div class="ps-desc">find_peaks，dist=1.5s</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step" style="border-color:rgba(79,195,247,0.4);"><div class="ps-num" style="color:var(--primary);">S6</div><div class="ps-name">周期切割</div><div class="ps-desc">相邻两峰间=1周期；2s≤时长≤30s</div></div>
+  </div>
+  <div class="grid3" style="margin-bottom:18px;">
+    <div class="card">
+      <div class="card-title">🫁 缩腹运动<span class="term" data-tip="驱动信号：用于检测动作周期（一次完整动作的开始到结束）的时间序列数据。不同动作使用不同的计算公式，目的是让每次完整动作在信号上呈现为一个波峰，从而自动切分周期。">驱动信号</span></div><div class="card-sub">躯干角度（°）</div>
+      <div id="sig-abdominal" style="height:180px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🦴 骨盆倾斜<span class="term" data-tip="驱动信号：用于检测动作周期（一次完整动作的开始到结束）的时间序列数据。不同动作使用不同的计算公式，目的是让每次完整动作在信号上呈现为一个波峰，从而自动切分周期。">驱动信号</span></div><div class="card-sub">双髋连线角度（°）</div>
+      <div id="sig-pelvis" style="height:180px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🦵 膝关节旋转<span class="term" data-tip="驱动信号：用于检测动作周期（一次完整动作的开始到结束）的时间序列数据。不同动作使用不同的计算公式，目的是让每次完整动作在信号上呈现为一个波峰，从而自动切分周期。">驱动信号</span></div><div class="card-sub">双膝中点 Y 轴坐标（侧面）</div>
+      <div id="sig-knee" style="height:180px;"></div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">📋 保持阶段检测（<span class="term" data-tip="速度方差法：计算信号的逐帧变化速度，当速度持续低于标准差×0.5的阈值时，判定为动作顶峰的"保持阶段"，统计连续低速帧数即为 hold_duration。">速度方差法</span>）</div>
+      <div class="formula-box">vel = diff(signal)
+vel_thr = std(vel) × <span class="formula-highlight">0.5</span>
+<span class="formula-highlight">hold_duration = count(|vel|≤thr) / fps</span></div>
+      <div id="hold-demo" style="height:130px;"></div>
+      <div class="info-box" style="margin-top:8px;margin-bottom:0;font-size:10px;">绿色 = 保持帧；红线 = 速度阈值</div>
+    </div>
+    <div class="card">
+      <div class="card-title">⚠️ 切分信号设计原则</div>
+      <table class="ptable">
+        <thead><tr><th>动作</th><th>切分信号</th><th>理由</th></tr></thead>
+        <tbody>
+          <tr><td>缩腹</td><td style="color:var(--primary);">躯干角度</td><td style="font-size:10px;color:rgba(255,255,255,0.5);">收缩使脊柱弯曲，角度稳定可靠</td></tr>
+          <tr><td>骨盆倾斜</td><td style="color:var(--success);">双髋连线角</td><td style="font-size:10px;color:rgba(255,255,255,0.5);">直接反映骨盆旋转幅度</td></tr>
+          <tr><td>膝关节旋转</td><td style="color:var(--warning);">双膝 Y 坐标</td><td style="font-size:10px;color:rgba(255,255,255,0.5);">侧面拍摄腹背方向可见</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4：阈值判定规则 -->
+<div id="page-threshold" class="page">
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:10px;">🎯 阈值判定规则</h2>
+
+  <!-- ▸ 说明横幅 -->
+  <div style="background:rgba(79,195,247,0.07);border:1px solid rgba(79,195,247,0.2);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;gap:32px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:180px;">
+      <div style="font-size:11px;color:var(--primary);font-weight:700;margin-bottom:6px;">📌 这块是干嘛的？</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.6);line-height:1.8;">
+        系统对患者每一次动作周期计算出若干指标值（如倒膝幅度、骨盆偏移量），<br>
+        然后拿这些值和"标准答案"对比，判断动作是 <span style="color:#52c41a;font-weight:600;">✅ 正常</span>、<span style="color:#faad14;font-weight:600;">⚠️ 偏差</span> 还是 <span style="color:#ff4d4f;font-weight:600;">❌ 异常</span>。
+      </div>
+    </div>
+    <div style="flex:1;min-width:180px;">
+      <div style="font-size:11px;color:#faad14;font-weight:700;margin-bottom:6px;">📐 值从哪来？</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.6);line-height:1.8;">
+        右侧列出的 <b style="color:#fff;">mean（均值）</b> 和 <b style="color:#fff;">std（标准差）</b> 来自<br>
+        <span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span>——康复治疗师拍的教学视频，由系统自动提取多个动作周期后统计得出（2026-06-25）。
+      </div>
+    </div>
+    <div style="flex:1;min-width:180px;">
+      <div style="font-size:11px;color:#95de64;font-weight:700;margin-bottom:6px;">🔍 怎么判断？</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.6);line-height:1.8;">
+        以均值为中心，±2<span class="term" data-tip="σ（西格玛）：统计学中的标准差符号，表示数据的离散程度。均值±2σ 包含约95%的正常样本，是判定"正常"范围的常用方法。">σ</span> 以内 → 正常；±2~3σ → 偏差（轻微超标）；超出 ±3σ → 异常（需关注）。<br>
+        左侧示例图中蓝色为正常区，黄色为偏差区，红点为真实样本散布。
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:16px;">三级判定：正常 / 偏差 / 异常，基于<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span> ±2<span class="term" data-tip="σ（西格玛）：统计学中的标准差符号，表示数据的离散程度。均值±2σ 包含约95%的正常样本，是判定"正常"范围的常用方法。">σ</span> / ±3<span class="term" data-tip="σ（西格玛）：统计学中的标准差符号，表示数据的离散程度。均值±2σ 包含约95%的正常样本，是判定"正常"范围的常用方法。">σ</span> 区间</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">📏 三级判定逻辑（knee_y_excursion 倒膝幅度 示例）</div>
+      <div class="formula-box">gold_mean=11.32, gold_std=9.31
+
+valid_range  = [mean-2<span class="term" data-tip="σ（西格玛）：统计学中的标准差符号，表示数据的离散程度。均值±2σ 包含约95%的正常样本，是判定"正常"范围的常用方法。">σ</span>, mean+2<span class="term" data-tip="σ（西格玛）：统计学中的标准差符号，表示数据的离散程度。均值±2σ 包含约95%的正常样本，是判定"正常"范围的常用方法。">σ</span>] = [0, 48.55]
+warning_range = [mean-3<span class="term" data-tip="σ（西格玛）：统计学中的标准差符号，表示数据的离散程度。均值±2σ 包含约95%的正常样本，是判定"正常"范围的常用方法。">σ</span>, mean+3<span class="term" data-tip="σ（西格玛）：统计学中的标准差符号，表示数据的离散程度。均值±2σ 包含约95%的正常样本，是判定"正常"范围的常用方法。">σ</span>]
+
+if val in valid_range:     → ✅ 正常
+elif val in warning_range: → ⚠️  偏差
+else:                      → ❌ 异常</div>
+      <div id="thresh-vis" style="height:200px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 三动作全参数阈值（真实<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span>）</div>
+      <div style="font-size:11px;color:var(--primary);margin-bottom:6px;font-weight:600;">🫁 缩腹运动</div>
+      <div class="tbar-wrap">
+        <div class="tbar-label"><span>trunk_angle_change <span class="en-label">躯干角度变化量</span></span><span style="color:var(--warning);">↓小越好</span></div>
+        <div class="tbar-track"><div class="tbar-valid" style="left:0;width:58%;"></div><div class="tbar-marker" style="left:17%;"></div></div>
+        <div class="tbar-nums"><span>0°</span><span>有效≤107.9°</span><span>185°</span></div>
+      </div>
+      <div class="tbar-wrap">
+        <div class="tbar-label"><span>pelvis_shift <span class="en-label">骨盆横向偏移</span></span><span style="color:var(--warning);">↓小越好</span></div>
+        <div class="tbar-track"><div class="tbar-valid" style="left:0;width:50%;"></div><div class="tbar-marker" style="left:12%;"></div></div>
+        <div class="tbar-nums"><span>0%</span><span>有效≤21.5%</span><span>43%</span></div>
+      </div>
+      <div style="font-size:11px;color:var(--success);margin:10px 0 6px;font-weight:600;">🦴 骨盆倾斜</div>
+      <div class="tbar-wrap">
+        <div class="tbar-label"><span>pelvic_tilt_delta <span class="en-label">骨盆倾斜幅度</span></span><span style="color:var(--success);">↑大越好</span></div>
+        <div class="tbar-track"><div class="tbar-valid" style="left:15%;width:70%;"></div><div class="tbar-marker" style="left:30%;"></div></div>
+        <div class="tbar-nums"><span>-2.7°</span><span>有效[-2.7, 20.8]°</span><span>28°</span></div>
+      </div>
+      <div style="font-size:11px;color:var(--warning);margin:10px 0 6px;font-weight:600;">🦵 膝关节旋转</div>
+      <div class="tbar-wrap">
+        <div class="tbar-label"><span>knee_y_excursion <span class="en-label">倒膝幅度（Y轴）</span></span><span style="color:var(--success);">↑大越好</span></div>
+        <div class="tbar-track"><div class="tbar-valid" style="left:5%;width:60%;"></div><div class="tbar-marker" style="left:22%;"></div></div>
+        <div class="tbar-nums"><span>0%</span><span>有效[0, 48.6]%</span><span>65%</span></div>
+      </div>
+      <div class="tbar-wrap">
+        <div class="tbar-label"><span>hip_stability <span class="en-label">骨盆稳定性</span></span><span style="color:var(--warning);">↓小越好</span></div>
+        <div class="tbar-track"><div class="tbar-valid" style="left:0;width:48%;"></div><div class="tbar-marker" style="left:15%;"></div></div>
+        <div class="tbar-nums"><span>0%</span><span>有效≤6.35%</span><span>13%</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 5：评分合成算法 -->
+<div id="page-score" class="page">
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:6px;">🏆 评分合成算法</h2>
+  <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:18px;">从单参数偏差到综合评分</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">🧮 四维评分计算</div>
+      <div class="formula-box">def param_score(val, mean, std, direction):
+    z = (val - mean) / std
+    if direction == 'smaller_better': raw = 100 - max(0,z)*15
+    elif direction == 'larger_better': raw = 100 + min(0,z)*15
+    else: raw = 100 - abs(z)*15
+    return clip(raw, 0, 100)
+
+<span class="formula-highlight">accuracy = 0.40×trunk_s + 0.60×disp_s</span>
+<span class="formula-highlight">stability = 0.50×pelvis_s + 0.50×trunk_s</span>
+<span class="formula-highlight">total = 0.35×acc+0.25×stab+0.20×ctrl+0.20×pers</span>
+total = clip(total × conf_factor, 0, 100)</div>
+    </div>
+    <div class="card">
+      <div class="card-title">🎯 等级映射</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(82,196,26,0.08);border-radius:8px;border:1px solid rgba(82,196,26,0.2);">
+          <div class="score-circle sc-green"><div style="font-size:16px;font-weight:800;">85+</div></div>
+          <div><div style="font-size:13px;font-weight:700;color:#52c41a;">优秀 🌟</div><div style="font-size:11px;color:rgba(255,255,255,0.45);">各指标达标，维持训练</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(22,119,255,0.08);border-radius:8px;border:1px solid rgba(22,119,255,0.2);">
+          <div class="score-circle sc-blue"><div style="font-size:13px;font-weight:800;">70~84</div></div>
+          <div><div style="font-size:13px;font-weight:700;color:#1677ff;">合格 ✓</div><div style="font-size:11px;color:rgba(255,255,255,0.45);">整体良好，部分可改进</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(250,173,20,0.08);border-radius:8px;border:1px solid rgba(250,173,20,0.2);">
+          <div class="score-circle sc-orange"><div style="font-size:13px;font-weight:800;">50~69</div></div>
+          <div><div style="font-size:13px;font-weight:700;color:#faad14;">需改进 ⚠</div><div style="font-size:11px;color:rgba(255,255,255,0.45);">回看教学视频</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px;background:rgba(255,77,79,0.08);border-radius:8px;border:1px solid rgba(255,77,79,0.2);">
+          <div class="score-circle sc-red"><div style="font-size:13px;font-weight:800;">&lt;50</div></div>
+          <div><div style="font-size:13px;font-weight:700;color:#ff4d4f;">无效 ✗</div><div style="font-size:11px;color:rgba(255,255,255,0.45);">重新录制</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="card-title">📡 四维雷达图示例（总分82）</div><div id="scoreRadar" style="height:240px;"></div></div>
+    <div class="card">
+      <div class="card-title">⚖ 权重设计</div>
+      <div id="weightPie" style="height:190px;"></div>
+      <div class="info-box" style="margin-top:8px;margin-bottom:0;font-size:11px;">
+        <b style="color:var(--primary);">准确性35%</b>：动作正确执行 ·
+        <b style="color:var(--primary);">稳定性25%</b>：减少<span class="term" data-tip="代偿：身体用其他肌肉群或错误姿势辅助完成动作，导致目标部位得不到正确锻炼，且可能加重损伤风险。">代偿</span> ·
+        <b style="color:var(--primary);">控制力20%</b>：神经肌肉协调 ·
+        <b style="color:var(--primary);">保持时间20%</b>：肌肉耐力
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 6：<span class="term" data-tip="置信度（visibility）：MediaPipe 对每个关键点是否可见、定位是否可靠给出的 0~1 分值。值越高说明该点越清晰可用。系统平均置信度低于 0.85 时会触发质量警告。">置信度</span>模型 -->
+<div id="page-confidence" class="page">
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:6px;">🔬 <span class="term" data-tip="置信度（visibility）：MediaPipe 对每个关键点是否可见、定位是否可靠给出的 0~1 分值。值越高说明该点越清晰可用。系统平均置信度低于 0.85 时会触发质量警告。">置信度</span>模型</h2>
+  <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:18px;">量化分析结果的可信程度</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">📊 <span class="term" data-tip="置信度（visibility）：MediaPipe 对每个关键点是否可见、定位是否可靠给出的 0~1 分值。值越高说明该点越清晰可用。系统平均置信度低于 0.85 时会触发质量警告。">置信度</span>公式</div>
+      <div class="formula-box"><span class="formula-highlight">conf_video</span>  = avg(landmark_visibility)
+<span class="formula-highlight">conf_missing</span> = 1 - missing_rate
+<span class="formula-highlight">conf_cycles</span>  = min(1.0, n_cycles/5)
+
+conf = 0.5×video + 0.3×missing + 0.2×cycles
+
+conf ≥ 0.75  → 高<span class="term" data-tip="置信度（visibility）：MediaPipe 对每个关键点是否可见、定位是否可靠给出的 0~1 分值。值越高说明该点越清晰可用。系统平均置信度低于 0.85 时会触发质量警告。">置信度</span>（完整报告）
+0.55~0.74   → 中<span class="term" data-tip="置信度（visibility）：MediaPipe 对每个关键点是否可见、定位是否可靠给出的 0~1 分值。值越高说明该点越清晰可用。系统平均置信度低于 0.85 时会触发质量警告。">置信度</span>（报告+黄色提示）
+&lt; 0.55       → 低<span class="term" data-tip="置信度（visibility）：MediaPipe 对每个关键点是否可见、定位是否可靠给出的 0~1 分值。值越高说明该点越清晰可用。系统平均置信度低于 0.85 时会触发质量警告。">置信度</span>（不出报告）
+
+conf_factor = 0.7 + 0.3×conf</div>
+    </div>
+    <div class="card">
+      <div class="card-title">🌡 教学视频实测<span class="term" data-tip="置信度（visibility）：MediaPipe 对每个关键点是否可见、定位是否可靠给出的 0~1 分值。值越高说明该点越清晰可用。系统平均置信度低于 0.85 时会触发质量警告。">置信度</span></div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:5px;">缩腹运动 · avg_conf=0.737 · 缺失率29%</div>
+        <div class="conf-meter"><div class="conf-needle" style="left:calc(73.7% - 2px);"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.3);"><span>0</span><span style="color:var(--error);">低</span><span style="color:var(--warning);">0.55</span><span style="color:var(--success);">0.75</span><span>1.0</span></div>
+        <div style="font-size:11px;color:var(--warning);margin-top:3px;">⚠ 中<span class="term" data-tip="置信度（visibility）：MediaPipe 对每个关键点是否可见、定位是否可靠给出的 0~1 分值。值越高说明该点越清晰可用。系统平均置信度低于 0.85 时会触发质量警告。">置信度</span></div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:5px;">膝关节旋转 · avg_conf=0.749 · 缺失率27.4%</div>
+        <div class="conf-meter"><div class="conf-needle" style="left:calc(74.9% - 2px);"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.3);"><span>0</span><span style="color:var(--error);">低</span><span style="color:var(--warning);">0.55</span><span style="color:var(--success);">0.75</span><span>1.0</span></div>
+        <div style="font-size:11px;color:var(--warning);margin-top:3px;">⚠ 临界中<span class="term" data-tip="置信度（visibility）：MediaPipe 对每个关键点是否可见、定位是否可靠给出的 0~1 分值。值越高说明该点越清晰可用。系统平均置信度低于 0.85 时会触发质量警告。">置信度</span></div>
+      </div>
+      <div class="warn-box" style="margin-bottom:0;">改善：正侧面90° + 充足自然光 + 全身入镜</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tbtn').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.tbtn').forEach(el => {
+    if (el.getAttribute('onclick') && el.getAttribute('onclick').includes("'" + name + "'")) el.classList.add('active');
+  });
+  setTimeout(() => initCharts(name), 60);
+}
+
+function switchAction(name) {
+  document.querySelectorAll('.atab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('[id^="detail-"]').forEach(el => el.style.display = 'none');
+  document.getElementById('detail-' + name).style.display = '';
+  document.querySelectorAll('.atab').forEach(el => {
+    if (el.getAttribute('onclick') && el.getAttribute('onclick').includes("'" + name + "'")) el.classList.add('active');
+  });
+  setAction(name);
+}
+
+function setAction(name) {
+  document.querySelectorAll('.asel-btn').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.asel-btn').forEach(el => {
+    if (el.getAttribute('onclick') && el.getAttribute('onclick').includes("'" + name + "'")) el.classList.add('active');
+  });
+  highlightKeypoints(name);
+  if (name !== 'all') {
+    document.querySelectorAll('.atab').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('[id^="detail-"]').forEach(el => el.style.display = 'none');
+    document.getElementById('detail-' + name).style.display = '';
+    document.querySelectorAll('.atab').forEach(el => {
+      if (el.getAttribute('onclick') && el.getAttribute('onclick').includes("'" + name + "'")) el.classList.add('active');
+    });
+  }
+}
+
+const ACTION_KEYPOINTS = {
+  all: { used: [], key: [] },
+  abdomen: { key:[11,12,23,24], used:[25,26], bones:['L_sho-R_sho','L_sho-L_hip','R_sho-R_hip','L_hip-R_hip','nose-neck'] },
+  pelvic:  { key:[23,24], used:[11,12,25,26], bones:['L_hip-R_hip','L_sho-L_hip','R_sho-R_hip','L_sho-R_sho','L_hip-L_kne','R_hip-R_kne'] },
+  knee:    { key:[25,26], used:[23,24,11,12], bones:['L_hip-L_kne','R_hip-R_kne','L_kne-L_ank','R_kne-R_ank','L_hip-R_hip','L_sho-R_sho'] }
+};
+
+function highlightKeypoints(action) {
+  const cfg = ACTION_KEYPOINTS[action] || ACTION_KEYPOINTS.all;
+  for (let i = 0; i <= 32; i++) {
+    const el = document.getElementById('kp-' + i);
+    if (el) el.classList.remove('used','key');
+  }
+  document.querySelectorAll('.bone').forEach(b => b.classList.remove('active'));
+  if (action === 'all') return;
+  (cfg.key||[]).forEach(i => { const el=document.getElementById('kp-'+i); if(el) el.classList.add('key'); });
+  (cfg.used||[]).forEach(i => { const el=document.getElementById('kp-'+i); if(el) el.classList.add('used'); });
+  (cfg.bones||[]).forEach(id => { const el=document.getElementById('bone-'+id); if(el) el.classList.add('active'); });
+}
+
+const KP_NAMES=['鼻尖','左眼内角','左眼','左眼外角','右眼内角','右眼','右眼外角','左耳','右耳','嘴左角','嘴右角','左肩','右肩','左肘','右肘','左腕','右腕','左手小指','右手小指','左手食指','右手食指','左手拇指','右手拇指','左髋','右髋','左膝','右膝','左踝','右踝','左脚跟','右脚跟','左脚尖','右脚尖'];
+const KP_USAGE={
+  11:'用于计算肩中点：shoulder_mid=(kps[11]+kps[12])/2，再算躯干角度',
+  12:'用于计算肩中点：shoulder_mid=(kps[11]+kps[12])/2，再算躯干角度',
+  23:'核心点：用于髋中点(骨盆偏移)、骨盆倾斜信号、髋稳定性 hip_stability',
+  24:'核心点：用于髋中点(骨盆偏移)、骨盆倾斜信号、髋稳定性 hip_stability',
+  25:'膝关节旋转核心：knee_y_excursion=max(|kps[25].y-rest_y|)×100',
+  26:'膝关节旋转核心：knee_y_excursion=max(|kps[26].y-rest_y|)×100',
+  27:'左踝 - 当前版本未直接用于指标计算',
+  28:'右踝 - 当前版本未直接用于指标计算',
+};
+
+function showKpInfo(idx) {
+  const box=document.getElementById('kpInfoBox');
+  const name=KP_NAMES[idx]||'未知';
+  const usage=KP_USAGE[idx]||'此点当前未被三个动作直接使用（面部/手部点）';
+  box.innerHTML='<b style="color:var(--primary);">#'+idx+' '+name+'</b><br><span style="color:rgba(255,255,255,0.4);font-size:10px;">kps['+idx+'].x, kps['+idx+'].y ∈ [0,1]  ·  kps['+idx+'].visibility（<span class="term" data-tip="置信度（visibility）：MediaPipe 对每个关键点是否可见、定位是否可靠给出的 0~1 分值。值越高说明该点越清晰可用。系统平均置信度低于 0.85 时会触发质量警告。">置信度</span>）</span><br><span style="color:rgba(255,255,255,0.65);">'+usage+'</span>';
+}
+
+const _inited={};
+function initCharts(page) {
+  if(_inited[page]) return; _inited[page]=true;
+  if(page==='signal')    { initSignalCharts(); initHoldDemo(); }
+  if(page==='threshold') { initThreshVis(); }
+  if(page==='score')     { initScoreRadar(); initWeightPie(); }
+}
+
+function makeSignalOption(data, peaks, color) {
+  return {
+    animation:false, grid:{left:36,right:10,top:12,bottom:24},
+    xAxis:{type:'value',min:0,max:data.length-1,axisLabel:{fontSize:8,formatter:v=>v+'f'},splitLine:{show:false}},
+    yAxis:{type:'value',axisLabel:{fontSize:8},splitLine:{lineStyle:{color:'rgba(255,255,255,0.05)'}}},
+    series:[
+      {type:'line',data:data.map((v,i)=>[i,v]),smooth:true,lineStyle:{color,width:2},
+       areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:color+'55'},{offset:1,color:color+'05'}]}},itemStyle:{color},symbol:'none'},
+      {type:'scatter',data:peaks.map(i=>[i,data[i]]),symbolSize:8,itemStyle:{color:'#ff4d4f'},
+       label:{show:true,position:'top',fontSize:9,color:'#ff4d4f',formatter:'▲'}}
+    ]
+  };
+}
+
+function initSignalCharts() {
+  const abd=[]; for(let i=0;i<200;i++){const t=i/10;abd.push(+(Math.sin(t*.8)*22+28+Math.sin(t*2.3)*4+(Math.random()-.5)*3).toFixed(2));}
+  const pelvis=[]; for(let i=0;i<250;i++){const t=i/10;pelvis.push(+(Math.sin(t*.7)*6+8+Math.sin(t*3)*1.2+(Math.random()-.5)*1.2).toFixed(2));}
+  const knee=[]; const nf=780;
+  for(let i=0;i<nf;i++){const t=i/nf;let b=t<.43?.5-.12*Math.sin(Math.PI*t/.43):.5+.12*Math.sin(Math.PI*(t-.43)/.57);knee.push(+(b+(Math.random()-.5)*.006).toFixed(4));}
+  ['sig-abdominal','sig-pelvis','sig-knee'].forEach((id,j)=>{
+    const el=document.getElementById(id); if(!el)return;
+    const c=echarts.init(el);
+    if(j===0) c.setOption(makeSignalOption(abd,[22,62,102,148],'#4fc3f7'));
+    if(j===1) c.setOption(makeSignalOption(pelvis,[22,53,84,114,145,176,207,237],'#52c41a'));
+    if(j===2) c.setOption(makeSignalOption(knee,[Math.round(nf*.725)],'#faad14'));
+  });
+}
+
+function initHoldDemo() {
+  const el=document.getElementById('hold-demo'); if(!el)return;
+  const c=echarts.init(el);
+  const vel=[]; for(let i=0;i<80;i++){vel.push(i>20&&i<50?+(Math.random()*.45).toFixed(2):+(Math.random()*2.8+.5).toFixed(2));}
+  const thr=.75;
+  c.setOption({animation:false,grid:{left:35,right:10,top:8,bottom:24},
+    xAxis:{type:'category',data:Array.from({length:80},(_,i)=>i),axisLabel:{fontSize:7,interval:9},splitLine:{show:false}},
+    yAxis:{type:'value',axisLabel:{fontSize:8},splitLine:{lineStyle:{color:'rgba(255,255,255,0.05)'}}},
+    series:[{type:'bar',data:vel.map(v=>({value:v,itemStyle:{color:v<=thr?'rgba(82,196,26,.7)':'rgba(79,195,247,.5)'}})),barWidth:'80%'},
+            {type:'line',data:Array(80).fill(thr),lineStyle:{color:'#ff4d4f',type:'dashed',width:1.5},symbol:'none'}]});
+}
+
+function initThreshVis() {
+  const el=document.getElementById('thresh-vis'); if(!el||el._chart)return;
+  const c=echarts.init(el);el._chart=c;
+  const mean=11.32,std=9.31;
+  c.setOption({animation:false,grid:{left:50,right:20,top:20,bottom:30},
+    xAxis:{type:'value',min:-5,max:65,axisLabel:{color:'rgba(255,255,255,0.4)',fontSize:9},splitLine:{lineStyle:{color:'rgba(255,255,255,0.05)'}}},
+    yAxis:{type:'category',data:['区间','样本'],axisLabel:{color:'rgba(255,255,255,0.4)',fontSize:10}},
+    tooltip:{trigger:'item',formatter:p=>`值: ${p.data[0]}%`},
+    series:[
+      {type:'custom',renderItem:(params,api)=>{
+        const c1=api.coord([0,0]),c2=api.coord([mean+3*std,0]),c3=api.coord([0,0]),c4=api.coord([mean+2*std,0]);
+        const h=api.size([0,1])[1]*.4,y=c1[1]-h/2;
+        return {type:'group',children:[{type:'rect',shape:{x:c1[0],y,width:c2[0]-c1[0],height:h},style:{fill:'rgba(250,173,20,0.2)'}},{type:'rect',shape:{x:c3[0],y:y+h*.1,width:c4[0]-c3[0],height:h*.8},style:{fill:'rgba(79,195,247,0.4)'}}]};
+      },data:[0]},
+      {type:'scatter',data:[1.53,5.13,7.63,8.05,10.30,14.37,32.24].map(v=>[v,1]),symbolSize:9,itemStyle:{color:'#ff4d4f'},label:{show:true,position:'top',fontSize:9,color:'rgba(255,255,255,0.6)',formatter:p=>p.data[0]+'%'}},
+      {type:'line',data:[[mean,0],[mean,1]],lineStyle:{color:'rgba(255,255,255,0.4)',type:'dashed',width:1},symbol:'none'}
+    ]});
+}
+
+function initScoreRadar() {
+  const el=document.getElementById('scoreRadar'); if(!el||el._chart)return;
+  const c=echarts.init(el);el._chart=c;
+  c.setOption({animation:false,legend:{bottom:0,textStyle:{color:'rgba(255,255,255,0.5)',fontSize:11}},
+    radar:{indicator:[{name:'准确性',max:100},{name:'稳定性',max:100},{name:'控制力',max:100},{name:'保持时间',max:100}],shape:'circle',splitNumber:4,axisName:{color:'#bbb',fontSize:11},splitArea:{areaStyle:{color:['rgba(255,255,255,0.02)','rgba(255,255,255,0.05)']}},axisLine:{lineStyle:{color:'rgba(255,255,255,0.1)'}},splitLine:{lineStyle:{color:'rgba(255,255,255,0.08)'}}},
+    series:[{type:'radar',data:[{value:[88,85,79,72],name:'本次(82分)',areaStyle:{color:'rgba(22,119,255,0.2)'},lineStyle:{color:'#1677ff',width:2},itemStyle:{color:'#1677ff'}},{value:[95,92,88,85],name:'<span class="term" data-tip="金标准（Gold Standard）：由康复治疗师演示的标准教学视频中提取的统计均值与标准差。用来衡量患者动作是否规范的参考基准线。">金标准</span>',areaStyle:{color:'rgba(82,196,26,0.08)'},lineStyle:{color:'#52c41a',width:1.5,type:'dashed'},itemStyle:{color:'#52c41a'}}]}]});
+}
+
+function initWeightPie() {
+  const el=document.getElementById('weightPie'); if(!el||el._chart)return;
+  const c=echarts.init(el);el._chart=c;
+  c.setOption({animation:false,series:[{type:'pie',radius:['38%','72%'],data:[{value:35,name:'准确性 35%',itemStyle:{color:'#1677ff'}},{value:25,name:'稳定性 25%',itemStyle:{color:'#52c41a'}},{value:20,name:'控制力 20%',itemStyle:{color:'#faad14'}},{value:20,name:'保持时间 20%',itemStyle:{color:'#fa8c16'}}],label:{color:'rgba(255,255,255,0.6)',fontSize:11},emphasis:{itemStyle:{shadowBlur:8,shadowColor:'rgba(0,0,0,0.4)'}}}]});
+}
+
+document.addEventListener('DOMContentLoaded', () => { highlightKeypoints('all'); });
+
+// ── 全局 tooltip（fixed 定位，不受 overflow:hidden 影响）──
+(function(){
+  const box = document.createElement('div');
+  box.id = 'g-tooltip';
+  document.body.appendChild(box);
+
+  const MARGIN = 14; // 光标偏移
+  let hideTimer;
+
+  function show(el, e){
+    clearTimeout(hideTimer);
+    const tip = el.getAttribute('data-tip');
+    if(!tip) return;
+    box.textContent = tip;
+    box.style.opacity = '1';
+    position(e);
+  }
+
+  function position(e){
+    const bw = box.offsetWidth || 240;
+    const bh = box.offsetHeight || 80;
+    let x = e.clientX + MARGIN;
+    let y = e.clientY - bh - MARGIN;
+    // 防止超出右边界
+    if(x + bw > window.innerWidth - 8) x = e.clientX - bw - MARGIN;
+    // 防止超出上边界，则改为光标下方
+    if(y < 8) y = e.clientY + MARGIN;
+    box.style.left = x + 'px';
+    box.style.top  = y + 'px';
+  }
+
+  function hide(){
+    hideTimer = setTimeout(() => { box.style.opacity = '0'; }, 80);
+  }
+
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest('.term');
+    if(el) show(el, e);
+  });
+  document.addEventListener('mousemove', e => {
+    if(box.style.opacity === '1') position(e);
+  });
+  document.addEventListener('mouseout', e => {
+    if(e.target.closest('.term')) hide();
+  });
+})();
+</script>
+</body>
+</html>

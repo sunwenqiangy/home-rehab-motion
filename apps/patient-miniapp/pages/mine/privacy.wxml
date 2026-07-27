@@ -1,0 +1,38 @@
+<view class="container privacy-page privacy-page--{{displayMode}}">
+  <view class="hero-card privacy-hero card-pad-md">
+    <view class="hero-eyebrow-row">
+      <text class="hero-badge">🔒 隐私政策</text>
+      <text class="hero-time-pill">更新于 {{updateDateText}}</text>
+    </view>
+    <view class="privacy-hero__title">您的训练数据，仅用于康复训练服务</view>
+    <view class="privacy-hero__desc">我们坚持最小化收集和安全存储原则，确保您的隐私信息在可控范围内使用。</view>
+    <view class="hero-chip-list">
+      <text class="hero-chip" wx:for="{{summaryTags}}" wx:key="*this">{{item}}</text>
+    </view>
+  </view>
+
+  <view class="surface-card privacy-summary card-pad-md">
+    <view class="privacy-summary__title">隐私摘要</view>
+    <view class="privacy-summary__desc">您上传的视频和分析结果不会被公开展示，也不会用于训练评估之外的用途。</view>
+    <view class="privacy-summary__desc">当前状态：{{consentStatusText}}</view>
+  </view>
+
+  <view class="privacy-page__content">
+    <view class="surface-card privacy-section card-pad-md" wx:for="{{sections}}" wx:key="title">
+      <view class="privacy-section__title">{{item.title}}</view>
+      <view class="privacy-section__content">{{item.content}}</view>
+    </view>
+
+    <view class="surface-card privacy-summary card-pad-md">
+      <view class="privacy-summary__title">视频分析授权</view>
+      <view class="privacy-summary__desc">同意后才可以提交训练视频进行分析；撤回后会立即停止后续上传和分析。</view>
+      <button wx:if="{{!consented}}" class="privacy-consent-btn" bindtap="onGrantConsent">同意并开启视频分析</button>
+      <button wx:else class="privacy-consent-btn privacy-consent-btn--secondary" bindtap="onWithdrawConsent">撤回视频分析授权</button>
+    </view>
+
+    <view class="surface-card privacy-notice card-pad-md">
+      <view class="privacy-section__title">⚠️ 安全提醒</view>
+      <view class="privacy-section__content">如您在训练中感到身体不适，请立即停止并联系主治医生。本系统仅提供训练评估建议，不构成医学诊断。</view>
+    </view>
+  </view>
+</view>

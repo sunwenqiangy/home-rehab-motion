@@ -1,0 +1,131 @@
+.profile-page {
+  min-height: 100vh;
+  background: #f7fafc;
+  color: #1a202c;
+}
+
+.profile-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 92rpx;
+  padding-left: 28rpx;
+  padding-right: 28rpx;
+  background: #fff;
+  box-sizing: content-box;
+}
+
+.profile-back,
+.profile-nav__placeholder {
+  width: 72rpx;
+  height: 72rpx;
+}
+
+.profile-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0e9aa7;
+  font-size: 64rpx;
+  line-height: 1;
+}
+
+.profile-nav__title {
+  font-size: 34rpx;
+  font-weight: 800;
+}
+
+.profile-content {
+  padding: 32rpx;
+}
+
+.profile-hero {
+  padding: 40rpx 36rpx;
+  border-radius: 32rpx;
+  background: linear-gradient(135deg, #0e9aa7, #3ec6d0);
+  color: #fff;
+  margin-bottom: 24rpx;
+}
+
+.profile-hero__icon {
+  font-size: 60rpx;
+}
+
+.profile-hero__title {
+  margin-top: 12rpx;
+  font-size: 36rpx;
+  font-weight: 800;
+}
+
+.profile-hero__desc,
+.profile-card__desc,
+.profile-privacy {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  line-height: 1.7;
+}
+
+.profile-hero__desc {
+  opacity: 0.88;
+}
+
+.profile-card {
+  margin-top: 24rpx;
+  padding: 32rpx;
+  border-radius: 28rpx;
+  background: #fff;
+  box-shadow: 0 4rpx 24rpx rgba(14, 154, 167, 0.08);
+}
+
+.profile-card__title {
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+.profile-card__desc,
+.profile-privacy {
+  color: #718096;
+}
+
+.profile-input {
+  height: 88rpx;
+  margin-top: 24rpx;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+  border-radius: 16rpx;
+  background: #f7fafc;
+  font-size: 30rpx;
+}
+
+.profile-wechat-name,
+.profile-save,
+.profile-phone-button {
+  margin-top: 20rpx;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.profile-wechat-name {
+  color: #0e9aa7;
+  background: #e6f7f8;
+}
+
+.profile-save,
+.profile-phone-button {
+  color: #fff;
+  background: #0e9aa7;
+}
+
+.profile-phone-status {
+  margin-top: 20rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 16rpx;
+  color: #2f855a;
+  background: #f0fff4;
+  font-size: 28rpx;
+}
+
+.profile-privacy {
+  padding: 24rpx 8rpx 48rpx;
+}

@@ -1,0 +1,332 @@
+/* ========== P07 训练历史 — V4 高保真 ========== */
+
+/* 页面底色 */
+.v4-page {
+  min-height: 100vh;
+  background: #f7fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 状态栏占位 */
+.v4-top-sticky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #fff;
+}
+
+.v4-statusbar {
+  background: #fff;
+  flex-shrink: 0;
+}
+
+/* 导航栏 */
+.v4-navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 108rpx;
+  padding: 16rpx 24rpx 20rpx 36rpx;
+  background: #fff;
+  box-sizing: border-box;
+  gap: 12rpx;
+}
+.v4-navbar-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 40rpx;
+  font-weight: 800;
+  color: #1a202c;
+  text-align: left;
+}
+.v4-navbar-capsule {
+  width: 152rpx;
+  height: 60rpx;
+  border-radius: 999rpx;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  flex-shrink: 0;
+}
+
+/* 内容区 */
+.v4-screen {
+  flex: 1;
+  padding: 16rpx 32rpx 200rpx;
+  background: #f7fafc;
+}
+
+.v4-top-placeholder {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* 筛选 Chips 横滑 */
+.v4-filter-scroll {
+  white-space: nowrap;
+  margin-bottom: 24rpx;
+}
+.v4-filter-row {
+  display: inline-flex;
+  gap: 16rpx;
+  padding: 4rpx 0;
+}
+
+/* Chip 通用 */
+.v4-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 32rpx;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.v4-chip--teal {
+  background: #e6f7f8;
+  color: #0e9aa7;
+}
+.v4-chip--gray {
+  background: #edf2f7;
+  color: #718096;
+}
+.v4-chip--green {
+  background: #f0fff4;
+  color: #38a169;
+}
+.v4-chip--orange {
+  background: #fffaf0;
+  color: #dd6b20;
+}
+.v4-chip--coral {
+  background: #fff1f0;
+  color: #f56565;
+}
+.v4-chip--sm {
+  padding: 8rpx 24rpx;
+  font-size: 24rpx;
+}
+
+/* 统计概览 3列 */
+.v4-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+.v4-stats-card {
+  background: #fff;
+  border-radius: 28rpx;
+  padding: 24rpx 12rpx;
+  text-align: center;
+  box-shadow: 0 4rpx 24rpx rgba(14,154,167,0.08);
+}
+.v4-stats-value {
+  font-size: 48rpx;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.v4-stats-value--teal {
+  color: #0e9aa7;
+}
+.v4-stats-value--green {
+  color: #38a169;
+}
+.v4-stats-value--orange {
+  color: #dd6b20;
+}
+.v4-stats-label {
+  font-size: 24rpx;
+  color: #718096;
+  margin-top: 8rpx;
+}
+
+/* 信息面板 */
+.v4-info-panel {
+  background: #fff;
+  border-radius: 28rpx;
+  padding: 32rpx;
+  box-shadow: 0 4rpx 24rpx rgba(14,154,167,0.08);
+  margin-bottom: 24rpx;
+}
+.v4-info-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.v4-info-title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #1a202c;
+}
+
+/* 进度条 */
+.v4-progress-bar {
+  height: 20rpx;
+  background: #e2e8f0;
+  border-radius: 10rpx;
+  overflow: hidden;
+  margin-top: 16rpx;
+}
+.v4-progress-fill {
+  height: 100%;
+  border-radius: 10rpx;
+  background: linear-gradient(90deg, #0e9aa7, #3ec6d0);
+  transition: width 0.6s;
+}
+.v4-progress-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #718096;
+}
+.v4-progress-retry {
+  color: #0e9aa7;
+  font-weight: 700;
+}
+
+/* 卡片 */
+.v4-card {
+  background: #fff;
+  border-radius: 40rpx;
+  padding: 32rpx;
+  box-shadow: 0 4rpx 24rpx rgba(14,154,167,0.08);
+  margin-bottom: 24rpx;
+}
+
+/* 日期头 */
+.v4-date-header {
+  font-size: 26rpx;
+  color: #718096;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid #edf2f7;
+  margin-bottom: 8rpx;
+}
+
+/* 列表行 */
+.v4-list-row {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #edf2f7;
+}
+.v4-list-row:last-child {
+  border-bottom: none;
+}
+
+/* 状态圆点 */
+.v4-status-dot {
+  width: 24rpx;
+  height: 24rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-right: 24rpx;
+}
+.v4-status-dot--green {
+  background: #38a169;
+}
+.v4-status-dot--teal {
+  background: #0e9aa7;
+}
+.v4-status-dot--orange {
+  background: #dd6b20;
+}
+.v4-status-dot--red {
+  background: #f56565;
+}
+
+/* 列表主体 */
+.v4-list-body {
+  flex: 1;
+  min-width: 0;
+}
+.v4-list-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1a202c;
+}
+.v4-list-sub {
+  font-size: 26rpx;
+  color: #718096;
+  margin-top: 4rpx;
+}
+
+/* 列表徽章 (分数) */
+.v4-list-badge {
+  font-size: 28rpx;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.v4-list-badge--green {
+  color: #38a169;
+}
+.v4-list-badge--teal {
+  color: #0e9aa7;
+}
+.v4-list-badge--orange {
+  color: #dd6b20;
+}
+.v4-list-badge--red {
+  color: #f56565;
+}
+
+/* 空态 */
+.v4-empty-state {
+  text-align: center;
+  padding: 80rpx 40rpx;
+}
+.v4-empty-icon {
+  font-size: 96rpx;
+  margin-bottom: 24rpx;
+}
+.v4-empty-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #2d3748;
+}
+.v4-empty-desc {
+  font-size: 28rpx;
+  color: #718096;
+  margin-top: 12rpx;
+  line-height: 1.6;
+}
+
+/* TabBar */
+.v4-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background: #fff;
+  border-top: 1rpx solid #e2e8f0;
+  padding: 12rpx 0 calc(env(safe-area-inset-bottom) + 4rpx);
+  z-index: 10;
+}
+.v4-tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4rpx;
+  justify-content: center;
+  font-size: 22rpx;
+  color: #718096;
+}
+.v4-tab-item--active {
+  color: #0e9aa7;
+}
+.v4-tab-icon {
+  font-size: 40rpx;
+  line-height: 1;
+}
+.v4-tab-label {
+  font-size: 22rpx;
+  line-height: 1.2;
+}
