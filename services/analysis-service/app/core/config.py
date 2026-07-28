@@ -3,7 +3,10 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ROOT_DIR = Path(__file__).resolve().parents[4]
+# 本地源码路径为 <repo>/services/analysis-service/app/core/config.py，容器内路径为 /app/app/core/config.py。
+# 容器将源码复制到 /app/app，层级比本地少，不能使用固定的 parents 下标。
+ANALYSIS_ROOT = Path(__file__).resolve().parents[2]
+ROOT_DIR = ANALYSIS_ROOT.parent.parent if ANALYSIS_ROOT.name == 'analysis-service' else ANALYSIS_ROOT
 
 
 class Settings(BaseSettings):

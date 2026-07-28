@@ -30,4 +30,4 @@ COPY --from=build /app/tsconfig.base.json ./tsconfig.base.json
 COPY --from=build /app/services/main-service/assets ./services/main-service/assets
 USER home_rehab_motion
 EXPOSE 3000
-CMD ["node", "services/main-service/dist/main.js"]
+CMD ["node", "services/main-service/dist/services/main-service/src/main.js"]
