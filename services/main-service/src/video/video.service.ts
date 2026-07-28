@@ -559,7 +559,17 @@ export class VideoService {
       compensationTypes: Array.isArray(item.compensation_types) ? item.compensation_types : [],
     }));
 
-    const featureRows = video.motion_feature_results.map((item) => ({
+    type FeatureRow = {
+      repId: number | null;
+      featureCode: string;
+      value: number | null;
+      unit: string | null;
+      compareLabel: string | null;
+      deviationSigma: number | null;
+      confidence: number | null;
+    };
+
+    const featureRows: FeatureRow[] = video.motion_feature_results.map((item) => ({
       repId: item.rep_id,
       featureCode: item.feature_code,
       value: item.feature_value,
@@ -569,7 +579,7 @@ export class VideoService {
       confidence: item.confidence,
     }));
 
-    const byRep = featureRows.reduce<Record<string, Array<typeof featureRows[number]>>>((acc, item) => {
+    const byRep = featureRows.reduce<Record<string, FeatureRow[]>>((acc, item) => {
       const key = String(item.repId ?? 0);
       if (!acc[key]) {
         acc[key] = [];
