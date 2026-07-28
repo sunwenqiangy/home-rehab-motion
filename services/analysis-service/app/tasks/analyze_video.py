@@ -5,15 +5,13 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.core.config import settings
+from app.core.config import ROOT_DIR, settings
 from app.core.models import CompareResult, ConfidenceResult, QualityCheckResult, Rep, RepScore, VideoScore
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
-ROOT_DIR = Path(__file__).resolve().parents[4]
 
 
 def _download_video(video_key: str) -> Tuple[Optional[str], bool]:

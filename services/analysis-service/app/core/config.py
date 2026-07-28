@@ -77,6 +77,7 @@ class Settings(BaseSettings):
         # 这样不论从哪个目录启动服务，都能正确加载 /home_rehab_motion/.env 中的配置
         env_file=(str(ROOT_DIR / '.env'), '.env'),
         extra='ignore',
+        protected_namespaces=('settings_',),
     )
 
 
