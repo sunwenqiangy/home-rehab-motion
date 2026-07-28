@@ -7,7 +7,9 @@ COPY services/main-service/package.json services/main-service/package.json
 COPY packages/shared-contract/package.json packages/shared-contract/package.json
 COPY packages/shared-constants/package.json packages/shared-constants/package.json
 COPY packages/shared-types/package.json packages/shared-types/package.json
+COPY services/main-service/prisma ./services/main-service/prisma
 RUN npm ci
+RUN npx prisma generate --schema services/main-service/prisma/schema.prisma
 
 FROM dependencies AS build
 COPY tsconfig.base.json ./
