@@ -1,5 +1,8 @@
 FROM node:20-bookworm-slim AS dependencies
 WORKDIR /app
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 COPY apps/admin-web/package.json apps/admin-web/package.json
 COPY apps/patient-miniapp/package.json apps/patient-miniapp/package.json
@@ -20,7 +23,11 @@ RUN npm run build -w @home-rehab-motion/main-service
 FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
-RUN groupadd --system home_rehab_motion && useradd --system --gid home_rehab_motion --home-dir /app home_rehab_motion
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system home_rehab_motion \
+    && useradd --system --gid home_rehab_motion --home-dir /app home_rehab_motion
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=build /app/services/main-service/dist ./services/main-service/dist
 COPY --from=build /app/services/main-service/prisma ./services/main-service/prisma
