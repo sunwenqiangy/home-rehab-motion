@@ -19,6 +19,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npx prisma generate --schema services/main-service/prisma/schema.prisma
       - run: npm run typecheck
       - run: npm run build -w @home-rehab-motion/main-service
       - run: npm run build -w @home-rehab-motion/admin-web
