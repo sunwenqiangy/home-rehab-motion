@@ -52,6 +52,7 @@ jobs:
           MYSQL_PASSWORD: test-password-only
           MYSQL_ROOT_PASSWORD: test-root-password-only
           REDIS_PASSWORD: test-redis-password-only
+          REDIS_IMAGE: registry.example.invalid/home-rehab-motion-redis:7.4-alpine
           AUTH_TOKEN_SECRET: 12345678901234567890123456789012
           ANALYSIS_INTERNAL_TOKEN: 12345678901234567890123456789012
           ANALYSIS_CALLBACK_URL: https://api.example.invalid/api/videos/internal/analysis-callback
