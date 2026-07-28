@@ -10,7 +10,7 @@ function getAppConfig() {
     return app.globalData.appConfig || appConfig_1.DEFAULT_APP_CONFIG;
 }
 let pollTimer;
-let redirectTimer;
+let isPolling = false;
 function getStatusLabel(status, failed, timeoutReached) {
     if (status === 'completed') {
         return '分析完成';
@@ -108,7 +108,6 @@ Page({
     },
     onUnload() {
         this.stopPolling();
-        this.stopRedirect();
     },
     updateTopPlaceholderHeight() {
         wx.nextTick(() => {
@@ -129,16 +128,11 @@ Page({
             pollTimer = undefined;
         }
     },
-    stopRedirect() {
-        if (redirectTimer) {
-            clearTimeout(redirectTimer);
-            redirectTimer = undefined;
-        }
-    },
     async pollStatus() {
-        if (!this.data.videoId) {
+        if (!this.data.videoId || isPolling) {
             return;
         }
+        isPolling = true;
         const elapsed = Date.now() - (this.data.pollStartedAt || Date.now());
         if (elapsed >= MAX_WAIT_MS && !this.data.timeoutReached) {
             this.stopPolling();
@@ -150,6 +144,7 @@ Page({
                 tip: '您可以稍后到历史记录里继续查看结果，无需重复上传。',
                 statusLabel: getStatusLabel(this.data.status, false, true),
             });
+            isPolling = false;
             return;
         }
         try {
@@ -200,22 +195,12 @@ Page({
             });
             if (failed) {
                 this.stopPolling();
-                this.stopRedirect();
                 wx.redirectTo({ url: `/pages/report/index?videoId=${this.data.videoId}` });
                 return;
             }
             if ((result.status === 'completed' || result.status === 'review_required') && result.reportReady) {
                 this.stopPolling();
-                this.stopRedirect();
-                const elapsedMs = Date.now() - (this.data.pollStartedAt || Date.now());
-                const cfg = getAppConfig();
-                const minAnalyzingPageMs = cfg.analyzingMinWaitSeconds * 1000;
-                const delayMs = Math.max(0, minAnalyzingPageMs - elapsedMs);
-                redirectTimer = setTimeout(() => {
-                    wx.redirectTo({
-                        url: `/pages/report/index?videoId=${this.data.videoId}`,
-                    });
-                }, delayMs);
+                wx.redirectTo({ url: `/pages/report/index?videoId=${this.data.videoId}` });
             }
         }
         catch (error) {
@@ -250,6 +235,9 @@ Page({
                     statusLabel: '需要重新提交',
                 });
             }
+        }
+        finally {
+            isPolling = false;
         }
     },
     onRetryUpload() {

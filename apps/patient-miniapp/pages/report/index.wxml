@@ -26,10 +26,10 @@
     <view class="rp-failure-result__icon">!</view>
     <view class="rp-loading__text">{{failureTitle}}</view>
     <view class="rp-loading__sub">{{failureReason}}</view>
-    <view class="rp-failure-result__tip">重新拍摄时请保持画面稳定、光线充足，并确保完整动作始终在画面内。</view>
+    <view class="rp-failure-result__tip">本次未生成评分或训练建议，不影响您之前的训练记录。重新拍摄时请保持画面稳定、光线充足，并确保完整动作始终在画面内。</view>
     <view class="rp-loading__actions">
       <button class="btn-big btn-teal" bindtap="onRetryUpload">重新上传训练视频</button>
-      <button class="btn-big btn-outline" bindtap="onViewHistory">返回历史记录</button>
+      <button class="btn-big btn-outline" bindtap="onViewHistory">查看训练记录</button>
     </view>
   </view>
 

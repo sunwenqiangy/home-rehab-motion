@@ -2,7 +2,7 @@
 
 import logging
 import subprocess
-from typing import Dict
+from typing import Any, Dict
 
 import numpy as np
 
@@ -71,7 +71,7 @@ def _read_video_meta_with_opencv(video_path: str) -> Dict:
         return {}
 
 
-def _inspect_visual_quality(video_path: str) -> Dict[str, float | bool]:
+def _inspect_visual_quality(video_path: str) -> Dict[str, Any]:
     """抽样检查亮度和画面稳定性；无法读取时保守标记为不可确认。"""
     try:
         import cv2

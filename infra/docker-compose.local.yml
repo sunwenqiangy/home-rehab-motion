@@ -1,6 +1,5 @@
 name: home-rehab-motion
 
-version: '3.9'
 services:
   mysql:
     image: mysql:8.0

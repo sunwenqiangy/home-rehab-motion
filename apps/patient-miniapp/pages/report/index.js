@@ -197,10 +197,10 @@ Page({
                     this.setData({
                         loadFailed: false,
                         isAnalysisFailed: true,
-                        failureTitle: status.status === 'quality_insufficient' ? '视频质量不足，暂未生成报告' : '本次分析未成功',
-                        failureReason: status.failReason || (status.status === 'quality_insufficient'
-                            ? '请确保动作完整入镜、画面清晰稳定后再重新上传。'
-                            : '分析过程中遇到问题，建议重新上传一次训练视频。'),
+                        failureTitle: status.status === 'quality_insufficient' ? '视频质量不足，暂未生成报告' : '本次训练暂未生成结果',
+                        failureReason: status.status === 'quality_insufficient'
+                            ? (status.failReason || '请确保动作完整入镜、画面清晰稳定后再重新上传。')
+                            : '系统暂时无法完成本次视频分析。请重新上传一段完整、清晰的训练视频后再试。',
                     });
                 }
                 else {

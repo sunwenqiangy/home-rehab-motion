@@ -194,7 +194,7 @@ export class GuidanceService {
     });
     if (!published?.snapshot) throw new NotFoundException('当前动作指导暂未准备好');
     const snapshot = normalizeStoredSnapshot(published.snapshot, contentId, content.action_type as TrainingActionType);
-    return { ...snapshot, version: content.published_version };
+    return { ...this.withAccessibleAssetUrls(snapshot), version: content.published_version };
   }
 
   async listPatientGuidance(): Promise<GuidanceListItemDto[]> {
@@ -238,7 +238,7 @@ export class GuidanceService {
   async getAdminDraft(id: number): Promise<GuidanceContentDto> {
     const content = await this.findContent(id);
     const draft = normalizeStoredSnapshot(content.draft_snapshot, id, content.action_type as TrainingActionType);
-    if (draft.title || content.draft_snapshot) return draft;
+    if (draft.title || content.draft_snapshot) return this.withAccessibleAssetUrls(draft);
     if (content.published_version) return this.getGuidanceDetail(id);
     return draft;
   }
@@ -307,6 +307,30 @@ export class GuidanceService {
     const draft = normalizeStoredSnapshot(target.snapshot, id, current.action_type as TrainingActionType);
     await this.prisma.guidanceContent.update({ where: { content_id: BigInt(id) }, data: { draft_snapshot: toJson(draft) } });
     return draft;
+  }
+
+  private withAccessibleAssetUrls(snapshot: GuidanceContentDto): GuidanceContentDto {
+    const resolveAsset = (asset?: GuidanceAssetDto): GuidanceAssetDto | undefined => {
+      if (!asset?.objectKey) return asset;
+      return { ...asset, url: this.storage.getPublicObjectUrl(asset.objectKey) };
+    };
+
+    return {
+      ...snapshot,
+      coverImage: resolveAsset(snapshot.coverImage) || snapshot.coverImage,
+      video: { ...snapshot.video, asset: resolveAsset(snapshot.video.asset) || snapshot.video.asset },
+      steps: snapshot.steps.map((step) => ({ ...step, image: resolveAsset(step.image) })),
+      shootingRequirements: snapshot.shootingRequirements.map((item) => ({
+        ...item,
+        correctImage: resolveAsset(item.correctImage) || item.correctImage,
+        incorrectImage: resolveAsset(item.incorrectImage),
+      })),
+      commonMistakes: snapshot.commonMistakes.map((item) => ({
+        ...item,
+        media: resolveAsset(item.media),
+        correctImage: resolveAsset(item.correctImage),
+      })),
+    };
   }
 
   async getAdminPresignUpload(fileName?: string, mediaKind: 'image' | 'video' = 'image'): Promise<AssetUploadTargetDto> {

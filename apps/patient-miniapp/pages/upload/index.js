@@ -367,14 +367,19 @@ Page({
             });
             this.setData({ statusText: '正在上传视频，请稍候...' });
             await (0, video_1.uploadVideoFile)(presign.videoId, presign, this.data.filePath);
-            this.setData({ statusText: '视频上传完成，正在创建分析任务...' });
-            await (0, video_1.confirmUpload)({
-                videoId: presign.videoId,
-                actionType: this.data.actionType,
-                duration: this.data.duration || 30,
-            });
+            this.setData({ statusText: '视频上传完成，正在进入分析页面...' });
             wx.navigateTo({
                 url: `/pages/analyzing/index?videoId=${presign.videoId}`,
+                success: () => {
+                    // 上传已完成；确认文件、登记训练记录和投递分析任务在后台执行，避免阻塞用户进入分析页。
+                    void (0, video_1.confirmUpload)({
+                        videoId: presign.videoId,
+                        actionType: this.data.actionType,
+                        duration: this.data.duration || 30,
+                    }).catch(() => {
+                        // 服务端会记录确认或投递失败状态，分析页轮询后展示可重传的结果反馈。
+                    });
+                },
             });
         }
         catch (error) {

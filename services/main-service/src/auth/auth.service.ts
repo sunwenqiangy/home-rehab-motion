@@ -17,6 +17,7 @@ import type { DisplayMode, UserRole } from '@home-rehab-motion/shared-types';
 import type { Request } from 'express';
 import { EnvironmentService } from '../common/runtime/environment';
 import { PrismaService } from '../prisma/prisma.service';
+import { PRIVACY_POLICY_VERSION } from '../privacy/privacy.service';
 
 export interface AuthenticatedUser {
   userId: number;
@@ -82,6 +83,7 @@ export class AuthService {
         display_mode: 'elderly',
       },
     });
+    await this.grantDefaultVideoAnalysisConsent(user.user_id);
     const displayMode = (user.display_mode as DisplayMode) || 'elderly';
     return {
       token: this.issueToken({ sub: Number(user.user_id), role: 'patient', displayMode }),
@@ -114,6 +116,7 @@ export class AuthService {
         display_mode: 'elderly',
       },
     });
+    await this.grantDefaultVideoAnalysisConsent(user.user_id);
     const displayMode = (user.display_mode as DisplayMode) || 'elderly';
     return {
       token: this.issueToken({ sub: Number(user.user_id), role: 'patient', displayMode }),
@@ -152,6 +155,7 @@ export class AuthService {
         display_mode: 'elderly',
       },
     });
+    await this.grantDefaultVideoAnalysisConsent(user.user_id);
     const displayMode = (user.display_mode as DisplayMode) || 'elderly';
     return {
       token: this.issueToken({ sub: Number(user.user_id), role: 'patient', displayMode }),
@@ -238,6 +242,21 @@ export class AuthService {
 
   isPrivilegedRole(role: UserRole): boolean {
     return role === 'admin' || role === 'nurse';
+  }
+
+  private async grantDefaultVideoAnalysisConsent(userId: bigint) {
+    const now = new Date();
+    await this.prisma.patientPrivacyConsent.upsert({
+      where: { user_id: userId },
+      create: {
+        user_id: userId,
+        policy_version: PRIVACY_POLICY_VERSION,
+        consented_at: now,
+        withdrawn_at: null,
+      },
+      // 已主动撤回授权的用户应保持撤回状态；自动授权只应用于首次登录创建的记录。
+      update: { policy_version: PRIVACY_POLICY_VERSION },
+    });
   }
 
   private extractBearerToken(header: string): string {

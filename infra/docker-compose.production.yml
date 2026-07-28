@@ -8,6 +8,8 @@ name: home-rehab-motion
 services:
   redis:
     image: ${REDIS_IMAGE:?REDIS_IMAGE is required}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     volumes:
       - redis-data:/data
@@ -41,6 +43,7 @@ services:
       OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:?OSS_ACCESS_KEY_SECRET is required}
       OSS_FORCE_PATH_STYLE: 'false'
       OSS_PUBLIC_BASE_URL: ''
+      OSS_PRESIGNED_EXPIRES_SECONDS: ${OSS_PRESIGNED_EXPIRES_SECONDS:-900}
       MOCK_AUTH_FALLBACK: 'false'
       AUTH_ALLOW_LEGACY_MOCK_TOKEN: 'false'
       ALLOW_SAMPLE_VIDEO_FALLBACK: 'false'

@@ -5,6 +5,7 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.core.config import ROOT_DIR, settings
@@ -535,6 +536,9 @@ def _save_keypoints_json(video_id: int, frames: list, reps: Optional[List[Rep]] 
 
 def _notify_callback(callback_url: Optional[str], video_id: int, analysis_status: str, **kwargs) -> bool:
     """投递终态回调；短暂网络故障同步重试，最终状态写入 analysis_task 供补偿。"""
+    from app.db.repository import AnalysisRepository
+    from app.db.session import sync_session_scope
+
     callback_url = callback_url or settings.analysis_callback_url
     if not callback_url:
         logger.error('No callback URL configured for video_id=%d', video_id)
@@ -558,7 +562,6 @@ def _notify_callback(callback_url: Optional[str], video_id: int, analysis_status
             )
             if 200 <= response.status_code < 300:
                 with sync_session_scope() as session:
-                    from app.db.repository import AnalysisRepository
                     AnalysisRepository(session).record_callback_delivery(
                         video_id, callback_url, payload, 'delivered'
                     )
@@ -573,7 +576,6 @@ def _notify_callback(callback_url: Optional[str], video_id: int, analysis_status
             time.sleep(attempt)
 
     with sync_session_scope() as session:
-        from app.db.repository import AnalysisRepository
         AnalysisRepository(session).record_callback_delivery(
             video_id,
             callback_url,

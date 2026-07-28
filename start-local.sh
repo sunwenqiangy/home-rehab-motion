@@ -58,6 +58,13 @@ check_deps() {
     err "请先安装上述依赖后再运行"
     exit 1
   fi
+
+  local node_major
+  node_major="$(node -p 'process.versions.node.split(".")[0]')"
+  if [ "$node_major" -lt 20 ]; then
+    err "当前 Node.js 为 $(node --version)，项目要求 Node.js 20 LTS。请执行：nvm use"
+    exit 1
+  fi
 }
 
 check_mysql() {
