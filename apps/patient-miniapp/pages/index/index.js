@@ -453,8 +453,7 @@ Page({
         if (!this.requireLogin()) {
             return;
         }
-        const defaultAction = this.data.defaultAction;
-        wx.navigateTo({ url: `/pages/guidance/detail?contentId=${defaultAction.contentId}` });
+        wx.redirectTo({ url: '/pages/guidance/index' });
     },
     onOpenNotifications() {
         if (!this.requireLogin()) {

@@ -97,9 +97,10 @@ export class GuidanceController {
     @Req() req: Request,
     @Query('fileName') fileName?: string,
     @Query('mediaKind') mediaKind?: string,
+    @Query('contentType') contentType?: string,
   ) {
     this.authService.requireUser(req, ['admin']);
-    return this.guidanceService.getAdminPresignUpload(fileName, mediaKind === 'video' ? 'video' : 'image');
+    return this.guidanceService.getAdminPresignUpload(fileName, mediaKind === 'video' ? 'video' : 'image', contentType);
   }
 
   @Post('assets/upload')

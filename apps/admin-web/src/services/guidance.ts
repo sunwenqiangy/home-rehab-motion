@@ -53,10 +53,15 @@ export function rollbackGuidance(id: number, version: number): Promise<GuidanceC
   return request<GuidanceContentDto>({ url: `/admin/guidance/${id}/rollback`, method: 'POST', data: { version } });
 }
 
-export function presignUpload(fileName?: string, mediaKind: 'image' | 'video' = 'image'): Promise<AssetUploadTargetDto> {
-  return request<AssetUploadTargetDto>({
-    url: '/admin/guidance/presign-upload',
-    method: 'GET',
-    params: { fileName, mediaKind },
-  });
+export function presignUpload(
+fileName?: string,
+mediaKind: 'image' | 'video' = 'image',
+contentType?: string,
+): Promise<AssetUploadTargetDto> {
+return request<AssetUploadTargetDto>({
+url: '/admin/guidance/presign-upload',
+method: 'GET',
+params: { fileName, mediaKind, contentType },
+});
 }
+

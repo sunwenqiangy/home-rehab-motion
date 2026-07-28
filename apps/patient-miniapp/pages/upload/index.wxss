@@ -202,45 +202,41 @@ page {
   background: #0f172a;
 }
 
-/* ========== 拍摄检查结果 ========== */
-.check-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14rpx;
-}
-
-.check-item {
+/* ========== 视频可提交状态 ========== */
+.upload-ready-panel {
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  gap: 18rpx;
+  padding: 26rpx 28rpx;
+  border: 1rpx solid #b9e3d4;
+  border-radius: 28rpx;
+  background: #effaf7;
 }
 
-.check-item__icon {
-  font-size: 28rpx;
-  font-weight: 700;
-  line-height: 1;
+.upload-ready-panel__icon {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #35ad74;
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 800;
+  line-height: 48rpx;
+  text-align: center;
+  flex-shrink: 0;
 }
 
-.check-item__icon--pass {
-  color: #38a169;
+.upload-ready-panel__title {
+  color: #246b50;
+  font-size: 30rpx;
+  font-weight: 800;
 }
 
-.check-item__icon--warn {
-  color: #dd6b20;
-}
-
-.check-item__text {
-  font-size: 28rpx;
-  line-height: 1.6;
-}
-
-.check-item__text--pass {
-  color: #2d3748;
-}
-
-.check-item__text--warn {
-  color: #c05621;
-  font-weight: 700;
+.upload-ready-panel__desc {
+  margin-top: 6rpx;
+  color: #557d73;
+  font-size: 25rpx;
+  line-height: 1.55;
 }
 
 /* ========== 问题提醒(橙色面板) ========== */
@@ -258,10 +254,12 @@ page {
   margin-bottom: 16rpx;
 }
 
-.warn-panel__list {
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
+.warn-panel__message {
+  margin-bottom: 10rpx;
+  color: #9c4221;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 1.6;
 }
 
 .warn-panel__item {

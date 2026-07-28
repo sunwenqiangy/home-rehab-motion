@@ -333,10 +333,14 @@ export class GuidanceService {
     };
   }
 
-  async getAdminPresignUpload(fileName?: string, mediaKind: 'image' | 'video' = 'image'): Promise<AssetUploadTargetDto> {
+  async getAdminPresignUpload(
+    fileName?: string,
+    mediaKind: 'image' | 'video' = 'image',
+    contentType?: string,
+  ): Promise<AssetUploadTargetDto> {
     const fallbackName = mediaKind === 'video' ? 'teaching-video.mp4' : 'asset.png';
     const objectKey = this.storage.buildGuidanceAssetObjectKey(fileName || fallbackName);
-    return this.storage.createAssetUploadTarget(objectKey, mediaKind);
+    return this.storage.createAssetUploadTarget(objectKey, mediaKind, contentType);
   }
 
   async uploadAsset(objectKey: string, file?: UploadedBinaryFile) {

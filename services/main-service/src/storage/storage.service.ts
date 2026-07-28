@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { createHash, createHmac } from 'crypto';
+import { createHash, createHmac, randomBytes } from 'crypto';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
 import { mkdir, access, writeFile } from 'fs/promises';
@@ -38,13 +38,23 @@ export class StorageService {
   private readonly assetUploadMaxBytes = 20 * 1024 * 1024;
   private readonly videoUploadMaxBytes = 200 * 1024 * 1024;
   private readonly ossPublicBaseUrl = (process.env.OSS_PUBLIC_BASE_URL || '').replace(/\/+$/, '');
+  private readonly guidanceBucketName = process.env.OSS_GUIDANCE_BUCKET || '';
+  private readonly guidancePublicBaseUrl = (process.env.OSS_GUIDANCE_PUBLIC_BASE_URL || '').replace(/\/+$/, '');
 
   buildVideoObjectKey(videoId: number) {
     return `videos/${videoId}/source`;
   }
 
   buildGuidanceAssetObjectKey(fileName = 'asset.png') {
-    return `guidance/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
+    const extension = path.posix.extname(fileName).toLowerCase() || '.png';
+    const baseName = path.posix.basename(fileName, extension)
+      .normalize('NFKD')
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase();
+    const fileLabel = baseName || 'asset';
+    const suffix = randomBytes(4).toString('hex');
+    return `guidance/${Date.now()}-${suffix}-${fileLabel}${extension}`;
   }
 
   async createUploadTarget(videoId: number, objectKey: string) {
@@ -69,22 +79,29 @@ export class StorageService {
     };
   }
 
-  async createAssetUploadTarget(objectKey: string, mediaKind: 'image' | 'video' = 'image') {
+  async createAssetUploadTarget(
+    objectKey: string,
+    mediaKind: 'image' | 'video' = 'image',
+    contentType?: string,
+  ) {
     const normalizedKey = this.normalizeObjectKey(objectKey);
     const keyWithExt = path.posix.extname(normalizedKey)
       ? normalizedKey
       : `${normalizedKey}${this.resolveAssetExtension()}`;
+    const resolvedContentType = this.resolveContentType(keyWithExt, contentType);
 
     if (this.isS3PostEnabled()) {
       return {
         uploadType: 's3_post' as const,
-        uploadUrl: this.buildDirectUploadUrl(),
+        uploadUrl: this.buildDirectUploadUrl(this.getGuidanceBucketName()),
         objectKey: keyWithExt,
         uploadFields: this.buildPresignedPostFields(
           keyWithExt,
           mediaKind === 'video' ? this.videoUploadMaxBytes : this.assetUploadMaxBytes,
+          resolvedContentType,
+          this.getGuidanceBucketName(),
         ),
-        assetUrl: this.buildPublicAssetUrl(keyWithExt),
+        assetUrl: this.buildGuidancePublicUrl(keyWithExt),
       };
     }
 
@@ -176,6 +193,9 @@ export class StorageService {
 
   getPublicObjectUrl(objectKey: string) {
     const normalizedKey = this.normalizeObjectKey(objectKey);
+    if (normalizedKey.startsWith('guidance/') && this.hasGuidancePublicBucket()) {
+      return this.buildGuidancePublicUrl(normalizedKey);
+    }
     if (this.isS3PostEnabled()) {
       return this.buildPresignedObjectUrl({
         objectKey: normalizedKey,
@@ -193,30 +213,45 @@ export class StorageService {
       && Boolean(this.secretAccessKey);
   }
 
-  private buildDirectUploadUrl() {
+  private buildDirectUploadUrl(bucketName = this.bucketName) {
     if (!this.endpoint) {
       throw new BadRequestException('未配置 OSS_ENDPOINT');
     }
 
     const endpointInfo = this.parseEndpoint();
     const bucketPath = this.forcePathStyle
-      ? this.joinUrlPath(endpointInfo.basePath, this.bucketName)
+      ? this.joinUrlPath(endpointInfo.basePath, bucketName)
       : endpointInfo.basePath || '/';
     const host = this.forcePathStyle
       ? endpointInfo.host
-      : `${this.bucketName}.${endpointInfo.host}`;
+      : `${bucketName}.${endpointInfo.host}`;
 
     return `${endpointInfo.protocol}//${host}${bucketPath}`.replace(/\/+$/, '');
   }
 
-  private buildPublicAssetUrl(objectKey: string) {
-    if (this.ossPublicBaseUrl) {
-      return `${this.ossPublicBaseUrl}/${objectKey}`;
+  private buildGuidancePublicUrl(objectKey: string) {
+    const normalizedKey = this.normalizeObjectKey(objectKey);
+    if (this.guidancePublicBaseUrl) {
+      return `${this.guidancePublicBaseUrl}/${normalizedKey}`;
     }
-    return `/oss-assets/${objectKey}`;
+    if (this.hasGuidancePublicBucket() && this.endpoint) {
+      return `${this.buildDirectUploadUrl(this.getGuidanceBucketName())}/${normalizedKey}`;
+    }
+    if (this.ossPublicBaseUrl) {
+      return `${this.ossPublicBaseUrl}/${normalizedKey}`;
+    }
+    return `/oss-assets/${normalizedKey}`;
   }
 
-  private buildPresignedPostFields(objectKey: string, maxBytes: number) {
+  private getGuidanceBucketName() {
+    return this.guidanceBucketName || this.bucketName;
+  }
+
+  private hasGuidancePublicBucket() {
+    return Boolean(this.guidanceBucketName);
+  }
+
+  private buildPresignedPostFields(objectKey: string, maxBytes: number, contentType?: string, bucketName = this.bucketName) {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + this.presignedExpiresSeconds * 1000).toISOString();
     const dateStamp = this.formatDateStamp(now);
@@ -225,11 +260,12 @@ export class StorageService {
     const credential = `${this.accessKeyId}/${dateStamp}/${this.region}/s3/aws4_request`;
 
     const conditions: Array<Record<string, string> | [string, number, number]> = [
-      { bucket: this.bucketName },
+      { bucket: bucketName },
       { key: objectKey },
       { 'x-amz-algorithm': algorithm },
       { 'x-amz-credential': credential },
       { 'x-amz-date': amzDate },
+      ...(contentType ? [{ 'Content-Type': contentType }] : []),
       ['content-length-range', 1, maxBytes],
     ];
 
@@ -252,6 +288,7 @@ export class StorageService {
       'x-amz-algorithm': algorithm,
       'x-amz-credential': credential,
       'x-amz-date': amzDate,
+      ...(contentType ? { 'Content-Type': contentType } : {}),
       'x-amz-signature': signature,
     };
 
@@ -306,6 +343,9 @@ export class StorageService {
       'X-Amz-SignedHeaders': 'host',
     };
 
+    if (params.method === 'GET') {
+      queryParams['response-content-disposition'] = 'inline';
+    }
     if (this.sessionToken) {
       queryParams['X-Amz-Security-Token'] = this.sessionToken;
     }
@@ -469,6 +509,25 @@ export class StorageService {
       throw new BadRequestException('生产环境不允许暴露本地患者资产');
     }
     return `/oss-assets/${normalizedKey}`;
+  }
+
+  private resolveContentType(objectKey: string, requestedContentType?: string) {
+    const normalized = (requestedContentType || '').trim().toLowerCase();
+    if (/^(image\/(png|jpeg|gif|webp)|video\/(mp4|quicktime|x-m4v))$/.test(normalized)) {
+      return normalized;
+    }
+
+    switch (path.posix.extname(objectKey).toLowerCase()) {
+      case '.png': return 'image/png';
+      case '.jpg':
+      case '.jpeg': return 'image/jpeg';
+      case '.gif': return 'image/gif';
+      case '.webp': return 'image/webp';
+      case '.mp4': return 'video/mp4';
+      case '.mov': return 'video/quicktime';
+      case '.m4v': return 'video/x-m4v';
+      default: return undefined;
+    }
   }
 
   private isSupportedVideo(fileName: string | undefined, content: Buffer) {

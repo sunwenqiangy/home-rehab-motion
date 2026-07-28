@@ -31,6 +31,7 @@ services/main-service/prisma/dev.db-journal
 
 # Environment files and secrets
 .env
+.env2
 .env.*
 **/.env
 **/.env.*

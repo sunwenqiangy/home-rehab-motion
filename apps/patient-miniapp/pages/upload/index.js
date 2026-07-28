@@ -69,40 +69,9 @@ function getFileExtension(filePath) {
     const dotIndex = fileName.lastIndexOf('.');
     return dotIndex >= 0 ? fileName.slice(dotIndex) : '';
 }
-function formatFileSize(size) {
-    if (!size) {
-        return '未知大小';
-    }
-    if (size < 1024 * 1024) {
-        return `${Math.round(size / 1024)}KB`;
-    }
-    return `${(size / 1024 / 1024).toFixed(1)}MB`;
-}
 function getMaxDurationSeconds(source) {
     const cfg = getAppConfig();
     return source === 'camera' ? cfg.videoRecordMaxDurationSeconds : cfg.videoMaxDurationSeconds;
-}
-function buildCheckItems(duration, size, extension, source) {
-    const cfg = getAppConfig();
-    const maxBytes = cfg.videoMaxSizeMB * 1024 * 1024;
-    const maxDuration = getMaxDurationSeconds(source);
-    return [
-        {
-            label: '视频时长',
-            value: duration >= cfg.videoMinDurationSeconds && duration <= maxDuration ? `已录制 ${duration} 秒` : '时长需重新确认',
-            passed: duration >= cfg.videoMinDurationSeconds && duration <= maxDuration,
-        },
-        {
-            label: '文件大小',
-            value: size <= maxBytes ? `文件 ${formatFileSize(size)}` : '文件超过限制',
-            passed: size <= maxBytes,
-        },
-        {
-            label: '文件格式',
-            value: ALLOWED_VIDEO_EXTENSIONS.includes(extension) ? extension.replace('.', '').toUpperCase() : '格式不支持',
-            passed: ALLOWED_VIDEO_EXTENSIONS.includes(extension),
-        },
-    ];
 }
 function chooseTrainingVideo(sourceType = ['album', 'camera']) {
     const cfg = getAppConfig();
@@ -172,12 +141,10 @@ Page({
         durationText: '未选择',
         canSubmit: false,
         submitting: false,
-        selectedFileSize: '',
         validationMessage: '',
         actionOptions: [],
         goalDesc: '本次先完成「缩腹运动」1 次，动作稳一点比做得快更重要。',
         previewPoster: '',
-        checkItems: [],
     },
     onReady() {
         this.updateTopPlaceholderHeight();
@@ -259,53 +226,43 @@ Page({
             this.setData({
                 validationMessage: '当前仅支持 mp4、mov、m4v、avi 格式的视频。',
                 canSubmit: false,
-                statusText: '请重新选择符合格式要求的视频。',
+                statusText: '当前视频格式不支持，请重新选择。',
             });
-            wx.showToast({ title: '视频格式不支持', icon: 'none' });
             return;
         }
         if (res.duration < cfg.videoMinDurationSeconds) {
             this.setData({
                 validationMessage: `视频时长过短，请至少保留 ${cfg.videoMinDurationSeconds} 秒完整动作。`,
                 canSubmit: false,
-                statusText: '请重新选择更完整的训练视频。',
+                statusText: '当前视频时长不足，请重新选择。',
             });
-            wx.showToast({ title: '视频时长过短', icon: 'none' });
             return;
         }
         if (res.duration > maxDuration) {
             this.setData({
                 validationMessage: `视频时长超过 ${Math.floor(maxDuration / 60)} 分钟，请裁剪后再上传。`,
                 canSubmit: false,
-                statusText: '请重新选择更短的视频后再提交分析。',
+                statusText: '当前视频时长过长，请裁剪或重新选择。',
             });
-            wx.showToast({ title: '视频时长过长', icon: 'none' });
             return;
         }
         if (size > maxBytes) {
             this.setData({
                 validationMessage: `视频文件超过 ${cfg.videoMaxSizeMB}MB，请压缩或裁剪后再上传。`,
                 canSubmit: false,
-                statusText: '当前视频体积较大，请重新处理后再上传。',
+                statusText: '当前视频文件过大，请压缩或重新选择。',
             });
-            wx.showToast({ title: '视频文件过大', icon: 'none' });
             return;
         }
         this.setData({
             filePath: res.tempFilePath,
             fileName: getFileName(res.tempFilePath),
-            selectedFileSize: formatFileSize(size),
             validationMessage: '',
             duration: res.duration,
             durationText: formatDuration(res.duration),
             canSubmit: true,
-            statusText: sourceLabel === 'camera'
-                ? '录制完成，点击“提交分析”继续。'
-                : sourceLabel === 'album'
-                    ? '视频已从相册选择，点击“提交分析”继续。'
-                    : '视频已选择，点击“提交分析”继续。',
+            statusText: '视频可以上传分析，请确认预览画面无误。',
             previewPoster: res.tempFilePath,
-            checkItems: buildCheckItems(res.duration, size, extension, sourceLabel),
         });
     },
     onSelectVideo() {
@@ -341,7 +298,6 @@ Page({
                 validationMessage: '暂时无法选择视频，请检查系统权限或稍后重试。',
                 statusText: '视频选择失败，请稍后重试。',
             });
-            wx.showToast({ title: '选择视频失败', icon: 'none' });
         });
     },
     async onSubmit() {

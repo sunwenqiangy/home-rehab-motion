@@ -44,25 +44,20 @@
         </view>
       </view>
 
-      <!-- 拍摄检查结果 -->
-      <view class="info-panel" wx:if="{{checkItems.length}}">
-        <view class="info-title">✅ 拍摄检查结果</view>
-        <view class="check-list">
-          <view class="check-item" wx:for="{{checkItems}}" wx:key="label">
-            <text class="check-item__icon {{item.passed ? 'check-item__icon--pass' : 'check-item__icon--warn'}}">{{item.passed ? '✓' : '⚠'}}</text>
-            <text class="check-item__text {{item.passed ? 'check-item__text--pass' : 'check-item__text--warn'}}">{{item.value}}</text>
-          </view>
+      <!-- 基础检查通过提示 -->
+      <view class="upload-ready-panel" wx:if="{{filePath && canSubmit}}">
+        <view class="upload-ready-panel__icon">✓</view>
+        <view>
+          <view class="upload-ready-panel__title">视频可以上传分析</view>
+          <view class="upload-ready-panel__desc">请确认预览画面无误后，点击下方按钮。</view>
         </view>
       </view>
 
-      <!-- 问题提醒 -->
+      <!-- 基础检查不通过提示 -->
       <view class="warn-panel" wx:if="{{validationMessage}}">
-        <view class="warn-panel__title">⚠ 如不通过可先调整</view>
-        <view class="warn-panel__list">
-          <view class="warn-panel__item">• 画面太暗：去光线更好的位置重拍</view>
-          <view class="warn-panel__item">• 未完整入镜：确保腹部到膝部都在画面内</view>
-          <view class="warn-panel__item">• 格式不支持：建议 MP4，再次选择视频</view>
-        </view>
+        <view class="warn-panel__title">⚠ 当前视频暂不能提交</view>
+        <view class="warn-panel__message">{{validationMessage}}</view>
+        <view class="warn-panel__item">请重新选择或裁剪视频后再试。</view>
       </view>
 
       <!-- 底部操作栏占位 -->
@@ -73,7 +68,7 @@
   <!-- 底部固定操作栏 -->
   <view class="action-dock">
     <button class="btn-big btn-teal" bindtap="onSubmit" disabled="{{!canSubmit || submitting}}">
-      {{submitting ? '分析中...' : '📤 提交开始分析'}}
+      {{submitting ? '正在上传并创建分析...' : '📤 上传并开始分析'}}
     </button>
     <view class="action-dock__gap"></view>
     <button class="btn-big btn-ghost" bindtap="onSelectVideo">🔄 重新选择视频</button>
