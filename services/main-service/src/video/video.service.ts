@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import type {
   ConfirmUploadRequestDto,
@@ -350,24 +351,40 @@ export class VideoService {
   }
 
   async getInternalSampleStatus(videoId: number): Promise<VideoStatusDto> {
-    const video = await this.prisma.trainingVideo.findUnique({
-      where: { video_id: BigInt(videoId) },
-    });
+    const startedAt = Date.now();
+    this.logger.log(`Internal sample status requested: videoId=${videoId}`);
+    const video = await this.findVideoWithTimeout(
+      this.prisma.trainingVideo.findUnique({
+        where: { video_id: BigInt(videoId) },
+      }),
+      videoId,
+      'internal_sample_lookup',
+    );
     if (!video) {
       throw new NotFoundException(`视频不存在: ${videoId}`);
     }
     this.ensureInternalSample(video.source_type);
-    return this.getVideoStatus(videoId, Number(video.user_id));
+    const status = await this.getVideoStatus(videoId, Number(video.user_id));
+    this.logger.log(
+      `Internal sample status returned: videoId=${videoId}, status=${status.status}, `
+      + `reportReady=${status.reportReady}, elapsedMs=${Date.now() - startedAt}`,
+    );
+    return status;
   }
 
   async getVideoStatus(videoId: number, userId: number): Promise<VideoStatusDto> {
-    const video = await this.prisma.trainingVideo.findUnique({
-      where: { video_id: BigInt(videoId) },
-      include: {
-        analysis_task: true,
-        video_evaluation_result: true,
-      },
-    });
+    const startedAt = Date.now();
+    const video = await this.findVideoWithTimeout(
+      this.prisma.trainingVideo.findUnique({
+        where: { video_id: BigInt(videoId) },
+        include: {
+          analysis_task: true,
+          video_evaluation_result: true,
+        },
+      }),
+      videoId,
+      'status_with_analysis_result',
+    );
 
     if (!video) {
       throw new NotFoundException(`视频不存在: ${videoId}`);
@@ -389,7 +406,7 @@ export class VideoService {
       ? 30
       : undefined;
 
-    return {
+    const result = {
       videoId,
       status: (effectiveStatus as AnalysisStatus) || 'pending',
       reportReady:
@@ -398,6 +415,40 @@ export class VideoService {
       estimatedWaitSeconds,
       failReason,
     };
+    this.logger.log(
+      `Video status resolved: videoId=${videoId}, videoStatus=${video.analysis_status}, `
+      + `taskStatus=${video.analysis_task?.task_status || 'none'}, effectiveStatus=${result.status}, `
+      + `reportReady=${result.reportReady}, elapsedMs=${Date.now() - startedAt}`,
+    );
+    return result;
+  }
+
+  private async findVideoWithTimeout<T>(query: Promise<T>, videoId: number, operation: string): Promise<T> {
+    const timeoutMs = Number(process.env.VIDEO_STATUS_QUERY_TIMEOUT_MS || 8_000);
+    let timeout: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        query,
+        new Promise<never>((_, reject) => {
+          timeout = setTimeout(() => {
+            reject(new Error(`database query timed out after ${timeoutMs}ms`));
+          }, timeoutMs);
+        }),
+      ]);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Video status query failed: videoId=${videoId}, operation=${operation}, timeoutMs=${timeoutMs}, error=${reason}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw new ServiceUnavailableException({
+        code: 'VIDEO_STATUS_UNAVAILABLE',
+        message: '分析状态暂时无法读取，请稍后重试。',
+        detail: `videoId=${videoId}, operation=${operation}, error=${reason}`,
+      });
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
   }
 
   async getVideoKeypoints(videoId: number) {

@@ -714,8 +714,9 @@ async function handleUploadAnalyzeGenerate() {
 }
 
 async function pollVideoStatus(videoId: number): Promise<void> {
-  const MAX_POLL = 60;
-  const INTERVAL_MS = 3_000;
+  // 10 分钟的等待窗口足以覆盖生产环境中较长的视频分析；每 6 秒查询一次以降低主服务压力。
+  const MAX_POLL = 100;
+  const INTERVAL_MS = 6_000;
 
   for (let i = 1; i <= MAX_POLL; i++) {
     uploadPollCount.value = i;
@@ -730,18 +731,20 @@ async function pollVideoStatus(videoId: number): Promise<void> {
       );
       const status = unwrap(res.data);
 
-      if (status.status === 'completed') {
-        uploadProgressText.value = '分析已完成';
-        return;
-      }
-      if (status.status === 'failed' || status.status === 'quality_insufficient') {
-        throw new Error(`分析失败：${status.failReason || status.status}`);
-      }
-      uploadProgressText.value = `分析中... 状态=${status.status}`;
-    } catch (err) {
-      if (err instanceof Error && err.message.startsWith('分析失败')) throw err;
-      // 网络异常可重试
-    }
+       if (status.status === 'completed') {
+         uploadProgressText.value = '分析已完成';
+         return;
+       }
+       if (status.status === 'failed' || status.status === 'quality_insufficient') {
+         throw new Error(`分析失败：${status.failReason || status.status}`);
+       }
+       uploadProgressText.value = `分析中... 状态=${status.status}`;
+     } catch (err) {
+       if (err instanceof Error && err.message.startsWith('分析失败')) throw err;
+       const message = extractErrorMessage(err);
+       // 单次状态读取失败不会中断后台分析；显示明确状态并在下一轮继续尝试。
+       uploadProgressText.value = `暂时无法读取分析状态（第 ${i} 次轮询）：${message}，将在 6 秒后重试...`;
+     }
   }
   throw new Error('分析超时，请稍后在版本管理中手动提模');
 }

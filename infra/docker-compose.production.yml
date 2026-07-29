@@ -60,7 +60,9 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    networks: [edge, internal]
+    # main-service 需要解析 analysis-service；两者必须共享 host-access 网络。
+    # 同时保留 edge 以接受宝塔 Nginx 的本地反代，以及 internal 访问 Redis。
+    networks: [edge, internal, host-access]
     restart: unless-stopped
     read_only: true
     tmpfs: [/tmp]
@@ -73,6 +75,16 @@ services:
       interval: 20s
       timeout: 5s
       retries: 3
+
+  # 初始化共享卷的属主。分析镜像以非 root 用户运行，命名卷默认由 root 创建，
+  # 因此必须先完成该步骤，Worker 才能安全写入关键点 JSON。
+  analysis-storage-init:
+    image: ${ANALYSIS_SERVICE_IMAGE:?ANALYSIS_SERVICE_IMAGE is required}
+    user: '0:0'
+    command: ['sh', '-c', 'mkdir -p /var/lib/home-rehab-motion && chown -R home_rehab_motion:home_rehab_motion /var/lib/home-rehab-motion']
+    volumes:
+      - analysis-keypoints-data:/var/lib/home-rehab-motion
+    restart: 'no'
 
   analysis-service:
     image: ${ANALYSIS_SERVICE_IMAGE:?ANALYSIS_SERVICE_IMAGE is required}
@@ -94,11 +106,20 @@ services:
       OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:?OSS_ACCESS_KEY_SECRET is required}
       OSS_FORCE_PATH_STYLE: 'false'
       OSS_PUBLIC_BASE_URL: ''
+      # 与 Worker 共享持久卷：API 只读提供关键点骨架预览。
+      LOCAL_STORAGE_ROOT: /var/lib/home-rehab-motion
+      MPLCONFIGDIR: /tmp/matplotlib
+      XDG_CACHE_HOME: /tmp/.cache
+      XDG_CONFIG_HOME: /tmp/.config
       ALLOW_SAMPLE_VIDEO_FALLBACK: 'false'
       ALLOW_MOCK_KEYPOINTS_FALLBACK: 'false'
+    volumes:
+      - analysis-keypoints-data:/var/lib/home-rehab-motion:ro
     depends_on:
       redis:
         condition: service_healthy
+      analysis-storage-init:
+        condition: service_completed_successfully
     # 仅使用具备宿主机出站路由的网络，以访问宝塔 MySQL。
     # Redis 同时加入该网络，因此服务发现仍使用 redis 主机名。
     networks: [host-access]
@@ -131,13 +152,22 @@ services:
       OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:?OSS_ACCESS_KEY_SECRET is required}
       OSS_FORCE_PATH_STYLE: 'false'
       OSS_PUBLIC_BASE_URL: ''
+      # Worker 负责写入关键点数据；同一命名卷由 analysis-service 只读挂载。
+      LOCAL_STORAGE_ROOT: /var/lib/home-rehab-motion
+      MPLCONFIGDIR: /tmp/matplotlib
+      XDG_CACHE_HOME: /tmp/.cache
+      XDG_CONFIG_HOME: /tmp/.config
       ALLOW_SAMPLE_VIDEO_FALLBACK: 'false'
       ALLOW_MOCK_KEYPOINTS_FALLBACK: 'false'
+    volumes:
+      - analysis-keypoints-data:/var/lib/home-rehab-motion
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     depends_on:
       redis:
         condition: service_healthy
+      analysis-storage-init:
+        condition: service_completed_successfully
     networks: [host-access]
     restart: unless-stopped
     read_only: true
@@ -164,6 +194,9 @@ services:
       OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:?OSS_ACCESS_KEY_SECRET is required}
       OSS_FORCE_PATH_STYLE: 'false'
       OSS_PUBLIC_BASE_URL: ''
+      MPLCONFIGDIR: /tmp/matplotlib
+      XDG_CACHE_HOME: /tmp/.cache
+      XDG_CONFIG_HOME: /tmp/.config
       ALLOW_SAMPLE_VIDEO_FALLBACK: 'false'
       ALLOW_MOCK_KEYPOINTS_FALLBACK: 'false'
     extra_hosts:
@@ -206,3 +239,5 @@ networks:
 
 volumes:
   redis-data:
+  # Worker 写入、分析 API 只读访问，持久保存关键点骨架数据。
+  analysis-keypoints-data:
