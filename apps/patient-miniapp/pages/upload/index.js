@@ -204,16 +204,44 @@ Page({
     },
     onActionTap(event) {
         const nextValue = event.currentTarget.dataset.value;
+        this.changeAction(nextValue);
+    },
+    onChangeAction() {
+        const options = this.data.actionOptions || [];
+        if (options.length < 2) {
+            wx.showToast({ title: '当前仅支持这一种训练动作', icon: 'none' });
+            return;
+        }
+        wx.showActionSheet({
+            itemList: options.map((item) => item.label),
+            success: (result) => {
+                const nextAction = options[result.tapIndex];
+                this.changeAction(nextAction?.value);
+            },
+        });
+    },
+    changeAction(nextValue) {
         if (!nextValue || nextValue === this.data.actionType) {
             return;
         }
-        const options = (this.data.actionOptions || []);
+        const options = this.data.actionOptions || [];
         if (!options.some((item) => item.value === nextValue)) {
             return;
         }
+        const actionState = buildActionState(nextValue, options);
+        const hasSelectedVideo = Boolean(this.data.filePath);
         this.setData({
-            ...buildActionState(nextValue, options),
-            statusText: this.data.filePath ? '动作已切换，视频需重新确认后再提交。' : '动作已切换，请继续选择本次训练视频。',
+            ...actionState,
+            filePath: hasSelectedVideo ? '' : this.data.filePath,
+            fileName: hasSelectedVideo ? '' : this.data.fileName,
+            duration: hasSelectedVideo ? 0 : this.data.duration,
+            durationText: hasSelectedVideo ? '未选择' : this.data.durationText,
+            previewPoster: hasSelectedVideo ? '' : this.data.previewPoster,
+            canSubmit: false,
+            validationMessage: hasSelectedVideo ? `已切换为「${actionState.actionLabel}」，请重新选择对应动作的视频。` : '',
+            statusText: hasSelectedVideo
+                ? `已切换为「${actionState.actionLabel}」，为避免传错视频，请重新选择。`
+                : `已切换为「${actionState.actionLabel}」，请选择对应动作的视频。`,
         });
     },
     applySelectedVideo(res, sourceLabel) {
@@ -315,6 +343,11 @@ Page({
         this.setData({ submitting: true, statusText: '正在准备上传视频...' });
         try {
             const presign = await (0, video_1.getPresignUpload)();
+            console.info('[视频上传目标]', {
+                videoId: presign.videoId,
+                uploadType: presign.uploadType,
+                uploadUrl: presign.uploadUrl,
+            });
             (0, session_1.saveRecentUploadMeta)({
                 videoId: presign.videoId,
                 actionType: this.data.actionType,
@@ -340,6 +373,10 @@ Page({
         }
         catch (error) {
             const message = error instanceof Error ? error.message : '提交失败，请稍后重试。';
+            console.error('[提交训练视频失败]', {
+                error: message,
+                apiBaseUrl: require('../../config/env').API_BASE_URL,
+            });
             const isAuthError = message.includes('401') || message.includes('Unauthorized') || message.includes('登录');
             this.setData({
                 statusText: isAuthError ? '登录状态已过期，请重新点击"提交分析"。' : '提交失败，请稍后重试。',

@@ -26,6 +26,7 @@ Page({
         statusBarHeight: 20,
         topPlaceholderHeight: 128,
         isLoggedIn: false,
+        isPreviewMode: false,
         nickname: '',
         profileLine: '女 · 62岁 · 康复第6周',
         totalCount: 42,
@@ -45,7 +46,8 @@ Page({
     },
     async onShow() {
         const isLoggedIn = Boolean((0, session_1.getToken)());
-        this.setData({ isLoggedIn });
+        const isPreviewMode = (0, session_1.isPreviewSession)();
+        this.setData({ isLoggedIn, isPreviewMode });
         if (!isLoggedIn) {
             this.setData({
                 nickname: '',
@@ -140,12 +142,6 @@ Page({
         }
         wx.navigateTo({ url: '/pages/notifications/index' });
     },
-    onViewMyVideos() {
-        if (!this.requireLogin()) {
-            return;
-        }
-        wx.navigateTo({ url: '/pages/mine/videos' });
-    },
     onViewPrivacyPolicy() {
         wx.navigateTo({ url: '/pages/mine/privacy' });
     },
@@ -164,11 +160,13 @@ Page({
         }
         wx.showModal({
             title: '确认退出登录？',
-            content: '退出后仍可通过微信快捷登录再次进入。',
+            content: this.data.isPreviewMode
+                ? '退出后将清除体验数据，并回到微信登录页。'
+                : '退出后仍可通过微信快捷登录再次进入。',
             success: (res) => {
                 if (res.confirm) {
                     (0, session_1.clearSession)();
-                    wx.reLaunch({ url: '/pages/index/index' });
+                    wx.reLaunch({ url: '/pages/auth/login' });
                 }
             },
         });

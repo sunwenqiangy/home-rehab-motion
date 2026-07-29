@@ -2,28 +2,43 @@
 
 /* ========== 待复核提示 ========== */
 .rp-review-notice {
-  margin: 24rpx 0;
-  padding: 28rpx;
-  border-radius: 20rpx;
-  background: #fff8e8;
-  border: 1rpx solid #f0cf8f;
+  padding: 30rpx 28rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(135deg, #fffaf0 0%, #fff5df 100%);
+  border: 1rpx solid #f3d49b;
+  box-shadow: 0 12rpx 28rpx rgba(174, 117, 27, 0.08);
   color: #734d12;
 }
 
-.rp-review-notice__title {
-  font-size: 34rpx;
+.rp-review-notice__badge {
+  display: inline-flex;
+  min-height: 40rpx;
+  align-items: center;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  background: rgba(197, 126, 26, 0.12);
+  color: #9c6414;
+  font-size: 22rpx;
   font-weight: 700;
+}
+
+.rp-review-notice__title {
+  margin-top: 14rpx;
+  font-size: 34rpx;
+  font-weight: 800;
 }
 
 .rp-review-notice__desc,
 .rp-review-notice__tip {
   display: block;
   margin-top: 12rpx;
-  font-size: 28rpx;
-  line-height: 1.65;
+  font-size: 26rpx;
+  line-height: 1.7;
 }
 
 .rp-review-notice__tip {
+  padding-top: 14rpx;
+  border-top: 1rpx solid rgba(183, 122, 29, 0.16);
   color: #8a661f;
 }
 
@@ -211,10 +226,10 @@ page {
 }
 
 .rp-scroll-inner {
-  padding: 20rpx 28rpx 40rpx;
+  padding: 24rpx 28rpx 40rpx;
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: 20rpx;
 }
 
 /* ========== 评级 Hero ========== */
@@ -337,10 +352,10 @@ page {
 /* ========== info-panel 通用面板 ========== */
 .info-panel {
   padding: 28rpx;
-  border-radius: 32rpx;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 20rpx 48rpx rgba(34, 87, 139, 0.1);
-  border: 1rpx solid rgba(121, 175, 219, 0.18);
+  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12rpx 30rpx rgba(34, 87, 139, 0.08);
+  border: 1rpx solid rgba(121, 175, 219, 0.16);
 }
 
 .info-title {
@@ -490,24 +505,54 @@ page {
 }
 
 /* ========== 系统建议 ========== */
+.rp-next-step-panel {
+  border-color: rgba(53, 173, 116, 0.24);
+  background: linear-gradient(145deg, #ffffff 0%, #f3fbf6 100%);
+}
+
+.rp-next-step-panel__eyebrow {
+  margin-bottom: 8rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #299665;
+}
+
+.rp-next-step-panel .info-title {
+  margin-bottom: 18rpx;
+  color: #22543d;
+}
+
 .rp-advice-list {
   display: flex;
   flex-direction: column;
-  gap: 10rpx;
+  gap: 14rpx;
 }
 
 .rp-advice-item {
-  font-size: 28rpx;
-  line-height: 1.8;
-  color: #4a5568;
+  display: flex;
+  align-items: flex-start;
+  gap: 14rpx;
+  font-size: 27rpx;
+  line-height: 1.7;
+  color: #3f5d52;
+}
+
+.rp-advice-item__dot {
+  width: 12rpx;
+  height: 12rpx;
+  margin-top: 16rpx;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #38a169;
+  box-shadow: 0 0 0 6rpx rgba(56, 161, 105, 0.12);
 }
 
 /* ========== 反馈入口(蓝色面板) ========== */
 .rp-feedback-panel {
   padding: 28rpx;
-  border-radius: 32rpx;
-  background: rgba(49, 130, 206, 0.08);
-  border: 2rpx solid rgba(49, 130, 206, 0.15);
+  border-radius: 28rpx;
+  background: #f4f8ff;
+  border: 1rpx solid rgba(49, 130, 206, 0.18);
 }
 
 .rp-feedback-panel__title {
@@ -528,10 +573,11 @@ page {
   background: #3182ce;
   color: #ffffff;
   border: none;
-  border-radius: 20rpx;
+  border-radius: 18rpx;
   min-height: 80rpx;
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 700;
+  box-shadow: none;
 }
 
 .rp-feedback-panel__btn::after {
@@ -607,7 +653,13 @@ page {
 
 /* ========== 页尾 ========== */
 .rp-page-footer {
-  padding: 14rpx 0;
+  padding: 2rpx 0 10rpx;
+}
+
+.rp-page-footer .btn-big {
+  margin-top: 0;
+  min-height: 80rpx;
+  font-size: 28rpx;
 }
 
 /* ========== 底部操作栏占位 ========== */
@@ -621,13 +673,23 @@ page {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 24rpx 28rpx;
-  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 -8rpx 32rpx rgba(34, 87, 139, 0.1);
+  padding: 20rpx 28rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 -6rpx 24rpx rgba(34, 87, 139, 0.08);
   border-top: 1rpx solid rgba(121, 175, 219, 0.14);
   backdrop-filter: blur(20rpx);
   z-index: 100;
+}
+
+.action-dock .btn-big {
+  display: flex !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  margin: 0 !important;
+  min-height: 92rpx;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ========== 按钮样式 ========== */

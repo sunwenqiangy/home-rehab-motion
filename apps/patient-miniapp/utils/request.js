@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.request = request;
+exports.getNetworkDiagnostics = exports.request = request;
 const env_1 = require("../config/env");
 const session_1 = require("../store/session");
 function extractBackendMessage(payload) {
@@ -18,11 +18,29 @@ function extractBackendMessage(payload) {
     }
     return payload.error || '';
 }
+function createRequestError(statusCode, payload) {
+    const code = typeof payload?.code === 'string' ? payload.code : `HTTP_${statusCode || 0}`;
+    const message = extractBackendMessage(payload) || '服务暂时不可用，请稍后重试。';
+    const error = new Error(`${code}: ${message}`);
+    error.code = code;
+    error.statusCode = statusCode;
+    error.userMessage = message;
+    return error;
+}
+let lastNetworkError = null;
+function getNetworkDiagnostics() {
+    return {
+        ...(0, env_1.getRuntimeDiagnostics)(),
+        lastNetworkError,
+    };
+}
+exports.getNetworkDiagnostics = getNetworkDiagnostics;
 function doRequest({ url, method = 'GET', data }, allowRelogin) {
     return new Promise((resolve, reject) => {
         const actualMethod = method === 'PATCH' ? 'POST' : method;
+        const requestUrl = `${env_1.API_BASE_URL}${url}`;
         wx.request({
-            url: `${env_1.API_BASE_URL}${url}`,
+            url: requestUrl,
             method: actualMethod,
             data,
             timeout: env_1.REQUEST_TIMEOUT,
@@ -31,6 +49,7 @@ function doRequest({ url, method = 'GET', data }, allowRelogin) {
                 'X-HTTP-Method-Override': method === 'PATCH' ? 'PATCH' : '',
             },
             success: (response) => {
+                lastNetworkError = null;
                 const payload = response.data;
                 if (payload?.success) {
                     resolve(payload.data);
@@ -46,15 +65,17 @@ function doRequest({ url, method = 'GET', data }, allowRelogin) {
                     reject(new Error('登录状态已失效，请重新登录'));
                     return;
                 }
-                const backendMessage = extractBackendMessage(payload);
-                const details = [
-                    response.statusCode ? `HTTP ${response.statusCode}` : '',
-                    backendMessage,
-                ].filter(Boolean).join(' - ');
-                reject(new Error(details || 'Request failed'));
+                reject(createRequestError(response.statusCode, payload));
             },
             fail: (error) => {
                 const errMsg = error?.errMsg || 'Network request failed';
+                lastNetworkError = {
+                    url: requestUrl,
+                    method: actualMethod,
+                    error: errMsg,
+                    at: new Date().toISOString(),
+                };
+                console.error('[网络请求失败]', lastNetworkError);
                 reject(new Error(errMsg));
             },
         });

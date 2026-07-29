@@ -108,9 +108,7 @@ export class AuthService {
       },
       create: {
         openid,
-        name: openid.startsWith('mock-openid:') ? `测试患者-${wxCode.slice(-4)}` : `患者-${openid.slice(-4)}`,
-        gender: 2,
-        age: 62,
+        name: openid.startsWith('mock-openid:') ? `测试患者-${wxCode.slice(-4)}` : '训练用户',
         role: 'patient',
         status: 1,
         display_mode: 'elderly',
@@ -528,11 +526,18 @@ export class AuthService {
         return result.openid;
       }
       if (!ENABLE_MOCK_AUTH_FALLBACK) {
-        throw new UnauthorizedException(result.errmsg || '微信登录失败');
+        const reason = result.errmsg || '微信未返回用户标识';
+        this.logger.warn(`微信登录失败：${reason}`);
+        throw new UnauthorizedException(`微信登录失败：${reason}`);
       }
     } catch (error) {
       if (!ENABLE_MOCK_AUTH_FALLBACK) {
-        throw new UnauthorizedException('微信登录失败');
+        if (error instanceof UnauthorizedException) {
+          throw error;
+        }
+        const reason = error instanceof Error ? error.message : '未知错误';
+        this.logger.warn(`微信登录请求异常：${reason}`);
+        throw new UnauthorizedException('微信登录服务暂时不可用，请稍后重试');
       }
     }
 

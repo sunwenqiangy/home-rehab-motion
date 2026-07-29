@@ -15,15 +15,34 @@
     <view class="profile-card">
       <view class="profile-card__title">昵称</view>
       <input class="profile-input" value="{{nickname}}" maxlength="50" placeholder="请输入您的昵称" bindinput="onNicknameInput" />
-      <button class="profile-wechat-name" open-type="chooseNickname" bindchoosenickname="onChooseWechatNickname">使用微信昵称</button>
-      <button class="profile-save" loading="{{saving}}" bindtap="onSaveNickname">保存昵称</button>
+      <view class="profile-nickname-actions">
+        <button class="profile-wechat-name" open-type="chooseNickname" bindchoosenickname="onChooseWechatNickname">使用微信昵称</button>
+        <button class="profile-nickname-save" loading="{{saving}}" disabled="{{saving}}" bindtap="onSaveProfile">保存昵称</button>
+      </view>
+      <view class="profile-card__hint">若当前微信不支持选择昵称，可直接修改上方文字后保存。</view>
+    </view>
+
+    <view class="profile-card">
+      <view class="profile-card__title">基础资料</view>
+      <view class="profile-card__desc">年龄和性别由您自主填写，用于更合适地展示训练建议。</view>
+      <view class="profile-field-row">
+        <text class="profile-field-label">年龄</text>
+        <input class="profile-field-input" type="number" value="{{age}}" maxlength="3" placeholder="选填" bindinput="onAgeInput" />
+        <text class="profile-field-unit">岁</text>
+      </view>
+      <picker class="profile-field-row" range="{{genderOptions}}" value="{{genderIndex}}" bindchange="onGenderChange">
+        <text class="profile-field-label">性别</text>
+        <text class="profile-field-value">{{genderOptions[genderIndex]}}</text>
+        <text class="profile-field-arrow">›</text>
+      </picker>
+      <button class="profile-save" loading="{{saving}}" disabled="{{saving}}" bindtap="onSaveProfile">保存基础资料</button>
     </view>
 
     <view class="profile-card">
       <view class="profile-card__title">微信手机号</view>
       <view class="profile-card__desc">授权后可作为您的快捷身份信息；我们不会在页面展示完整手机号。</view>
       <view class="profile-phone-status" wx:if="{{phoneBound}}">✓ 已绑定：{{maskedPhone}}</view>
-      <button class="profile-phone-button" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" loading="{{saving}}">
+      <button class="profile-phone-button" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber" loading="{{saving}}" disabled="{{saving}}">
         {{phoneBound ? '重新授权微信手机号' : '微信手机号快捷登录'}}
       </button>
     </view>

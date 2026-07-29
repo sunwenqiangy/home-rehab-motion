@@ -439,10 +439,15 @@ function extractErrorMessage(err: unknown): string {
 
   const status = maybe.response?.status;
   const data = maybe.response?.data;
-  const backendMessage = typeof data === 'string' ? data : data?.message;
+  const rawMessage = typeof data === 'string' ? data : data?.message;
+  const backendMessage = typeof rawMessage === 'string'
+    ? rawMessage
+    : rawMessage && typeof rawMessage === 'object' && typeof (rawMessage as { message?: unknown }).message === 'string'
+      ? String((rawMessage as { message: string }).message)
+      : '';
 
   if (status && backendMessage) {
-    return `HTTP ${status}: ${backendMessage}`;
+    return `请求失败（HTTP ${status}）：${backendMessage}`;
   }
   if (status) {
     return `HTTP ${status}`;

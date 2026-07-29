@@ -18,8 +18,9 @@ function getPresignUpload() {
 /** 实际执行 wx.uploadFile，抽取为独立函数以支持重试 */
 function doUploadFile(uploadTarget, filePath) {
     return new Promise((resolve, reject) => {
+        const uploadUrl = uploadTarget.uploadUrl;
         wx.uploadFile({
-            url: uploadTarget.uploadUrl,
+            url: uploadUrl,
             filePath,
             name: uploadTarget.uploadType === 's3_post' ? 'file' : 'file',
             timeout: 120000,
@@ -36,7 +37,14 @@ function doUploadFile(uploadTarget, filePath) {
                             resolve({ objectKey: uploadTarget.objectKey, size: 0 });
                             return;
                         }
-                        reject(new Error(`Upload failed with status ${response.statusCode}`));
+                        const error = new Error(`视频上传失败（HTTP ${response.statusCode}）`);
+                        console.error('[视频直传失败]', {
+                            url: uploadUrl,
+                            uploadType: uploadTarget.uploadType,
+                            statusCode: response.statusCode,
+                            response: response.data,
+                        });
+                        reject(error);
                         return;
                     }
                     // local_proxy 模式：401 时用特殊错误标记以便上层重试
@@ -55,7 +63,15 @@ function doUploadFile(uploadTarget, filePath) {
                     reject(error);
                 }
             },
-            fail: (error) => reject(error),
+            fail: (error) => {
+                const message = error?.errMsg || '视频上传网络请求失败';
+                console.error('[视频上传网络失败]', {
+                    url: uploadUrl,
+                    uploadType: uploadTarget.uploadType,
+                    error: message,
+                });
+                reject(new Error(`${message}（上传地址：${uploadUrl}）`));
+            },
         });
     });
 }

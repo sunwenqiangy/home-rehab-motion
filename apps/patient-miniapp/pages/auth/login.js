@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const auth_1 = require("../../services/auth");
+const request_1 = require("../../utils/request");
 const session_1 = require("../../store/session");
 function getWxCode() {
     return new Promise((resolve, reject) => {
@@ -18,7 +19,16 @@ function getErrorMessage(error) {
     if (message.includes('微信手机号授权失败')) {
         return '手机号授权未完成，请重新点击授权。';
     }
-    return '登录失败，请检查网络后重试。';
+    if (message.includes('request:fail') || message.includes('Network request failed') || message.includes('超时')) {
+        return '暂时无法连接服务，请检查网络后重试。';
+    }
+    if (message.includes('微信登录服务暂时不可用')) {
+        return '微信登录服务暂时不可用，请稍后重试。';
+    }
+    if (message.includes('微信登录失败')) {
+        return '微信登录未完成，请重新点击登录。';
+    }
+    return '登录未完成，请稍后重试。';
 }
 Page({
     data: {
@@ -49,6 +59,10 @@ Page({
             wx.reLaunch({ url: '/pages/index/index' });
         }
         catch (error) {
+            console.error('[微信登录失败]', {
+                error: error instanceof Error ? error.message : String(error),
+                ...(0, request_1.getNetworkDiagnostics)(),
+            });
             wx.showToast({ title: getErrorMessage(error), icon: 'none' });
         }
         finally {

@@ -54,9 +54,10 @@
       </view>
 
       <view wx:if="{{requiresManualReview}}" class="rp-review-notice">
+        <view class="rp-review-notice__badge">结果处理中</view>
         <view class="rp-review-notice__title">本次训练结果待复核</view>
         <view class="rp-review-notice__desc">{{reviewMessage}}</view>
-        <view class="rp-review-notice__tip">复核完成前，请先参考动作指导中的拍摄要求，不以本次分数或问题判断作为训练结论。</view>
+        <view class="rp-review-notice__tip">复核完成前，请先按动作指导练习；本次暂不展示分数和问题判断。</view>
       </view>
 
       <!-- 评级 Hero -->
@@ -151,28 +152,29 @@
         <view wx:for="{{newlyUnlockedBadges}}" wx:key="badgeCode" class="rp-motivation-panel__badge">🏅 解锁「{{item.title}}」</view>
       </view>
 
-      <!-- 系统建议 -->
-      <view class="info-panel">
-        <view class="info-title">💡 系统建议</view>
+      <!-- 下一步建议 -->
+      <view class="info-panel rp-next-step-panel">
+        <view class="rp-next-step-panel__eyebrow">下一步怎么做</view>
+        <view class="info-title">建议先把动作做稳</view>
         <view class="rp-advice-list">
           <block wx:for="{{adviceSummary}}" wx:key="adviceCode">
-            <view class="rp-advice-item">• {{item.patientText}}</view>
+            <view class="rp-advice-item"><text class="rp-advice-item__dot"></text><text>{{item.patientText}}</text></view>
           </block>
-          <view wx:if="{{!adviceSummary.length}}" class="rp-advice-item">• 建议每日2~3组训练，保持节奏</view>
+          <view wx:if="{{!adviceSummary.length}}" class="rp-advice-item"><text class="rp-advice-item__dot"></text><text>建议每日练习 2～3 组，保持自己的节奏。</text></view>
         </view>
       </view>
 
       <!-- 反馈入口 -->
       <view class="rp-feedback-panel">
         <view class="rp-feedback-panel__title">对本次训练有疑问？</view>
-        <view class="rp-feedback-panel__desc">可提交训练相关问题。工作人员会在消息中心通知处理结果；本系统不是实时咨询服务。</view>
+        <view class="rp-feedback-panel__desc">可提交与本次训练相关的问题，处理结果会通过消息中心通知您。</view>
         <button class="btn-big rp-feedback-panel__btn" bindtap="onToggleFeedback">{{feedbackEntryLabel}}</button>
       </view>
 
-      <!-- 页尾返回首页 -->
+      <!-- 次级操作：避免和底部主操作竞争 -->
       <view class="rp-page-footer">
-        <button class="btn-big btn-ghost" bindtap="onViewHistory">🏠 返回首页</button>
-        </view>
+        <button class="btn-big btn-ghost" bindtap="onViewHistory">查看训练记录</button>
+      </view>
 
       <!-- 底部操作栏占位 -->
       <view class="dock-spacer"></view>
@@ -181,6 +183,6 @@
 
   <!-- 底部固定操作栏 -->
   <view class="action-dock">
-    <button class="btn-big btn-teal" bindtap="onBackHome">🔄 再练一次</button>
+    <button class="btn-big btn-teal" bindtap="onBackHome">再练一次</button>
   </view>
 </view>

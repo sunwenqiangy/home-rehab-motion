@@ -24,22 +24,34 @@
         <view class="step-item">3 等结果</view>
       </view>
 
+      <!-- 本次训练动作：上传前必须明确核对，避免传错视频 -->
+      <view class="upload-action-card">
+        <view class="upload-action-card__top">
+          <view>
+            <view class="upload-action-card__eyebrow">本次要分析的动作</view>
+            <view class="upload-action-card__name">{{actionLabel}}</view>
+          </view>
+          <view class="upload-action-card__change" bindtap="onChangeAction">切换动作</view>
+        </view>
+        <view class="upload-action-card__tip">请只上传本次「{{actionLabel}}」的完整训练视频；上传其他动作会影响评分或导致分析失败。</view>
+      </view>
+
       <!-- 上传引导 hero -->
       <view class="upload-hero-card">
         <view class="upload-hero-card__title">上传前 30 秒自查</view>
-        <view class="upload-hero-card__desc">先看预览和检查结果，再提交，能减少分析失败和重复上传。</view>
+        <view class="upload-hero-card__desc">确认动作无误后，再检查视频中动作完整入镜、画面清晰稳定。</view>
       </view>
 
       <!-- 视频预览区 -->
       <view class="info-panel">
-        <view class="info-title">📹 已选视频预览</view>
+        <view class="info-title">{{actionLabel}}视频预览</view>
         <view wx:if="{{filePath}}" class="video-preview-thumb">
           <video class="video-preview-thumb__video" src="{{filePath}}" controls="{{true}}" show-center-play-btn="{{true}}" enable-progress-gesture="{{true}}" object-fit="cover"></video>
         </view>
         <view wx:else class="video-preview-zone" bindtap="onSelectVideo">
           <view class="video-preview-zone__inner">
             <text class="video-preview-zone__icon">🎬</text>
-            <text class="video-preview-zone__meta">点击选择训练视频</text>
+            <text class="video-preview-zone__meta">点击选择{{actionLabel}}训练视频</text>
           </view>
         </view>
       </view>
@@ -48,8 +60,8 @@
       <view class="upload-ready-panel" wx:if="{{filePath && canSubmit}}">
         <view class="upload-ready-panel__icon">✓</view>
         <view>
-          <view class="upload-ready-panel__title">视频可以上传分析</view>
-          <view class="upload-ready-panel__desc">请确认预览画面无误后，点击下方按钮。</view>
+          <view class="upload-ready-panel__title">视频可用于{{actionLabel}}分析</view>
+          <view class="upload-ready-panel__desc">请再次确认视频中的动作与本次训练动作一致。</view>
         </view>
       </view>
 
@@ -68,9 +80,9 @@
   <!-- 底部固定操作栏 -->
   <view class="action-dock">
     <button class="btn-big btn-teal" bindtap="onSubmit" disabled="{{!canSubmit || submitting}}">
-      {{submitting ? '正在上传并创建分析...' : '📤 上传并开始分析'}}
+      {{submitting ? '正在上传并创建分析...' : '上传并分析「' + actionLabel + '」'}}
     </button>
     <view class="action-dock__gap"></view>
-    <button class="btn-big btn-ghost" bindtap="onSelectVideo">🔄 重新选择视频</button>
+    <button class="btn-big btn-ghost" bindtap="onSelectVideo">重新选择视频</button>
   </view>
 </view>

@@ -84,13 +84,6 @@
         <view wx:if="{{unreadNotificationCount > 0}}" class="v4-notice-dot">{{unreadNotificationCount}}</view>
         <text class="v4-list-arrow">›</text>
       </view>
-      <view class="v4-list-row" bindtap="onViewMyVideos">
-        <view class="v4-list-icon v4-list-icon--teal">📹</view>
-        <view class="v4-list-body">
-          <view class="v4-list-title">我的视频</view>
-        </view>
-        <text class="v4-list-arrow">›</text>
-      </view>
       <view class="v4-list-row" bindtap="onViewPrivacyPolicy">
         <view class="v4-list-icon v4-list-icon--green">🔒</view>
         <view class="v4-list-body">
@@ -109,7 +102,8 @@
 
     <!-- 退出 -->
     <view wx:if="{{isLoggedIn}}" class="v4-logout-wrap">
-      <button class="v4-logout-btn" bindtap="onLogout">退出登录</button>
+      <view wx:if="{{isPreviewMode}}" class="v4-preview-session-hint">当前为体验模式，展示的是示例数据</view>
+      <button class="v4-logout-btn" bindtap="onLogout">{{isPreviewMode ? '退出体验模式' : '退出登录'}}</button>
     </view>
 
   </view>

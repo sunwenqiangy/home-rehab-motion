@@ -61,11 +61,11 @@ function updateDisplaySettings(displayMode) {
         data: { displayMode },
     });
 }
-function updateProfile(nickname) {
+function updateProfile(profile) {
     return (0, request_1.request)({
         url: '/me/profile',
         method: 'PUT',
-        data: { nickname },
+        data: profile,
     });
 }
 function bindWechatPhone(code) {

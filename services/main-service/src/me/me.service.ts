@@ -70,13 +70,33 @@ export class MeService {
   }
 
   async updateProfile(userId: number, payload: UpdatePatientProfileRequestDto): Promise<UserProfileDto> {
-    const nickname = String(payload.nickname || '').trim();
-    if (!nickname || nickname.length > 50) {
-      throw new BadRequestException('昵称长度应为 1 到 50 个字符');
+    const data: { name?: string; age?: number | null; gender?: number | null } = {};
+    if (payload.nickname !== undefined) {
+      const nickname = String(payload.nickname).trim();
+      if (!nickname || nickname.length > 50) {
+        throw new BadRequestException('昵称长度应为 1 到 50 个字符');
+      }
+      data.name = nickname;
+    }
+    if (payload.age !== undefined) {
+      const age = Number(payload.age);
+      if (!Number.isInteger(age) || age < 1 || age > 120) {
+        throw new BadRequestException('年龄应为 1 到 120 岁');
+      }
+      data.age = age;
+    }
+    if (payload.gender !== undefined) {
+      if (!['male', 'female', 'unknown'].includes(payload.gender)) {
+        throw new BadRequestException('性别参数无效');
+      }
+      data.gender = payload.gender === 'male' ? 1 : payload.gender === 'female' ? 2 : null;
+    }
+    if (!Object.keys(data).length) {
+      throw new BadRequestException('请至少填写一项资料');
     }
     const user = await this.prisma.userProfile.update({
       where: { user_id: BigInt(userId) },
-      data: { name: nickname },
+      data,
     });
     return {
       userId: Number(user.user_id),

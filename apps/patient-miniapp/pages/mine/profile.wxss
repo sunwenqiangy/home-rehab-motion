@@ -97,7 +97,49 @@
   font-size: 30rpx;
 }
 
+.profile-field-row {
+  display: flex;
+  align-items: center;
+  min-height: 88rpx;
+  margin-top: 20rpx;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+  border-radius: 16rpx;
+  background: #f7fafc;
+  font-size: 30rpx;
+}
+
+.profile-field-label {
+  width: 120rpx;
+  color: #4a5568;
+}
+
+.profile-field-input,
+.profile-field-value {
+  flex: 1;
+  min-width: 0;
+  color: #1a202c;
+}
+
+.profile-field-unit,
+.profile-field-arrow {
+  color: #718096;
+}
+
+.profile-field-arrow {
+  margin-left: 16rpx;
+  font-size: 42rpx;
+  line-height: 1;
+}
+
+.profile-nickname-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
 .profile-wechat-name,
+.profile-nickname-save,
 .profile-save,
 .profile-phone-button {
   margin-top: 20rpx;
@@ -106,9 +148,27 @@
   font-weight: 700;
 }
 
+.profile-nickname-actions .profile-wechat-name,
+.profile-nickname-actions .profile-nickname-save {
+  flex: 1;
+  margin-top: 0;
+}
+
 .profile-wechat-name {
   color: #0e9aa7;
   background: #e6f7f8;
+}
+
+.profile-nickname-save {
+  color: #fff;
+  background: #0e9aa7;
+}
+
+.profile-card__hint {
+  margin-top: 14rpx;
+  color: #718096;
+  font-size: 24rpx;
+  line-height: 1.55;
 }
 
 .profile-save,

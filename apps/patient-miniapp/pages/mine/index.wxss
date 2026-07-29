@@ -358,6 +358,13 @@
   line-height: 1;
 }
 
+.v4-preview-session-hint {
+  margin: 0 auto 16rpx;
+  color: #8a5a16;
+  font-size: 25rpx;
+  text-align: center;
+}
+
 /* TabBar */
 .v4-tabbar {
   position: fixed;

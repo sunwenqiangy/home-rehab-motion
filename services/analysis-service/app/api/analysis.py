@@ -143,8 +143,9 @@ def submit_analysis(req: AnalyzeRequest) -> AnalyzeResponse:
 
     try:
         inspect = celery_app.control.inspect()
-        active_queues = inspect.active_queues() or {}
-        active_workers = inspect.active() or {}
+        # active() 只会返回当前有执行中任务的 worker；空闲 worker 会被误判为不存在。
+        # ping() 用于确认 worker 存活，避免生产环境空闲时拒绝所有新的视频分析。
+        active_workers = inspect.ping() or {}
         has_workers = bool(active_workers)
 
         if has_workers:

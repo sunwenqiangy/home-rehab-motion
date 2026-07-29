@@ -34,6 +34,9 @@ function startPreviewSession() {
 function clearSession() {
     wx.removeStorageSync(TOKEN_KEY);
     wx.removeStorageSync(DISPLAY_MODE_KEY);
+    // 体验模式可能留下本地示例上传状态；退出时一并清理，避免下次登录误用。
+    wx.removeStorageSync(RECENT_UPLOAD_META_KEY);
+    wx.removeStorageSync(PENDING_UPLOAD_DRAFT_KEY);
 }
 function getDisplayMode() {
     return wx.getStorageSync(DISPLAY_MODE_KEY) || 'elderly';

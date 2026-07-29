@@ -174,9 +174,11 @@ export class AnalysisService {
       if (!this.allowCompatAnalyzeFallback) {
         const primaryMessage =
           primaryError instanceof Error ? primaryError.message : String(primaryError);
-        throw new ServiceUnavailableException(
-          `analysis-service enqueue failed: ${primaryMessage}`,
-        );
+        throw new ServiceUnavailableException({
+          code: 'ANALYSIS_QUEUE_UNAVAILABLE',
+          message: '分析服务暂时繁忙，请稍后重试。视频已安全保存，无需重新拍摄。',
+          detail: primaryMessage,
+        });
       }
 
       // Compatibility fallback for older /analyze contract variants.
@@ -213,9 +215,11 @@ export class AnalysisService {
           primaryError instanceof Error ? primaryError.message : String(primaryError);
         const fallbackMessage =
           fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-        throw new ServiceUnavailableException(
-          `analysis-service enqueue failed: ${primaryMessage}; fallback /analyze failed: ${fallbackMessage}`,
-        );
+        throw new ServiceUnavailableException({
+          code: 'ANALYSIS_QUEUE_UNAVAILABLE',
+          message: '分析服务暂时繁忙，请稍后重试。视频已安全保存，无需重新拍摄。',
+          detail: `${primaryMessage}; fallback /analyze failed: ${fallbackMessage}`,
+        });
       }
     }
   }

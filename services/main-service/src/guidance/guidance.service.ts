@@ -153,7 +153,7 @@ function validateSnapshot(snapshot: GuidanceContentDto): GuidanceValidationResul
     if (!snapshot.shootingRequirements.some((item) => item.type === type)) errors.push(`拍摄要求缺少${type === 'angle' ? '拍摄角度' : type === 'framing' ? '入镜范围' : '光线'}说明`);
   });
   snapshot.shootingRequirements.forEach((item, index) => {
-    if (!item.title || !item.description || !item.correctImage?.url || !item.altText) errors.push(`拍摄要求 ${index + 1} 的文字、正确示意图和替代文本必须完整`);
+    if (!item.title || !item.description || !item.correctImage?.url) errors.push(`拍摄要求 ${index + 1} 的标题、患者短说明和正确示意图必须完整`);
   });
   snapshot.commonMistakes.forEach((item, index) => {
     if (!item.title || !item.mistakeDescription || !item.correction || (!item.media?.url && !item.correctImage?.url)) errors.push(`常见错误 ${index + 1} 需包含错误说明、正确做法和至少一张示意图`);
@@ -216,9 +216,6 @@ export class GuidanceService {
       contentId: Number(item.content_id),
       actionType: item.action_type as TrainingActionType,
       title: item.title,
-      publishedVersion: item.published_version || undefined,
-      hasDraft: Boolean(item.draft_snapshot),
-      published: Boolean(item.published_version),
       updatedAt: item.updated_at.toISOString(),
     }));
   }
@@ -227,11 +224,20 @@ export class GuidanceService {
     const actionType = asText(payload.actionType, 30) as TrainingActionType;
     if (!ACTION_TYPES.includes(actionType)) throw new BadRequestException('请选择有效的动作类型');
     const draft = normalizeSnapshot(payload, 0, actionType);
+    const validation = validateSnapshot(draft);
+    if (!validation.valid) throw new BadRequestException({ message: '请补充完整内容后再保存', errors: validation.errors });
     const created = await this.prisma.guidanceContent.create({
-      data: { action_type: actionType, title: draft.title || '未命名指导内容', status: 0, version: 0, draft_snapshot: toJson(draft) },
+      data: { action_type: actionType, title: draft.title || '未命名指导内容', status: 1, version: 1, published_version: 1, draft_snapshot: toJson(draft) },
     });
-    const snapshot = { ...draft, contentId: Number(created.content_id) };
-    await this.prisma.guidanceContent.update({ where: { content_id: created.content_id }, data: { draft_snapshot: toJson(snapshot) } });
+    const snapshot = { ...draft, contentId: Number(created.content_id), version: 1 };
+    await this.prisma.$transaction([
+      this.prisma.guidanceContentVersion.create({
+        data: { content_id: created.content_id, version: 1, snapshot: toJson(snapshot) },
+      }),
+      this.prisma.guidanceContent.update({
+        where: { content_id: created.content_id }, data: { draft_snapshot: toJson(snapshot) },
+      }),
+    ]);
     return snapshot;
   }
 
@@ -278,7 +284,33 @@ export class GuidanceService {
   }
 
   async updateAdminGuidance(id: number, payload: Record<string, unknown>) {
-    return this.saveAdminDraft(id, payload);
+    const current = await this.findContent(id);
+    const snapshot = normalizeSnapshot(payload, id, current.action_type as TrainingActionType);
+    const validation = validateSnapshot(snapshot);
+    if (!validation.valid) throw new BadRequestException({ message: '请补充完整内容后再保存', errors: validation.errors });
+    // 对外不再维护版本：始终覆盖唯一的患者可见快照，并清理历史快照。
+    const publishedSnapshot = { ...snapshot, version: 1 };
+    await this.prisma.$transaction([
+      this.prisma.guidanceContentVersion.upsert({
+        where: { content_id_version: { content_id: BigInt(id), version: 1 } },
+        update: { snapshot: toJson(publishedSnapshot) },
+        create: { content_id: BigInt(id), version: 1, snapshot: toJson(publishedSnapshot) },
+      }),
+      this.prisma.guidanceContentVersion.deleteMany({
+        where: { content_id: BigInt(id), version: { not: 1 } },
+      }),
+      this.prisma.guidanceContent.update({
+        where: { content_id: BigInt(id) },
+        data: {
+          title: snapshot.title || current.title,
+          status: 1,
+          version: 1,
+          published_version: 1,
+          draft_snapshot: toJson(publishedSnapshot),
+        },
+      }),
+    ]);
+    return publishedSnapshot;
   }
 
   async deleteAdminGuidance(id: number): Promise<void> {

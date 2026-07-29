@@ -32,6 +32,35 @@ function getStatusLabel(status, failed, timeoutReached) {
     }
     return '准备中';
 }
+function failurePresentation(status, failReason) {
+    const reason = `${failReason || ''}`.toLowerCase();
+    if (status === 'quality_insufficient') {
+        return {
+            title: '视频质量不足',
+            tip: '请确保动作完整入镜、光线清晰后重新上传。',
+            action: '请回到指导页确认拍摄角度、入镜范围和光线，再重新上传。',
+        };
+    }
+    if (reason.includes('analysis_queue_unavailable') || reason.includes('分析服务')) {
+        return {
+            title: '分析服务暂时繁忙',
+            tip: '视频已经保存，不需要重新拍摄。请稍后到训练记录查看，系统恢复后可再次提交。',
+            action: '建议等待几分钟后从训练记录重新查看；如果仍未恢复，再重新上传。',
+        };
+    }
+    if (reason.includes('视频文件尚未上传')) {
+        return {
+            title: '视频上传未完成',
+            tip: '视频文件可能未完整传到服务器，请重新上传这一段视频。',
+            action: '请检查网络连接后重新上传。',
+        };
+    }
+    return {
+        title: '本次分析未成功',
+        tip: '视频已经保存，但本次分析没有完成。您可以稍后在训练记录中查看或重新上传。',
+        action: '建议先稍后查看训练记录；若仍未生成结果，再重新上传。',
+    };
+}
 function buildStatusSteps(status) {
     if (status === 'review_required') {
         return [
@@ -151,14 +180,13 @@ Page({
             const result = await (0, video_1.getVideoStatus)(this.data.videoId);
             const failed = result.status === 'failed' || result.status === 'quality_insufficient';
             const timeoutReached = this.data.timeoutReached;
+            const failure = failed ? failurePresentation(result.status, result.failReason) : null;
             const title = result.status === 'review_required'
                 ? '本次训练结果待复核'
                 : result.status === 'completed'
                 ? '本次训练分析完成'
                 : failed
-                    ? result.status === 'quality_insufficient'
-                        ? '视频质量不足，暂时无法分析'
-                        : '本次分析未成功'
+                    ? failure.title
                     : timeoutReached
                         ? '分析时间比预期稍长'
                         : '系统正在分析您的动作';
@@ -167,9 +195,7 @@ Page({
                 : result.status === 'completed'
                 ? '分析完成，正在跳转报告页...'
                 : failed
-                    ? result.status === 'quality_insufficient'
-                        ? '请确保动作完整入镜、光线清晰后重新上传。'
-                        : '系统暂未完成本次分析，您可以重新上传一次继续训练。'
+                    ? failure.tip
                     : timeoutReached
                         ? '您可以稍后到历史记录里查看结果。'
                         : '系统正在分析您的动作，请耐心等待。';
@@ -182,16 +208,8 @@ Page({
                 tip,
                 statusLabel: getStatusLabel(result.status, failed, timeoutReached),
                 statusSteps: buildStatusSteps(result.status),
-                failReasonTitle: failed
-                    ? result.status === 'quality_insufficient'
-                        ? '视频质量不足'
-                        : result.failReason?.slice(0, 50) || '分析失败'
-                    : '',
-                failReasonDesc: failed
-                    ? result.status === 'quality_insufficient'
-                        ? '请确保动作完整入镜、光线清晰后重新上传。'
-                        : result.failReason || '分析过程中遇到问题，请稍后重试或重新上传。'
-                    : '',
+                failReasonTitle: failed ? failure.title : '',
+                failReasonDesc: failed ? failure.action : '',
             });
             if (failed) {
                 this.stopPolling();

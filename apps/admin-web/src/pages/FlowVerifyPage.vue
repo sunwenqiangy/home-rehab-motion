@@ -385,11 +385,14 @@ function normalizeErrorMessage(error: unknown, fallback: string): string {
 
   if (axios.isAxiosError(error)) {
     statusCode = Number(error.response?.status || 0);
-    const data = error.response?.data as { message?: string; detail?: string } | string | undefined;
+    const data = error.response?.data as { message?: string | { message?: string }; detail?: string } | string | undefined;
     if (typeof data === 'string') {
       backendMessage = data;
     } else {
-      backendMessage = data?.message || data?.detail || '';
+      const rawMessage = data?.message;
+      backendMessage = typeof rawMessage === 'string'
+        ? rawMessage
+        : rawMessage?.message || data?.detail || '';
     }
   }
 
@@ -403,6 +406,9 @@ function normalizeErrorMessage(error: unknown, fallback: string): string {
   }
   if (statusCode === 401 || merged.includes('status code 401')) {
     return '登录状态已失效，请重新登录后重试';
+  }
+  if (statusCode === 403 || merged.includes('status code 403')) {
+    return backendMessage ? `权限校验失败：${backendMessage}` : '当前账号没有执行内部验证的权限';
   }
   if (statusCode === 400 || merged.includes('status code 400')) {
     return backendMessage ? `请求参数异常：${backendMessage}` : '请求参数异常，请重新选择视频后重试';

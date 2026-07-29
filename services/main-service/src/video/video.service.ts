@@ -169,8 +169,11 @@ export class VideoService {
   async confirmUpload(
     userId: number,
     payload: ConfirmUploadRequestDto,
+    options: { requireConsent?: boolean; recordMotivation?: boolean } = {},
   ): Promise<ConfirmUploadResponseDto> {
-    await this.privacyService.requireActiveConsent(userId);
+    if (options.requireConsent !== false) {
+      await this.privacyService.requireActiveConsent(userId);
+    }
     const video = await this.prisma.trainingVideo.findUnique({
       where: { video_id: BigInt(payload.videoId) },
     });
@@ -212,7 +215,9 @@ export class VideoService {
       },
     });
 
-    await this.motivationService.recordConfirmedTraining(userId, payload.videoId, video.confirmed_at || new Date());
+    if (options.recordMotivation !== false) {
+      await this.motivationService.recordConfirmedTraining(userId, payload.videoId, video.confirmed_at || new Date());
+    }
 
     if (video.analysis_status === 'completed') {
       return { videoId: payload.videoId, status: 'completed', estimatedWaitSeconds: 0 };
@@ -299,7 +304,10 @@ export class VideoService {
       throw new NotFoundException(`视频不存在: ${videoId}`);
     }
     this.ensureInternalSample(video.source_type);
-    return this.confirmUpload(Number(video.user_id), payload);
+    return this.confirmUpload(Number(video.user_id), payload, {
+      requireConsent: false,
+      recordMotivation: false,
+    });
   }
 
   async getInternalSampleStatus(videoId: number): Promise<VideoStatusDto> {

@@ -82,9 +82,6 @@ export interface AdminGuidanceListItemDto {
   contentId: number;
   actionType: TrainingActionType;
   title: string;
-  publishedVersion?: number;
-  hasDraft: boolean;
-  published: boolean;
   updatedAt: string;
 }
 
@@ -446,6 +443,10 @@ export interface UserProfileDto {
 
 export interface UpdatePatientProfileRequestDto {
   nickname?: string;
+  /** 用户主动填写的年龄；微信登录不会提供年龄。 */
+  age?: number;
+  /** 用户主动选择的性别；微信登录不会提供性别。 */
+  gender?: 'male' | 'female' | 'unknown';
 }
 
 export interface BindWechatPhoneRequestDto {
