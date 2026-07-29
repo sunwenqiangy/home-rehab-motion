@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type {
@@ -34,6 +35,8 @@ import { StorageService, type UploadedBinaryFile } from '../storage/storage.serv
 
 @Injectable()
 export class VideoService {
+  private readonly logger = new Logger(VideoService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly analysisService: AnalysisService,
@@ -171,6 +174,11 @@ export class VideoService {
     payload: ConfirmUploadRequestDto,
     options: { requireConsent?: boolean; recordMotivation?: boolean } = {},
   ): Promise<ConfirmUploadResponseDto> {
+    const startedAt = Date.now();
+    this.logger.log(
+      `Confirm upload started: videoId=${payload.videoId}, userId=${userId}, actionType=${payload.actionType}, `
+      + `durationSeconds=${payload.duration}, source=${options.requireConsent === false ? 'internal-sample' : 'patient'}`,
+    );
     if (options.requireConsent !== false) {
       await this.privacyService.requireActiveConsent(userId);
     }
@@ -199,9 +207,12 @@ export class VideoService {
       ? objectKey
       : `${objectKey}.mp4`;
 
-    if (!(await this.storageService.objectExists(resolvedObjectKey))) {
+    const objectExists = await this.storageService.objectExists(resolvedObjectKey);
+    if (!objectExists) {
+      this.logger.warn(`Confirm upload rejected: videoId=${payload.videoId}, reason=object_not_found`);
       throw new BadRequestException('视频文件尚未上传，请先完成上传');
     }
+    this.logger.log(`Video object verified: videoId=${payload.videoId}, hasObject=true`);
 
     await this.prisma.trainingVideo.update({
       where: { video_id: BigInt(payload.videoId) },
@@ -220,10 +231,12 @@ export class VideoService {
     }
 
     if (video.analysis_status === 'completed') {
+      this.logger.log(`Confirm upload skipped enqueue: videoId=${payload.videoId}, reason=already_completed`);
       return { videoId: payload.videoId, status: 'completed', estimatedWaitSeconds: 0 };
     }
 
     try {
+      this.logger.log(`Enqueue requested from confirm upload: videoId=${payload.videoId}, actionType=${payload.actionType}`);
       const task = await this.analysisService.enqueueVideo({
         videoId: payload.videoId,
         actionType: payload.actionType,
@@ -255,6 +268,11 @@ export class VideoService {
         },
       });
 
+      this.logger.log(
+        `Analysis task persisted after enqueue: videoId=${payload.videoId}, taskId=${task.task_id}, status=${task.status}, `
+        + `elapsedMs=${Date.now() - startedAt}`,
+      );
+
       if (task.status === 'completed' && task.compatReport) {
         await this.applyCompatAnalyzeResult(payload.videoId, task.compatReport);
         return {
@@ -264,6 +282,7 @@ export class VideoService {
         };
       }
 
+      this.logger.log(`Confirm upload completed: videoId=${payload.videoId}, status=queued, elapsedMs=${Date.now() - startedAt}`);
       return {
         videoId: payload.videoId,
         status: 'queued',
@@ -274,6 +293,11 @@ export class VideoService {
       // 由主服务的协调器按退避策略重新投递，避免患者重复上传。
       const failReason = error instanceof Error ? error.message : '分析服务暂不可用';
       const retryAt = new Date(Date.now() + 30_000);
+      this.logger.error(
+        `Enqueue failed; keeping video queued for retry: videoId=${payload.videoId}, actionType=${payload.actionType}, `
+        + `retryAt=${retryAt.toISOString()}, elapsedMs=${Date.now() - startedAt}, error=${failReason}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       await this.prisma.$transaction([
         this.prisma.trainingVideo.update({
           where: { video_id: BigInt(payload.videoId) },
@@ -302,6 +326,7 @@ export class VideoService {
           },
         }),
       ]);
+      this.logger.warn(`Confirm upload deferred: videoId=${payload.videoId}, status=queued, retryScheduledAt=${retryAt.toISOString()}`);
       return {
         videoId: payload.videoId,
         status: 'queued',

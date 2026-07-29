@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
 import type { TrainingActionType } from '@home-rehab-motion/shared-types';
@@ -30,6 +30,7 @@ export type AnalysisEnqueueResult = {
 
 @Injectable()
 export class AnalysisService {
+  private readonly logger = new Logger(AnalysisService.name);
   private readonly analysisServiceUrl =
     process.env.ANALYSIS_SERVICE_URL || 'http://127.0.0.1:8000';
   private readonly fallbackVideoBaseUrl =
@@ -165,12 +166,26 @@ export class AnalysisService {
       threshold_config: Object.keys(thresholdConfig).length > 0 ? thresholdConfig : undefined,
     };
 
+    const submitUrl = `${this.analysisServiceUrl}/analysis/submit`;
+    const startedAt = Date.now();
+    this.logger.log(
+      `Submitting analysis task: videoId=${params.videoId}, actionType=${params.actionType}, `
+      + `hasVideoKey=${Boolean(params.videoKey)}, sampleFps=${canonicalPayload.sample_fps ?? 'default'}, url=${submitUrl}`,
+    );
+
     try {
-      return await this.postJson<AnalysisEnqueueResult>(
-        `${this.analysisServiceUrl}/analysis/submit`,
-        canonicalPayload,
+      const result = await this.postJson<AnalysisEnqueueResult>(submitUrl, canonicalPayload);
+      this.logger.log(
+        `Analysis task accepted: videoId=${params.videoId}, taskId=${result.task_id}, `
+        + `status=${result.status}, elapsedMs=${Date.now() - startedAt}`,
       );
+      return result;
     } catch (primaryError) {
+      const primaryMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
+      this.logger.error(
+        `Analysis task submit failed: videoId=${params.videoId}, actionType=${params.actionType}, `
+        + `elapsedMs=${Date.now() - startedAt}, error=${primaryMessage}`,
+      );
       if (!this.allowCompatAnalyzeFallback) {
         const primaryMessage =
           primaryError instanceof Error ? primaryError.message : String(primaryError);

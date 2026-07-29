@@ -119,6 +119,14 @@ def _backfill_rep_segments(video_id: int, data: Dict[str, Any]) -> Dict[str, Any
 
 @router.post('/submit', response_model=AnalyzeResponse, summary='提交视频分析任务')
 def submit_analysis(req: AnalyzeRequest) -> AnalyzeResponse:
+    logger.info(
+        'Analysis submit received: video_id=%d, action_type=%s, has_video_key=%s, sample_fps=%s, has_callback_url=%s',
+        req.video_id,
+        req.action_type,
+        bool(req.video_key),
+        req.sample_fps if req.sample_fps is not None else 'default',
+        bool(req.callback_url),
+    )
     valid_types = ('abdominal_crunch', 'pelvic_tilt', 'knee_rotation')
     if req.action_type not in valid_types:
         raise HTTPException(
@@ -134,6 +142,12 @@ def submit_analysis(req: AnalyzeRequest) -> AnalyzeResponse:
             repo = AnalysisRepository(session)
             existing_task = repo.get_analysis_task(req.video_id)
             if existing_task and existing_task.task_status in ('queued', 'processing'):
+                logger.info(
+                    'Analysis submit deduplicated: video_id=%d, task_id=%s, existing_status=%s',
+                    req.video_id,
+                    existing_task.provider_task_id or '',
+                    existing_task.task_status,
+                )
                 return AnalyzeResponse(
                     task_id=existing_task.provider_task_id or '',
                     video_id=req.video_id,
@@ -164,9 +178,19 @@ def submit_analysis(req: AnalyzeRequest) -> AnalyzeResponse:
             },
             queue='analysis',
         )
+        logger.info(
+            'Analysis task enqueued: video_id=%d, task_id=%s, queue=analysis',
+            req.video_id,
+            result.id,
+        )
         return AnalyzeResponse(task_id=result.id, video_id=req.video_id, status='queued')
     except Exception as exc:
-        logger.exception('Failed to enqueue analysis task for video_id=%d', req.video_id)
+        logger.exception(
+            'Analysis task enqueue failed: video_id=%d, action_type=%s, error_type=%s',
+            req.video_id,
+            req.action_type,
+            type(exc).__name__,
+        )
         raise HTTPException(status_code=503, detail='分析队列暂不可用，请稍后重试') from exc
 
 

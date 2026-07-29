@@ -166,7 +166,16 @@ def analyze_video(
     threshold_config: Optional[Dict] = None,
 ) -> Dict[str, Any]:
     task_id = self.request.id
-    logger.info('[%s] Starting analysis: video_id=%d, action_type=%s', task_id, video_id, action_type)
+    started_at = time.monotonic()
+    logger.info(
+        '[%s] Analysis task started: video_id=%d, action_type=%s, has_video_key=%s, sample_fps=%s, has_callback_url=%s',
+        task_id,
+        video_id,
+        action_type,
+        bool(video_key),
+        sample_fps if sample_fps is not None else 'default',
+        bool(callback_url),
+    )
 
     from app.db.repository import AnalysisRepository
     from app.db.session import sync_session_scope
@@ -187,6 +196,13 @@ def analyze_video(
                     video_key = video.video_key
 
         local_video_path, is_temp_file = _resolve_video_source(video_id, action_type, video_key)
+        logger.info(
+            '[%s] Video source resolved: video_id=%d, temporary_file=%s, file_size_bytes=%d',
+            task_id,
+            video_id,
+            is_temp_file,
+            os.path.getsize(local_video_path),
+        )
 
         from app.core.video_quality import check_video_quality
 
@@ -418,6 +434,16 @@ def analyze_video(
             )
 
         final_status = 'review_required' if review_required_reason else 'completed'
+        logger.info(
+            '[%s] Analysis result persisted: video_id=%d, status=%s, score=%.2f, total_reps=%d, valid_reps=%d, confidence=%.3f',
+            task_id,
+            video_id,
+            final_status,
+            video_score.average_score,
+            video_score.total_reps,
+            video_score.valid_reps,
+            confidence.overall,
+        )
         _notify_callback(
             callback_url,
             video_id,
@@ -430,6 +456,13 @@ def analyze_video(
             analysis_version=video_score.analysis_version,
         )
 
+        logger.info(
+            '[%s] Analysis task finished: video_id=%d, status=%s, elapsed_ms=%d',
+            task_id,
+            video_id,
+            final_status,
+            int((time.monotonic() - started_at) * 1000),
+        )
         return {
             'video_id': video_id,
             'status': final_status,
@@ -440,7 +473,15 @@ def analyze_video(
             'valid_reps': video_score.valid_reps,
         }
     except Exception as exc:
-        logger.exception('[%s] Analysis failed for video_id=%d: %s', task_id, video_id, exc)
+        logger.exception(
+            '[%s] Analysis task failed: video_id=%d, action_type=%s, elapsed_ms=%d, error_type=%s, error=%s',
+            task_id,
+            video_id,
+            action_type,
+            int((time.monotonic() - started_at) * 1000),
+            type(exc).__name__,
+            exc,
+        )
         try:
             with sync_session_scope() as session:
                 repo = AnalysisRepository(session)

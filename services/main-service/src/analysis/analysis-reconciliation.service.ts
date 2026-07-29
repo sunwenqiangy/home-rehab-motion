@@ -59,6 +59,10 @@ export class AnalysisReconciliationService implements OnModuleInit, OnModuleDest
           if (retryAt > now) {
             continue;
           }
+          this.logger.log(
+            `Retrying deferred analysis enqueue: videoId=${video.video_id}, retryCount=${task.retry_count}, `
+            + `lastError=${task.callback_last_error || task.fail_reason || 'unknown'}`,
+          );
           if (task.retry_count >= this.maxEnqueueRetries) {
             const reason = '分析服务多次不可用，请稍后在训练记录中重新提交。';
             await this.prisma.$transaction([
@@ -100,7 +104,9 @@ export class AnalysisReconciliationService implements OnModuleInit, OnModuleDest
                 finished_at: result.status === 'completed' ? new Date() : null,
               },
             });
-            this.logger.log(`Re-enqueued analysis for video ${video.video_id}`);
+            this.logger.log(
+              `Deferred analysis enqueue succeeded: videoId=${video.video_id}, taskId=${result.task_id}, status=${result.status}`,
+            );
           } catch (error) {
             const retryCount = task.retry_count + 1;
             const retryDelayMs = Math.min(10 * 60_000, 30_000 * 2 ** Math.min(retryCount, 4));
@@ -114,7 +120,10 @@ export class AnalysisReconciliationService implements OnModuleInit, OnModuleDest
                 callback_next_retry_at: new Date(now + retryDelayMs),
               },
             });
-            this.logger.warn(`Analysis re-enqueue failed for video ${video.video_id}; retry ${retryCount}/${this.maxEnqueueRetries}`);
+            this.logger.warn(
+              `Deferred analysis enqueue failed: videoId=${video.video_id}, retry=${retryCount}/${this.maxEnqueueRetries}, `
+              + `nextRetryAt=${new Date(now + retryDelayMs).toISOString()}, error=${reason}`,
+            );
           }
           continue;
         }

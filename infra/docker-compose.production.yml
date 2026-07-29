@@ -13,7 +13,8 @@ services:
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     volumes:
       - redis-data:/data
-    networks: [internal]
+    # 同时接入分析侧的出站网络；Redis 不暴露宿主机端口，仍只允许 Docker 网络访问。
+    networks: [internal, host-access]
     restart: unless-stopped
     mem_limit: 256m
     cpus: 0.25
@@ -98,9 +99,9 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    # internal 网络禁止访问宿主机；额外挂载不暴露端口的 host-access 网络，
-    # 仅用于访问宝塔 MySQL（host.docker.internal）。
-    networks: [internal, host-access]
+    # 仅使用具备宿主机出站路由的网络，以访问宝塔 MySQL。
+    # Redis 同时加入该网络，因此服务发现仍使用 redis 主机名。
+    networks: [host-access]
     restart: unless-stopped
     read_only: true
     tmpfs: [/tmp]
@@ -137,7 +138,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    networks: [internal, host-access]
+    networks: [host-access]
     restart: unless-stopped
     read_only: true
     tmpfs: [/tmp]
@@ -170,7 +171,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    networks: [internal, host-access]
+    networks: [host-access]
     restart: unless-stopped
     read_only: true
     tmpfs: [/tmp]
@@ -195,7 +196,11 @@ services:
 networks:
   edge:
   # 不映射任何宿主机端口，仅为需要访问宿主机 MySQL 的分析进程提供出站路由。
+  # 固定子网，便于宿主机防火墙仅对白名单 Docker 网段开放 MySQL。
   host-access:
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
   internal:
     internal: true
 
