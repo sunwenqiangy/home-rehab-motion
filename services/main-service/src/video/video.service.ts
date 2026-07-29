@@ -270,29 +270,43 @@ export class VideoService {
         estimatedWaitSeconds: 30,
       };
     } catch (error) {
+      // 视频和确认信息已持久化。分析服务短暂不可用时不应把患者视频标记为失败，
+      // 由主服务的协调器按退避策略重新投递，避免患者重复上传。
       const failReason = error instanceof Error ? error.message : '分析服务暂不可用';
-      await this.prisma.trainingVideo.update({
-        where: { video_id: BigInt(payload.videoId) },
-        data: {
-          analysis_status: 'failed',
-          fail_reason: failReason.slice(0, 255),
-        },
-      });
-      await this.prisma.analysisTask.upsert({
-        where: { video_id: BigInt(payload.videoId) },
-        update: {
-          task_status: 'failed',
-          fail_reason: failReason.slice(0, 255),
-          finished_at: new Date(),
-        },
-        create: {
-          video_id: BigInt(payload.videoId),
-          task_status: 'failed',
-          fail_reason: failReason.slice(0, 255),
-          finished_at: new Date(),
-        },
-      });
-      throw error;
+      const retryAt = new Date(Date.now() + 30_000);
+      await this.prisma.$transaction([
+        this.prisma.trainingVideo.update({
+          where: { video_id: BigInt(payload.videoId) },
+          data: {
+            analysis_status: 'queued',
+            fail_reason: null,
+          },
+        }),
+        this.prisma.analysisTask.upsert({
+          where: { video_id: BigInt(payload.videoId) },
+          update: {
+            task_status: 'queued',
+            fail_reason: failReason.slice(0, 255),
+            callback_status: 'enqueue_retry_pending',
+            callback_last_error: failReason.slice(0, 255),
+            callback_next_retry_at: retryAt,
+            finished_at: null,
+          },
+          create: {
+            video_id: BigInt(payload.videoId),
+            task_status: 'queued',
+            fail_reason: failReason.slice(0, 255),
+            callback_status: 'enqueue_retry_pending',
+            callback_last_error: failReason.slice(0, 255),
+            callback_next_retry_at: retryAt,
+          },
+        }),
+      ]);
+      return {
+        videoId: payload.videoId,
+        status: 'queued',
+        estimatedWaitSeconds: 60,
+      };
     }
   }
 

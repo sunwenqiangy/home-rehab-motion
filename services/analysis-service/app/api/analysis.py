@@ -126,18 +126,28 @@ def submit_analysis(req: AnalyzeRequest) -> AnalyzeResponse:
             detail=f'Invalid action_type: {req.action_type}. Must be one of {valid_types}',
         )
 
-    from app.db.repository import AnalysisRepository
-    from app.db.session import sync_session_scope
+    try:
+        from app.db.repository import AnalysisRepository
+        from app.db.session import sync_session_scope
 
-    with sync_session_scope() as session:
-        repo = AnalysisRepository(session)
-        existing_task = repo.get_analysis_task(req.video_id)
-        if existing_task and existing_task.task_status in ('queued', 'processing'):
-            return AnalyzeResponse(
-                task_id=existing_task.provider_task_id or '',
-                video_id=req.video_id,
-                status=existing_task.task_status,
-            )
+        with sync_session_scope() as session:
+            repo = AnalysisRepository(session)
+            existing_task = repo.get_analysis_task(req.video_id)
+            if existing_task and existing_task.task_status in ('queued', 'processing'):
+                return AnalyzeResponse(
+                    task_id=existing_task.provider_task_id or '',
+                    video_id=req.video_id,
+                    status=existing_task.task_status,
+                )
+    except Exception as exc:
+        # 主服务已经负责训练视频和 analysis_task 的状态；这里的幂等查询只用于
+        # 避免重复投递。数据库短暂不可达不应阻断 Redis 入队，否则会把数据库网络
+        # 故障错误伪装成“分析队列不可用”。Worker 会在执行时更新任务状态。
+        logger.warning(
+            'Skipping duplicate-task lookup for video_id=%d because the analysis database is unavailable: %s',
+            req.video_id,
+            exc,
+        )
 
     try:
         # 向 Broker 投递任务是唯一必要的同步步骤；inspect.ping() 是广播控制命令，
