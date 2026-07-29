@@ -16,8 +16,17 @@ logger = logging.getLogger(__name__)
 class PoseEstimator:
     """MediaPipe Pose 关键点提取器"""
 
-    def __init__(self, model_complexity: int = 1, sample_fps: int = 10):
+    def __init__(
+        self,
+        model_complexity: int = 1,
+        sample_fps: int = 10,
+        max_frames: Optional[int] = None,
+        max_frame_width: Optional[int] = None,
+    ):
         self.sample_fps = sample_fps
+        self.max_frames = max_frames if max_frames and max_frames > 0 else None
+        self.max_frame_width = max_frame_width if max_frame_width and max_frame_width > 0 else None
+        self.effective_sample_fps = float(sample_fps)
         self._model_complexity = model_complexity
         self._mp_pose = None
         self._pose = None
@@ -55,8 +64,26 @@ class PoseEstimator:
             return []
 
         source_fps = cap.get(cv2.CAP_PROP_FPS)
-        step = max(1, int(source_fps / self.sample_fps)) if source_fps > 0 else 1
+        source_fps = source_fps if source_fps > 0 else float(self.sample_fps)
+        source_step = max(1, int(source_fps / self.sample_fps))
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        # 限制总推理帧数而非仅限制视频文件时长：高帧率长视频会自动增大抽帧步长，
+        # 既避免低配服务器被单任务耗尽，也保留完整时间范围供周期切分。
+        sampled_frame_count = (total_frames + source_step - 1) // source_step if total_frames > 0 else 0
+        budget_step = (total_frames + self.max_frames - 1) // self.max_frames if self.max_frames and total_frames > self.max_frames else 1
+        step = max(source_step, budget_step)
+        effective_fps = source_fps / step
+        self.effective_sample_fps = effective_fps
+        if step > source_step:
+            logger.info(
+                'Pose sampling capped: requested_fps=%d, source_fps=%.2f, total_frames=%d, max_frames=%d, step=%d, effective_fps=%.2f',
+                self.sample_fps, source_fps, total_frames, self.max_frames, step, effective_fps,
+            )
+        elif sampled_frame_count:
+            logger.info(
+                'Pose sampling: requested_fps=%d, source_fps=%.2f, total_frames=%d, step=%d, sampled_frames=%d',
+                self.sample_fps, source_fps, total_frames, step, sampled_frame_count,
+            )
 
         frames: List[Frame] = []
         frame_index = 0
@@ -83,6 +110,7 @@ class PoseEstimator:
         keypoints = {}
 
         if self._pose is not None:
+            frame = self._resize_for_pose(frame)
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = self._pose.process(rgb)
 
@@ -126,6 +154,17 @@ class PoseEstimator:
             keypoints=keypoints,
             hip_mid=hip_mid,
             shoulder_mid=shoulder_mid,
+        )
+
+    def _resize_for_pose(self, frame: np.ndarray) -> np.ndarray:
+        """姿态推理只需要归一化关键点，将高分辨率帧等比例缩至受控尺寸以降低 CPU 和内存峰值。"""
+        if not self.max_frame_width or frame.shape[1] <= self.max_frame_width:
+            return frame
+        scale = self.max_frame_width / frame.shape[1]
+        return cv2.resize(
+            frame,
+            (self.max_frame_width, max(1, int(round(frame.shape[0] * scale)))),
+            interpolation=cv2.INTER_AREA,
         )
 
     @staticmethod

@@ -6,8 +6,8 @@ const request_1 = require("../utils/request");
 /** 默认配置 —— 网络请求失败时的兜底 */
 exports.DEFAULT_APP_CONFIG = {
     videoMinDurationSeconds: 10,
-    videoMaxDurationSeconds: 300,
-    videoRecordMaxDurationSeconds: 120,
+videoMaxDurationSeconds: 300,
+videoRecordMaxDurationSeconds: 120,
     videoMaxSizeMB: 200,
     weeklyTarget: 7,
     analyzingMinWaitSeconds: 20,

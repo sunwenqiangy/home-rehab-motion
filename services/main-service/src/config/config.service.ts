@@ -25,6 +25,7 @@ const DEFAULT_MOTIVATION_RULES: MotivationRulesDto = {
 
 const DEFAULT_APP_CONFIG: PatientAppConfigDto = {
   videoMinDurationSeconds: 10,
+  // 与分析服务的 MAX_ANALYSIS_DURATION_SECONDS 保持一致；长视频仍由 Worker 帧预算限制计算量。
   videoMaxDurationSeconds: 300,
   videoRecordMaxDurationSeconds: 120,
   videoMaxSizeMB: 200,
@@ -202,13 +203,13 @@ function sanitizeSupportedActionTypes(value: unknown): TrainingActionType[] {
 
 function normalizePatientAppConfig(raw: Partial<PatientAppConfigDto>): PatientAppConfigDto {
   const minDuration = pickNumber(raw.videoMinDurationSeconds, DEFAULT_APP_CONFIG.videoMinDurationSeconds, 1, 300);
-  const maxDurationRaw = pickNumber(raw.videoMaxDurationSeconds, DEFAULT_APP_CONFIG.videoMaxDurationSeconds, 1, 600);
+  const maxDurationRaw = pickNumber(raw.videoMaxDurationSeconds, DEFAULT_APP_CONFIG.videoMaxDurationSeconds, 1, 300);
   const maxDuration = Math.max(minDuration, maxDurationRaw);
   const recordMaxDurationRaw = pickNumber(
     raw.videoRecordMaxDurationSeconds,
     DEFAULT_APP_CONFIG.videoRecordMaxDurationSeconds,
     1,
-    600,
+    300,
   );
   const recordMaxDuration = Math.max(minDuration, Math.min(maxDuration, recordMaxDurationRaw));
 

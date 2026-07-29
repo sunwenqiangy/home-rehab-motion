@@ -108,6 +108,9 @@ services:
       OSS_PUBLIC_BASE_URL: ''
       # 与 Worker 共享持久卷：API 只读提供关键点骨架预览。
       LOCAL_STORAGE_ROOT: /var/lib/home-rehab-motion
+      MAX_ANALYSIS_DURATION_SECONDS: ${MAX_ANALYSIS_DURATION_SECONDS:-300}
+      MAX_ANALYSIS_FRAMES: ${MAX_ANALYSIS_FRAMES:-600}
+      MAX_POSE_FRAME_WIDTH: ${MAX_POSE_FRAME_WIDTH:-720}
       MPLCONFIGDIR: /tmp/matplotlib
       XDG_CACHE_HOME: /tmp/.cache
       XDG_CONFIG_HOME: /tmp/.config
@@ -154,6 +157,10 @@ services:
       OSS_PUBLIC_BASE_URL: ''
       # Worker 负责写入关键点数据；同一命名卷由 analysis-service 只读挂载。
       LOCAL_STORAGE_ROOT: /var/lib/home-rehab-motion
+      # 2C2G 单机保护：单任务最多推理 600 帧，避免长视频耗尽宿主机资源。
+      MAX_ANALYSIS_DURATION_SECONDS: ${MAX_ANALYSIS_DURATION_SECONDS:-300}
+      MAX_ANALYSIS_FRAMES: ${MAX_ANALYSIS_FRAMES:-600}
+      MAX_POSE_FRAME_WIDTH: ${MAX_POSE_FRAME_WIDTH:-720}
       MPLCONFIGDIR: /tmp/matplotlib
       XDG_CACHE_HOME: /tmp/.cache
       XDG_CONFIG_HOME: /tmp/.config
@@ -172,7 +179,8 @@ services:
     restart: unless-stopped
     read_only: true
     tmpfs: [/tmp]
-    mem_limit: 1536m
+    # 2C2G 宿主机还承载 MySQL 与业务服务；限制 Worker 防止单任务拖垮整机。
+    mem_limit: 1024m
     cpus: 1.0
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]

@@ -40,8 +40,11 @@ class Settings(BaseSettings):
     # MediaPipe
     sample_fps: int = Field(default=10, alias='SAMPLE_FPS')
     model_complexity: int = Field(default=1, alias='MODEL_COMPLEXITY')
-    # 分析超时
+    # 分析任务上限。低配实例必须限制单条视频的计算量，避免 MediaPipe 长时间占满 CPU / 内存。
     analysis_timeout_seconds: int = Field(default=600, alias='ANALYSIS_TIMEOUT_SECONDS')
+    max_analysis_duration_seconds: int = Field(default=300, alias='MAX_ANALYSIS_DURATION_SECONDS')
+    max_analysis_frames: int = Field(default=600, alias='MAX_ANALYSIS_FRAMES')
+    max_pose_frame_width: int = Field(default=720, alias='MAX_POSE_FRAME_WIDTH')
     # 是否允许无真实上传视频时回退样例视频
     allow_sample_video_fallback: bool = Field(default=False, alias='ALLOW_SAMPLE_VIDEO_FALLBACK')
     # 是否允许无 mediapipe 时使用 mock 关键点

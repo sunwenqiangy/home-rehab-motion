@@ -208,6 +208,17 @@ def analyze_video(
 
         quality_result: QualityCheckResult = check_video_quality(local_video_path)
         logger.info('[%s] Quality metadata check: status=%s', task_id, quality_result.quality_status)
+        if quality_result.duration > settings.max_analysis_duration_seconds:
+            reason = (
+                f'视频时长为 {quality_result.duration:.0f} 秒，超过当前分析上限 '
+                f'{settings.max_analysis_duration_seconds} 秒；请截取包含完整动作的短视频后重试'
+            )
+            logger.warning('[%s] Analysis duration rejected: video_id=%d, duration=%.2fs, limit=%ds', task_id, video_id, quality_result.duration, settings.max_analysis_duration_seconds)
+            with sync_session_scope() as session:
+                repo = AnalysisRepository(session)
+                repo.mark_task_failed(video_id, reason)
+            _notify_callback(callback_url, video_id, 'failed', fail_reason=reason)
+            return {'video_id': video_id, 'status': 'failed', 'reason': reason}
         if quality_result.quality_status == 'insufficient':
             with sync_session_scope() as session:
                 repo = AnalysisRepository(session)
@@ -236,11 +247,21 @@ def analyze_video(
         estimator = PoseEstimator(
             sample_fps=effective_sample_fps,
             model_complexity=settings.model_complexity,
+            max_frames=settings.max_analysis_frames,
+            max_frame_width=settings.max_pose_frame_width,
         )
         frames = estimator.extract_frames(local_video_path)
+        effective_sample_fps = estimator.effective_sample_fps
         # 算法预处理会缩放和平移关键点；单独保留原始画面坐标供管理端骨架叠加，不能用处理后的坐标覆盖它。
         visualization_frames = copy.deepcopy(frames)
-        logger.info('[%s] Pose extraction: %d frames (sample_fps=%d)', task_id, len(frames), effective_sample_fps)
+        logger.info(
+            '[%s] Pose extraction: %d frames (effective_sample_fps=%.2f, max_frames=%d, max_frame_width=%d)',
+            task_id,
+            len(frames),
+            effective_sample_fps,
+            settings.max_analysis_frames,
+            settings.max_pose_frame_width,
+        )
 
         # 先保存原始关键点帧数据，供骨架可视化与失败排查使用
         _save_keypoints_json(video_id, visualization_frames)
