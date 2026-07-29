@@ -1,7 +1,6 @@
 """分析任务 API 路由"""
 
 import logging
-import uuid
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -14,7 +13,6 @@ from app.schemas.analysis import (
     TaskStatusResponse,
 )
 from app.tasks.analyze_video import analyze_video
-from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -142,56 +140,24 @@ def submit_analysis(req: AnalyzeRequest) -> AnalyzeResponse:
             )
 
     try:
-        inspect = celery_app.control.inspect()
-        # active() 只会返回当前有执行中任务的 worker；空闲 worker 会被误判为不存在。
-        # ping() 用于确认 worker 存活，避免生产环境空闲时拒绝所有新的视频分析。
-        active_workers = inspect.ping() or {}
-        has_workers = bool(active_workers)
-
-        if has_workers:
-            result = analyze_video.apply_async(
-                kwargs={
-                    'video_id': req.video_id,
-                    'action_type': req.action_type,
-                    'video_key': req.video_key,
-                    'callback_url': req.callback_url,
-                    'sample_fps': req.sample_fps,
-                    'threshold_config': req.threshold_config,
-                },
-                queue='analysis',
-            )
-            return AnalyzeResponse(task_id=result.id, video_id=req.video_id, status='queued')
-        else:
-            if settings.is_production:
-                raise HTTPException(status_code=503, detail='分析队列暂不可用，请稍后重试')
-            logger.info('No Celery workers detected, falling back to synchronous local execution')
-    except HTTPException:
-        raise
-    except Exception as exc:
-        if settings.is_production:
-            logger.exception('Celery inspection failed in production')
-            raise HTTPException(status_code=503, detail='分析队列暂不可用，请稍后重试')
-        logger.warning('Celery inspect failed, fallback to local execution: %s', exc)
-
-    try:
-        local_task_id = f'local-{uuid.uuid4()}'
-        analyze_video.run(
-            video_id=req.video_id,
-            action_type=req.action_type,
-            video_key=req.video_key,
-            callback_url=req.callback_url,
-            sample_fps=req.sample_fps,
-            threshold_config=req.threshold_config,
+        # 向 Broker 投递任务是唯一必要的同步步骤；inspect.ping() 是广播控制命令，
+        # 在 Redis、网络隔离或 worker 正在启动时可能超时，即使队列可正常消费也会误报 503。
+        # Worker 缺失时任务将保持 queued，后续由 worker 恢复后继续执行，不应要求患者重传视频。
+        result = analyze_video.apply_async(
+            kwargs={
+                'video_id': req.video_id,
+                'action_type': req.action_type,
+                'video_key': req.video_key,
+                'callback_url': req.callback_url,
+                'sample_fps': req.sample_fps,
+                'threshold_config': req.threshold_config,
+            },
+            queue='analysis',
         )
-    except Exception as local_exc:
-        logger.error('Local fallback analysis failed: %s', local_exc)
-        raise HTTPException(status_code=503, detail='分析任务执行失败，请稍后重试')
-
-    return AnalyzeResponse(
-        task_id=local_task_id,
-        video_id=req.video_id,
-        status='completed',
-    )
+        return AnalyzeResponse(task_id=result.id, video_id=req.video_id, status='queued')
+    except Exception as exc:
+        logger.exception('Failed to enqueue analysis task for video_id=%d', req.video_id)
+        raise HTTPException(status_code=503, detail='分析队列暂不可用，请稍后重试') from exc
 
 
 @router.get('/status', response_model=TaskStatusResponse, summary='查询分析任务状态')
