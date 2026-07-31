@@ -34,6 +34,16 @@ services:
     volumes:
       - minio-data:/data
 
+  minio-guidance-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    restart: 'no'
+    entrypoint: >-
+      /bin/sh -c "until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
+      mc mb --ignore-existing local/home-rehab-motion-assets;
+      mc anonymous set download local/home-rehab-motion-assets/guidance"
+
 volumes:
   mysql-data:
   redis-data:

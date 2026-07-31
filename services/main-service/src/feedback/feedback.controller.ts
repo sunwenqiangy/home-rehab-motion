@@ -119,7 +119,7 @@ export class FeedbackController {
   @Post('admin/feedback/:feedbackId/close')
   closeFeedback(@Req() req: Request, @Param('feedbackId') feedbackId: string) {
     const user = this.authService.requireUser(req, ['admin', 'nurse']);
-    return this.feedbackService.closeFeedback(Number(feedbackId), user.accountId || user.userId, 'resolved');
+    return this.feedbackService.closeFeedback(Number(feedbackId), user.accountId || user.userId, 'no_further_response_needed');
   }
 
   @Post('admin/feedback/batch-close')

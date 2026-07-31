@@ -161,7 +161,7 @@ export class FeedbackService {
       this.prisma.feedback.count({ where }),
       this.prisma.feedback.findMany({
         where,
-        orderBy: [{ status: 'asc' }, { last_message_at: 'asc' }],
+        orderBy: [{ status: 'asc' }, { last_message_at: 'desc' }, { created_at: 'desc' }],
         skip: (page - 1) * limit,
         take: limit,
         include: { user: true, video: { include: { video_evaluation_result: true } }, messages: { orderBy: { created_at: 'desc' }, take: 1 } },
@@ -221,9 +221,10 @@ export class FeedbackService {
     return { feedbackId, status: 'replied' as FeedbackStatus, content };
   }
 
-  async closeFeedback(feedbackId: number, accountId: number, reason: 'resolved' | 'inactive_7d') {
+  async closeFeedback(feedbackId: number, accountId: number, reason: 'resolved' | 'inactive_7d' | 'no_further_response_needed') {
     const feedback = await this.getManualFeedback(feedbackId);
-    if (feedback.status !== 'replied') throw new BadRequestException('仅已回复工单可以关闭');
+    if (feedback.status === 'closed') throw new BadRequestException('工单已关闭');
+    if (!['pending', 'processing', 'replied'].includes(feedback.status)) throw new BadRequestException('当前工单状态不能关闭');
     await this.prisma.$transaction(async (tx) => {
       await tx.feedback.update({ where: { feedback_id: BigInt(feedbackId) }, data: { status: 'closed', closed_at: new Date(), closed_by: String(accountId), close_reason: reason } });
       await tx.feedbackStatusLog.create({

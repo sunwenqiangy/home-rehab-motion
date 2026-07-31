@@ -43,7 +43,7 @@
             <article v-for="message in detail.messages || []" :key="message.messageId" class="ticket-message" :class="`ticket-message--${message.senderRole}`">
               <div class="ticket-message__head"><strong>{{ senderLabel(message.senderRole) }}</strong><small>{{ formatDate(message.createdAt) }}</small></div>
               <p>{{ message.content }}</p>
-              <div v-if="message.imageUrls?.length" class="ticket-images"><el-image v-for="url in message.imageUrls" :key="url" :src="url" fit="cover" :preview-src-list="message.imageUrls" /></div>
+              <div v-if="message.imageUrls?.length" class="ticket-images"><el-image v-for="(url, index) in message.imageUrls" :key="url" :src="url" fit="cover" :preview-src-list="message.imageUrls" :initial-index="index" preview-teleported><template #error><div class="ticket-images__error">图片加载失败</div></template></el-image></div>
             </article>
             <el-empty v-if="!detail.messages?.length" description="暂无沟通内容" :image-size="54" />
           </section>
@@ -56,20 +56,27 @@
             <el-button v-if="detail.status === 'pending'" @click="handleStart" :loading="saving">开始处理</el-button>
             <el-select v-model="selectedTemplate" clearable placeholder="选择回复模板" style="width:190px" @change="applyTemplate"><el-option v-for="item in templates" :key="item.code" :label="item.label" :value="item.code" /></el-select>
             <el-input v-model="replyContent" type="textarea" :rows="5" maxlength="1000" show-word-limit placeholder="请输入给患者的训练指导回复" />
-            <div class="action-buttons"><el-button v-if="detail.status === 'replied'" @click="handleClose" :loading="saving">关闭工单</el-button><el-button type="primary" :loading="saving" @click="handleReply">发送回复</el-button></div>
+            <div class="action-buttons"><el-button @click="showCloseDialog" :loading="saving">关闭工单</el-button><el-button type="primary" :loading="saving" @click="handleReply">发送回复</el-button></div>
           </section>
           <el-alert v-else-if="detail.handlingMode === 'safety_auto'" type="warning" :closable="false" title="该记录已完成安全分流" description="患者已收到暂停训练、及时咨询医生或前往医疗机构评估的系统提示，无需人工回复。" />
           <el-alert v-else type="success" :closable="false" title="工单已关闭" description="患者不能在此工单继续补充问题；如有新的训练问题，将从报告页重新提交。" />
         </el-card>
       </main>
     </div>
+    <el-dialog v-model="closeDialogVisible" title="确认关闭工单" width="440px" :close-on-click-modal="false" :close-on-press-escape="!saving">
+      <p class="close-dialog__message">关闭后患者不能继续在该工单追问。适用于患者已表示问题解决、无需进一步回复，或工作人员确认本次沟通已结束的场景。</p>
+      <template #footer>
+        <el-button @click="closeDialogVisible = false" :disabled="saving">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="handleClose">确认关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import type { AdminFeedbackListItemDto } from '@home-rehab-motion/shared-contract';
 import type { AnalysisStatus } from '@home-rehab-motion/shared-types';
 import { ANALYSIS_STATUS_LABELS } from '@home-rehab-motion/shared-constants';
@@ -84,6 +91,7 @@ const selectedTemplate = ref('');
 const replyContent = ref('');
 const loading = ref(false);
 const saving = ref(false);
+const closeDialogVisible = ref(false);
 const statusHint = computed(() => ({ pending: '等待工作人员接手', processing: '正在查看训练情况', replied: '已等待患者查看回复', closed: '本次问题已结束' }[detail.value?.status || 'pending']));
 
 const typeLabel = (value?: string) => ({ report_question: '报告疑问', action_issue: '动作问题', upload_issue: '上传问题', body_discomfort: '身体不适', other: '其他训练问题' }[value || ''] || '训练反馈');
@@ -105,10 +113,11 @@ async function loadDetail() {
 function applyTemplate(code: string) { const item = templates.value.find((template) => template.code === code); if (item) replyContent.value = item.content; }
 async function handleStart() { if (!detail.value) return; saving.value = true; try { await startFeedback(detail.value.feedbackId); ElMessage.success('已开始处理'); await loadDetail(); } catch (error: any) { ElMessage.error(error?.response?.data?.message || '操作失败'); } finally { saving.value = false; } }
 async function handleReply() { if (!detail.value || replyContent.value.trim().length < 1) { ElMessage.warning('回复至少需要 1 个字'); return; } saving.value = true; try { await replyFeedback(detail.value.feedbackId, { content: replyContent.value, templateCode: selectedTemplate.value || undefined }); ElMessage.success('回复已发送，患者将收到通知'); replyContent.value = ''; selectedTemplate.value = ''; await loadDetail(); } catch (error: any) { ElMessage.error(error?.response?.data?.message || '发送失败'); } finally { saving.value = false; } }
-async function handleClose() { if (!detail.value) return; await ElMessageBox.confirm('关闭后患者不能继续在该工单追问，确定关闭吗？', '关闭工单'); saving.value = true; try { await closeFeedback(detail.value.feedbackId); ElMessage.success('工单已关闭'); await loadDetail(); } catch (error: any) { ElMessage.error(error?.response?.data?.message || '关闭失败'); } finally { saving.value = false; } }
+function showCloseDialog() { if (!detail.value) return; closeDialogVisible.value = true; }
+async function handleClose() { if (!detail.value) return; saving.value = true; try { await closeFeedback(detail.value.feedbackId); ElMessage.success('工单已关闭'); closeDialogVisible.value = false; await loadDetail(); } catch (error: any) { ElMessage.error(error?.response?.data?.message || '关闭失败'); } finally { saving.value = false; } }
 onMounted(loadDetail);
 </script>
 
 <style scoped>
-.ticket-layout{display:grid;grid-template-columns:minmax(260px,320px) minmax(0,1fr);gap:18px}.ticket-sidebar,.ticket-main{display:grid;align-content:start;gap:18px}.patient-card{display:flex;align-items:center;gap:12px;margin-bottom:16px}.patient-card__avatar{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#dceef0;color:#0c7e82;font-size:20px;font-weight:700}.patient-card strong{display:block;color:var(--ink-900)}.patient-card p{margin:5px 0 0;color:var(--ink-500);font-size:12px}.full-width{width:100%}.training-score{display:grid;grid-template-columns:auto 1fr;align-items:end;column-gap:9px;padding:14px;border-radius:12px;background:linear-gradient(135deg,#edf8f4,#f5fbfc);margin-bottom:14px}.training-score strong{font-size:30px;line-height:1;color:#118673}.training-score span{color:var(--ink-500);font-size:12px}.training-score em{grid-column:1/-1;margin-top:8px;font-style:normal;font-size:12px;color:#15806d}.fact-list{display:grid;gap:10px;margin:0 0 16px}.fact-list div{display:flex;justify-content:space-between;gap:12px;font-size:13px}.fact-list dt{color:var(--ink-500)}.fact-list dd{margin:0;text-align:right;color:var(--ink-800)}.ticket-timeline{display:grid;gap:12px;min-height:140px}.ticket-message{padding:14px 16px;border:1px solid rgba(148,180,214,.18);border-radius:14px;background:#f5f8fb}.ticket-message--staff{background:rgba(51,178,123,.09);border-color:rgba(51,178,123,.22)}.ticket-message--system{background:rgba(240,166,63,.11);border-color:rgba(240,166,63,.24)}.ticket-message__head{display:flex;justify-content:space-between;gap:12px}.ticket-message__head strong{font-size:13px;color:var(--ink-800)}.ticket-message__head small{color:var(--ink-500);font-size:12px}.ticket-message p{margin:9px 0 0;white-space:pre-wrap;line-height:1.7;color:var(--ink-800)}.ticket-images{display:flex;gap:8px;margin-top:10px}.ticket-images :deep(.el-image){width:76px;height:76px;border-radius:8px}.ticket-actions{display:grid;gap:12px}.action-buttons{display:flex;justify-content:flex-end;gap:10px}@media(max-width:900px){.ticket-layout{grid-template-columns:1fr}.ticket-sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:640px){.ticket-sidebar{grid-template-columns:1fr}}
+.ticket-layout{display:grid;grid-template-columns:minmax(260px,320px) minmax(0,1fr);gap:18px}.ticket-sidebar,.ticket-main{display:grid;align-content:start;gap:18px}.patient-card{display:flex;align-items:center;gap:12px;margin-bottom:16px}.patient-card__avatar{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#dceef0;color:#0c7e82;font-size:20px;font-weight:700}.patient-card strong{display:block;color:var(--ink-900)}.patient-card p{margin:5px 0 0;color:var(--ink-500);font-size:12px}.full-width{width:100%}.training-score{display:grid;grid-template-columns:auto 1fr;align-items:end;column-gap:9px;padding:14px;border-radius:12px;background:linear-gradient(135deg,#edf8f4,#f5fbfc);margin-bottom:14px}.training-score strong{font-size:30px;line-height:1;color:#118673}.training-score span{color:var(--ink-500);font-size:12px}.training-score em{grid-column:1/-1;margin-top:8px;font-style:normal;font-size:12px;color:#15806d}.fact-list{display:grid;gap:10px;margin:0 0 16px}.fact-list div{display:flex;justify-content:space-between;gap:12px;font-size:13px}.fact-list dt{color:var(--ink-500)}.fact-list dd{margin:0;text-align:right;color:var(--ink-800)}.ticket-timeline{display:grid;gap:12px;min-height:140px}.ticket-message{padding:14px 16px;border:1px solid rgba(148,180,214,.18);border-radius:14px;background:#f5f8fb}.ticket-message--staff{background:rgba(51,178,123,.09);border-color:rgba(51,178,123,.22)}.ticket-message--system{background:rgba(240,166,63,.11);border-color:rgba(240,166,63,.24)}.ticket-message__head{display:flex;justify-content:space-between;gap:12px}.ticket-message__head strong{font-size:13px;color:var(--ink-800)}.ticket-message__head small{color:var(--ink-500);font-size:12px}.ticket-message p{margin:9px 0 0;white-space:pre-wrap;line-height:1.7;color:var(--ink-800)}.ticket-images{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.ticket-images :deep(.el-image){width:148px;height:112px;overflow:hidden;border:1px solid rgba(65,117,151,.18);border-radius:10px;background:#edf4f7;cursor:zoom-in}.ticket-images :deep(.el-image__inner){transition:transform .2s}.ticket-images :deep(.el-image:hover .el-image__inner){transform:scale(1.04)}.ticket-images__error{display:grid;place-items:center;width:100%;height:100%;padding:8px;box-sizing:border-box;color:var(--ink-500);font-size:12px;text-align:center}.ticket-actions{display:grid;gap:12px}.action-buttons{display:flex;justify-content:flex-end;gap:10px}.close-dialog__message{margin:0;color:var(--ink-600);line-height:1.7}@media(max-width:900px){.ticket-layout{grid-template-columns:1fr}.ticket-sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:640px){.ticket-sidebar{grid-template-columns:1fr}.ticket-images :deep(.el-image){width:120px;height:96px}}
 </style>

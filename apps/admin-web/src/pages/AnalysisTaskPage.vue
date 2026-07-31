@@ -64,7 +64,7 @@
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="router.push(`/videos/${row.videoId}`)">详情</el-button>
-            <el-button v-if="row.canReanalyze && canReanalyze" link type="warning" :loading="retryingId === row.videoId" @click="confirmReanalyze(row)">重新分析</el-button>
+            <el-tooltip v-if="row.canReanalyze" :disabled="canReanalyze" content="需要管理员权限才能重新分析" placement="top"><el-button link type="warning" :disabled="!canReanalyze" :loading="retryingId === row.videoId" @click="confirmReanalyze(row)">重新分析</el-button></el-tooltip>
           </template>
         </el-table-column>
       </el-table>
@@ -73,12 +73,20 @@
         <el-pagination background layout="sizes, prev, pager, next" :current-page="taskPage.page" :page-size="taskPage.limit" :page-sizes="[10, 20, 50]" :total="taskPage.total" @current-change="changePage" @size-change="changePageSize" />
       </div>
     </el-card>
+
+    <el-dialog v-model="reanalyzeDialogVisible" title="确认重新分析" width="420px" :close-on-click-modal="false" :close-on-press-escape="!retryingId">
+      <p class="reanalyze-dialog__message">将重新分析视频 #{{ selectedReanalyzeTask?.videoId }}。原始视频会保留，当前结果将在新任务完成后更新。</p>
+      <template #footer>
+        <el-button :disabled="Boolean(retryingId)" @click="closeReanalyzeDialog">取消</el-button>
+        <el-button type="warning" :loading="Boolean(retryingId)" @click="submitReanalyze">确认加入队列</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { getAdminAnalysisTasks, reanalyzeVideo, type AdminAnalysisTaskItem, type AdminAnalysisTaskPage } from '@/services/video';
 import { isAdmin } from '@/utils/permission';
@@ -89,6 +97,8 @@ const loading = ref(false);
 const loadError = ref('');
 const status = ref(typeof route.query.status === 'string' ? route.query.status : '');
 const retryingId = ref<number | null>(null);
+const selectedReanalyzeTask = ref<AdminAnalysisTaskItem | null>(null);
+const reanalyzeDialogVisible = ref(false);
 const canReanalyze = computed(() => isAdmin());
 const taskPage = ref<AdminAnalysisTaskPage>({ items: [], total: 0, page: 1, limit: 10 });
 const statusOptions = [
@@ -118,16 +128,33 @@ function changePageSize(limit: number) {
   taskPage.value.limit = limit;
   load(1);
 }
-async function confirmReanalyze(row: AdminAnalysisTaskItem) {
+function confirmReanalyze(row: AdminAnalysisTaskItem) {
+  if (!canReanalyze.value) { ElMessage.warning('需要管理员权限才能重新分析'); return; }
+  if (retryingId.value !== null) { ElMessage.info('已有重新分析任务正在提交，请稍候'); return; }
+  selectedReanalyzeTask.value = row;
+  reanalyzeDialogVisible.value = true;
+}
+function closeReanalyzeDialog() {
+  if (retryingId.value !== null) return;
+  reanalyzeDialogVisible.value = false;
+  selectedReanalyzeTask.value = null;
+}
+async function submitReanalyze() {
+  const row = selectedReanalyzeTask.value;
+  if (!row || retryingId.value !== null) return;
+  let submitted = false;
+  retryingId.value = row.videoId;
   try {
-    await ElMessageBox.confirm(`将重新分析视频 #${row.videoId}。原始视频会保留，当前结果将等待新任务完成后更新。`, '确认重新分析', { type: 'warning', confirmButtonText: '确认加入队列', cancelButtonText: '取消' });
-    retryingId.value = row.videoId;
-    await reanalyzeVideo(row.videoId);
-    ElMessage.success('已加入重新分析队列');
-    await load(taskPage.value.page);
+    const result = await reanalyzeVideo(row.videoId);
+    submitted = true;
+    ElMessage.success(result.message || '已加入重新分析队列');
   } catch (error: any) {
-    if (error !== 'cancel' && error !== 'close') ElMessage.error(error?.message || '重新分析失败');
-  } finally { retryingId.value = null; }
+    ElMessage.error(error?.response?.data?.message || error?.message || '重新分析失败');
+  } finally {
+    retryingId.value = null;
+    if (submitted) closeReanalyzeDialog();
+    await load(taskPage.value.page);
+  }
 }
 onMounted(() => load());
 </script>
@@ -136,4 +163,5 @@ onMounted(() => load());
 .task-alert { margin-bottom: 16px; }
 .muted { display: block; color: var(--ink-500); font-size: 12px; margin-top: 3px; }
 .pagination-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; color: var(--ink-500); }
+.reanalyze-dialog__message { margin: 0; color: var(--ink-600); line-height: 1.7; }
 </style>

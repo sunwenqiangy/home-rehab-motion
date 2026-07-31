@@ -1,0 +1,373 @@
+{
+  "format": "home-rehab-motion.guidance-config",
+  "version": 1,
+  "exportedAt": "2026-07-31T09:33:43.078Z",
+  "items": [
+    {
+      "actionType": "abdominal_crunch",
+      "title": "缩腹运动训练",
+      "snapshot": {
+        "steps": [
+          {
+            "id": "reference-abdominal-1",
+            "image": {
+              "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481478956-01.起始位.png",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785481478956-01.起始位.png",
+              "sizeBytes": 1169821
+            },
+            "order": 1,
+            "title": "去枕平卧，膝盖弯曲，双脚踩床",
+            "altText": "",
+            "description": ""
+          },
+          {
+            "id": "reference-abdominal-2",
+            "image": {
+              "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481491656-02.吸气保持.png",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785481491656-02.吸气保持.png",
+              "sizeBytes": 997651
+            },
+            "order": 2,
+            "title": "缓慢吸气，腹部自然隆起，保持3秒",
+            "altText": "缩腹运动参考视频中平卧收紧腹部的重点截图。",
+            "description": "自然呼气时轻轻向内收紧腹部，保持肩背贴稳地面，避免憋气。"
+          },
+          {
+            "id": "reference-abdominal-3",
+            "image": {
+              "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481496154-03.呼气回正.png",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785481496154-03.呼气回正.png",
+              "sizeBytes": 1060644
+            },
+            "order": 3,
+            "title": "缓慢呼气",
+            "altText": "",
+            "description": "缓慢放松回到自然呼吸，保持平卧姿势稳定后再重复动作。"
+          }
+        ],
+        "title": "缩腹运动训练",
+        "video": {
+          "asset": {
+            "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481522831-教学视频_缩腹运动_0050-0080.mp4",
+            "mimeType": "video/mp4",
+            "objectKey": "guidance/1785481522831-教学视频_缩腹运动_0050-0080.mp4",
+            "sizeBytes": 1800108
+          },
+          "fallbackText": ""
+        },
+        "actionType": "abdominal_crunch",
+        "coverImage": {
+          "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481423769-cover-abdominal-crunch.png",
+          "mimeType": "image/png",
+          "objectKey": "guidance/1785481423769-cover-abdominal-crunch.png",
+          "sizeBytes": 35199
+        },
+        "commonMistakes": [],
+        "briefInstruction": "慢慢收紧腹部，保持腰背稳定。",
+        "estimatedMinutes": 3,
+        "shootingRequirements": [
+          {
+            "id": "shooting-angle-1785260635830-lng3a",
+            "type": "angle",
+            "title": "正侧面拍摄",
+            "altText": "训练者平卧在垫上，手机放在身体正侧方。",
+            "description": "手机放在身体正侧方，与平卧躯干保持平行。",
+            "correctImage": {
+              "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481559005-shooting-angle-side.png",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785481559005-shooting-angle-side.png",
+              "sizeBytes": 35980
+            }
+          },
+          {
+            "id": "shooting-framing-1785260635830-ath8p",
+            "type": "framing",
+            "title": "平卧全身完整入镜",
+            "altText": "训练者平卧时从头到脚完整出现在手机画面内。",
+            "description": "平卧后从头到脚都要拍到，四周留出适当空间。",
+            "correctImage": {
+              "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481563987-shooting-framing-full-body.png",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785481563987-shooting-framing-full-body.png",
+              "sizeBytes": 36339
+            }
+          },
+          {
+            "id": "shooting-lighting-1785260635830-0jrk5",
+            "type": "lighting",
+            "title": "光线充足、画面明亮",
+            "altText": "训练者平卧在明亮区域，脸部和身体轮廓清晰。",
+            "description": "让平卧身体处于明亮区域，避免背光和阴影遮挡。",
+            "correctImage": {
+              "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481573792-shooting-lighting-bright.png",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785481573792-shooting-lighting-bright.png",
+              "sizeBytes": 33084
+            }
+          }
+        ],
+        "trainingSafetyNotice": "身体感觉舒适再开始，如有疼痛请停止训练。"
+      }
+    },
+    {
+      "actionType": "pelvic_tilt",
+      "title": "骨盆倾斜运动",
+      "snapshot": {
+        "steps": [
+          {
+            "id": "reference-pelvic-1",
+            "image": {
+              "url": "blob:https://sunwenqiang.cn/df644c69-5294-4d6b-87d5-99fcc87c39f4",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785483158348-01.准备.png",
+              "sizeBytes": 1148214
+            },
+            "order": 1,
+            "title": "平卧屈膝准备",
+            "altText": "骨盆倾斜参考视频中训练者平卧屈膝的准备姿势截图。",
+            "description": "平卧屈膝、双脚踩稳地面，肩颈和腰背保持放松。"
+          },
+          {
+            "id": "reference-pelvic-2",
+            "image": {
+              "url": "blob:https://sunwenqiang.cn/0904e2d5-db41-4754-a348-aea6309d0e80",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785483198798-02.吸气1.png",
+              "sizeBytes": 697799
+            },
+            "order": 2,
+            "title": "轻轻后倾骨盆",
+            "altText": "骨盆倾斜参考视频中平卧骨盆后倾的重点截图。",
+            "description": "吸气时轻轻收紧下腹，让腰背更贴近地面，动作不要急。"
+          },
+          {
+            "id": "reference-pelvic-3",
+            "image": {
+              "url": "blob:https://sunwenqiang.cn/6eaa88c0-dafc-4af5-bf29-5e0555d2027e",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785483223967-03.缓慢吐气.png",
+              "sizeBytes": 787485
+            },
+            "order": 3,
+            "title": "缓慢呼气，避免憋气",
+            "altText": "",
+            "description": "吐气后慢慢回到舒适的平卧中立位，避免用力顶起臀部。"
+          },
+          {
+            "id": "step-1784970437044-9elo1",
+            "image": {
+              "url": "blob:https://sunwenqiang.cn/2fb831f6-b2d4-4f81-ae33-ffc1dda0b0f0",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785483233596-04.恢复正常.png",
+              "sizeBytes": 1153216
+            },
+            "order": 4,
+            "title": "放松，恢复正常呼吸",
+            "altText": "",
+            "description": ""
+          }
+        ],
+        "title": "骨盆倾斜运动",
+        "video": {
+          "asset": {
+            "url": "blob:https://sunwenqiang.cn/05c13a89-7c4e-4061-ad3d-4b7bb8b84516",
+            "mimeType": "video/mp4",
+            "objectKey": "guidance/1785483116434-教学视频_骨盆倾斜_0080-0140.mp4",
+            "sizeBytes": 2836574
+          },
+          "fallbackText": ""
+        },
+        "actionType": "pelvic_tilt",
+        "coverImage": {
+          "url": "blob:https://sunwenqiang.cn/473824d7-89c7-47a6-8778-822bdbf67991",
+          "mimeType": "image/png",
+          "objectKey": "guidance/1785483144430-cover-pelvic-tilt.png",
+          "sizeBytes": 38878
+        },
+        "commonMistakes": [],
+        "briefInstruction": "轻轻收紧下腹，让腰背更舒适地贴近垫面",
+        "estimatedMinutes": 4,
+        "shootingRequirements": [
+          {
+            "id": "shooting-angle-1785260635830-lng3a",
+            "type": "angle",
+            "title": "正侧面拍摄",
+            "altText": "训练者平卧在垫上，手机放在身体正侧方。",
+            "description": "手机放在身体正侧方，与平卧躯干保持平行。",
+            "correctImage": {
+              "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481559005-shooting-angle-side.png",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785481559005-shooting-angle-side.png",
+              "sizeBytes": 35980
+            }
+          },
+          {
+            "id": "shooting-framing-1785260635830-ath8p",
+            "type": "framing",
+            "title": "平卧全身完整入镜",
+            "altText": "训练者平卧时从头到脚完整出现在手机画面内。",
+            "description": "平卧后从头到脚都要拍到，四周留出适当空间。",
+            "correctImage": {
+              "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481563987-shooting-framing-full-body.png",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785481563987-shooting-framing-full-body.png",
+              "sizeBytes": 36339
+            }
+          },
+          {
+            "id": "shooting-lighting-1785260635830-0jrk5",
+            "type": "lighting",
+            "title": "光线充足、画面明亮",
+            "altText": "训练者平卧在明亮区域，脸部和身体轮廓清晰。",
+            "description": "让平卧身体处于明亮区域，避免背光和阴影遮挡。",
+            "correctImage": {
+              "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481573792-shooting-lighting-bright.png",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785481573792-shooting-lighting-bright.png",
+              "sizeBytes": 33084
+            }
+          }
+        ],
+        "trainingSafetyNotice": "请平卧在平整垫面上，在无痛范围内小幅练习；如腰部、髋部或腿部出现疼痛、头晕或明显不适，请立即停止训练。"
+      }
+    },
+    {
+      "actionType": "knee_rotation",
+      "title": "膝关节旋转",
+      "snapshot": {
+        "steps": [
+          {
+            "id": "reference-knee-1",
+            "image": {
+              "url": "blob:https://sunwenqiang.cn/cd3cad2f-eeb9-4a48-8299-e07679bd436b",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785482527433-00.准备.png",
+              "sizeBytes": 1115785
+            },
+            "order": 1,
+            "title": "平卧屈膝准备",
+            "altText": "膝关节旋转参考视频中训练者平卧屈膝的准备姿势截图。",
+            "description": "平卧屈膝并拢，双脚踩地，双臂自然放在身体两侧。"
+          },
+          {
+            "id": "reference-knee-2",
+            "image": {
+              "url": "blob:https://sunwenqiang.cn/b8e972da-5a62-4ebd-9112-7a283ec41de8",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785482535878-01.向左倾倒.png",
+              "sizeBytes": 1145044
+            },
+            "order": 2,
+            "title": "双膝缓慢倾向左侧倾倒",
+            "altText": "",
+            "description": "双膝一起缓慢倒向一侧，保持3～5秒"
+          },
+          {
+            "id": "reference-knee-3",
+            "image": {
+              "url": "blob:https://sunwenqiang.cn/303c9152-36c6-43b9-8c2a-72924b043db4",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785482543964-02回正-文.png",
+              "sizeBytes": 1009468
+            },
+            "order": 3,
+            "title": "回正恢复原位",
+            "altText": "",
+            "description": "慢慢回到平卧中间位，始终以舒适无痛为准。"
+          },
+          {
+            "id": "step-1785261553973-2ax9i",
+            "image": {
+              "url": "blob:https://sunwenqiang.cn/f7c8b86e-9e94-41be-818e-4fffe94054a5",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785482550450-03向右倾斜-文.png",
+              "sizeBytes": 1368060
+            },
+            "order": 4,
+            "title": "双膝缓慢倾向右侧倾倒",
+            "altText": "",
+            "description": "双膝一起缓慢倒向一侧，保持3～5秒"
+          },
+          {
+            "id": "step-1785261554498-hflop",
+            "image": {
+              "url": "blob:https://sunwenqiang.cn/04c7688a-c4e5-4d9a-9cc5-98d6e544ef1c",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785482557316-02.回正.png",
+              "sizeBytes": 1041255
+            },
+            "order": 5,
+            "title": "回正恢复原位",
+            "altText": "",
+            "description": ""
+          }
+        ],
+        "title": "膝关节旋转",
+        "video": {
+          "asset": {
+            "url": "blob:https://sunwenqiang.cn/ffcd5fec-d4d5-46af-a704-4e8abf1d87ce",
+            "mimeType": "video/mp4",
+            "objectKey": "guidance/1785482584826-教学视频_膝关节旋转_0140-0218.mp4",
+            "sizeBytes": 4344853
+          },
+          "fallbackText": ""
+        },
+        "actionType": "knee_rotation",
+        "coverImage": {
+          "url": "blob:https://sunwenqiang.cn/7440871c-d4ee-4e68-9b4f-4ef96a5cf2b6",
+          "mimeType": "image/png",
+          "objectKey": "guidance/1785482499570-cover-knee-rotation.png",
+          "sizeBytes": 36938
+        },
+        "commonMistakes": [],
+        "briefInstruction": "平卧轻轻活动双膝，帮助身体放松转动",
+        "estimatedMinutes": 3,
+        "shootingRequirements": [
+          {
+            "id": "shooting-angle-1785260635830-lng3a",
+            "type": "angle",
+            "title": "正侧面拍摄",
+            "altText": "训练者平卧在垫上，手机放在身体正侧方。",
+            "description": "手机放在身体正侧方，与平卧躯干保持平行。",
+            "correctImage": {
+              "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481559005-shooting-angle-side.png",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785481559005-shooting-angle-side.png",
+              "sizeBytes": 35980
+            }
+          },
+          {
+            "id": "shooting-framing-1785260635830-ath8p",
+            "type": "framing",
+            "title": "平卧全身完整入镜",
+            "altText": "训练者平卧时从头到脚完整出现在手机画面内。",
+            "description": "平卧后从头到脚都要拍到，四周留出适当空间。",
+            "correctImage": {
+              "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481563987-shooting-framing-full-body.png",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785481563987-shooting-framing-full-body.png",
+              "sizeBytes": 36339
+            }
+          },
+          {
+            "id": "shooting-lighting-1785260635830-0jrk5",
+            "type": "lighting",
+            "title": "光线充足、画面明亮",
+            "altText": "训练者平卧在明亮区域，脸部和身体轮廓清晰。",
+            "description": "让平卧身体处于明亮区域，避免背光和阴影遮挡。",
+            "correctImage": {
+              "url": "https://home-rehab-motion-guidance-public.oss-cn-beijing.aliyuncs.com/guidance/1785481573792-shooting-lighting-bright.png",
+              "mimeType": "image/png",
+              "objectKey": "guidance/1785481573792-shooting-lighting-bright.png",
+              "sizeBytes": 33084
+            }
+          }
+        ],
+        "trainingSafetyNotice": "请平卧在平整垫面上，动作保持缓慢、小幅；如膝盖、髋部或腰背出现刺痛、肿胀、头晕或明显不适，请立即停止训练。"
+      }
+    }
+  ]
+}

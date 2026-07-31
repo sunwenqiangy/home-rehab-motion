@@ -65,6 +65,25 @@ function toAsset(value: unknown): GuidanceAssetDto | undefined {
   };
 }
 
+function findConfigAssetBaseUrl(value: unknown): string | undefined {
+  if (Array.isArray(value)) return value.map(findConfigAssetBaseUrl).find(Boolean);
+  if (!isRecord(value)) return undefined;
+  const objectKey = asText(value.objectKey, 255);
+  const url = asText(value.url, 1024);
+  if (objectKey && /^https?:\/\//.test(url) && url.endsWith(`/${objectKey}`)) return url.slice(0, -(objectKey.length + 1));
+  return Object.values(value).map(findConfigAssetBaseUrl).find(Boolean);
+}
+
+function repairConfigAssetUrls(value: unknown, assetBaseUrl?: string): unknown {
+  if (Array.isArray(value)) return value.map((item) => repairConfigAssetUrls(item, assetBaseUrl));
+  if (!isRecord(value)) return value;
+  const repaired = Object.fromEntries(Object.entries(value).map(([key, item]) => [key, repairConfigAssetUrls(item, assetBaseUrl)]));
+  const objectKey = asText(repaired.objectKey, 255);
+  const url = asText(repaired.url, 1024);
+  if (assetBaseUrl && objectKey && url.startsWith('blob:')) repaired.url = `${assetBaseUrl}/${objectKey}`;
+  return repaired;
+}
+
 function toSteps(value: unknown): GuidanceStepDto[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item, index) => {
@@ -198,6 +217,19 @@ export class GuidanceService {
     return content as GuidanceRecord;
   }
 
+  getPublicAssetUrl(objectKey: string) {
+    if (!objectKey || !objectKey.startsWith('guidance/') || objectKey.includes('..')) {
+      throw new BadRequestException('教学素材路径无效');
+    }
+    return this.storage.getPublicObjectUrl(objectKey);
+  }
+
+  private resolveGuidanceAssetUrl(objectKey: string) {
+    return process.env.NODE_ENV === 'production'
+      ? this.storage.getPublicObjectUrl(objectKey)
+      : `/api/guidance/assets?key=${encodeURIComponent(objectKey)}`;
+  }
+
   async getGuidanceDetailByAction(actionTypeInput: string): Promise<GuidanceContentDto> {
     const actionType = asText(actionTypeInput, 30) as TrainingActionType;
     if (!ACTION_TYPES.includes(actionType)) throw new BadRequestException('不支持的动作类型');
@@ -298,7 +330,8 @@ export class GuidanceService {
         where: { content_id_version: { content_id: content.content_id, version: content.published_version } },
       });
       if (!isRecord(version?.snapshot)) continue;
-      const { contentId: _contentId, version: _version, ...snapshot } = version.snapshot;
+      const storedSnapshot = normalizeStoredSnapshot(version.snapshot, Number(content.content_id), actionType);
+      const { contentId: _contentId, version: _version, ...snapshot } = this.withAccessibleAssetUrls(storedSnapshot);
       items.push({ actionType, title: content.title, snapshot });
     }
 
@@ -313,6 +346,7 @@ export class GuidanceService {
     const skipped: string[] = [];
     const invalid: string[] = [];
     const seenActionTypes = new Set<TrainingActionType>();
+    const assetBaseUrl = findConfigAssetBaseUrl(payload.items);
 
     for (const item of payload.items) {
       if (!isRecord(item)) { invalid.push('存在无效配置项'); continue; }
@@ -324,7 +358,8 @@ export class GuidanceService {
       seenActionTypes.add(actionType);
       const exists = await this.prisma.guidanceContent.count({ where: { action_type: actionType } });
       if (exists) { skipped.push(actionType); continue; }
-      const snapshot = normalizeSnapshot(item.snapshot, 0, actionType);
+      const repairedSnapshot = repairConfigAssetUrls(item.snapshot, assetBaseUrl);
+      const snapshot = normalizeSnapshot(repairedSnapshot as Record<string, unknown>, 0, actionType);
       const validation = validateSnapshot(snapshot);
       if (!validation.valid) { invalid.push(`${actionType}（${validation.errors.join('、')}）`); continue; }
       const created = await this.prisma.guidanceContent.create({
@@ -419,7 +454,13 @@ export class GuidanceService {
   private withAccessibleAssetUrls(snapshot: GuidanceContentDto): GuidanceContentDto {
     const resolveAsset = (asset?: GuidanceAssetDto): GuidanceAssetDto | undefined => {
       if (!asset?.objectKey) return asset;
-      return { ...asset, url: this.storage.getPublicObjectUrl(asset.objectKey) };
+      // 标准教学素材（guidance/ 前缀）使用公共读地址，避免视频播放期间因签名过期中断。
+      if (asset.objectKey.startsWith('guidance/')) {
+        return { ...asset, url: this.resolveGuidanceAssetUrl(asset.objectKey) };
+      }
+      // 配置包中的非本地资源保留其远端地址，避免在本地不存在该对象时失效。
+      if (/^https?:\/\//.test(asset.url || '')) return asset;
+      return { ...asset, url: this.resolveGuidanceAssetUrl(asset.objectKey) };
     };
 
     return {

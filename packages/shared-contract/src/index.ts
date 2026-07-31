@@ -377,7 +377,7 @@ export interface FeedbackDto {
   lastMessageAt?: string;
   handlingMode?: 'manual' | 'safety_auto';
   priorityLevel?: 'normal' | 'high';
-  closeReason?: 'resolved' | 'inactive_7d' | 'safety_diversion';
+  closeReason?: 'resolved' | 'inactive_7d' | 'no_further_response_needed' | 'safety_diversion';
   messages?: FeedbackMessageDto[];
   statusLogs?: FeedbackStatusLogDto[];
   trainingContext?: FeedbackTrainingContextDto;

@@ -94,16 +94,6 @@
         </view>
       </view>
 
-      <!-- 提示面板 -->
-      <view class="v4-panel v4-panel--teal">
-        <view class="v4-panel-title v4-panel-title--teal">💡 提示</view>
-        <view class="v4-panel-desc">想更快解锁徽章，可优先保持连续训练天数，并关注每次报告中的动作建议。</view>
-        <view class="v4-panel-actions">
-          <button class="v4-btn-sm v4-btn-sm--outline" bindtap="onFilterUnlocked">仅看已获得</button>
-          <button class="v4-btn-sm v4-btn-sm--teal" bindtap="onShowConditions">查看解锁条件</button>
-        </view>
-      </view>
-
     </block>
 
   </view>

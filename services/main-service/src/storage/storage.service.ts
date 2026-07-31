@@ -138,7 +138,7 @@ export class StorageService {
           resolvedContentType,
           this.getGuidanceBucketName(),
         ),
-        assetUrl: this.buildGuidancePublicUrl(keyWithExt),
+        assetUrl: this.getGuidanceAssetDeliveryUrl(keyWithExt),
       };
     }
 
@@ -226,6 +226,16 @@ export class StorageService {
 
   getAbsoluteObjectPath(objectKey: string) {
     return this.resolveObjectPath(objectKey);
+  }
+
+  getGuidanceAssetDeliveryUrl(objectKey: string) {
+    const normalizedKey = this.normalizeObjectKey(objectKey);
+    if (!normalizedKey.startsWith('guidance/')) {
+      throw new BadRequestException('教学素材路径无效');
+    }
+    return process.env.NODE_ENV === 'production'
+      ? this.getPublicObjectUrl(normalizedKey)
+      : `/api/guidance/assets?key=${encodeURIComponent(normalizedKey)}`;
   }
 
   getPublicObjectUrl(objectKey: string) {
@@ -356,16 +366,17 @@ export class StorageService {
     expiresSeconds: number;
   }) {
     const normalizedKey = this.normalizeObjectKey(params.objectKey);
+    const bucketName = this.bucketName;
     const endpointInfo = this.parseEndpoint();
     const encodedObjectKey = this.encodeUriPath(normalizedKey);
 
     const canonicalUri = this.forcePathStyle
-      ? this.joinUrlPath(endpointInfo.basePath, this.bucketName, encodedObjectKey)
+      ? this.joinUrlPath(endpointInfo.basePath, bucketName, encodedObjectKey)
       : this.joinUrlPath(endpointInfo.basePath, encodedObjectKey);
 
     const host = this.forcePathStyle
       ? endpointInfo.host
-      : `${this.bucketName}.${endpointInfo.host}`;
+      : `${bucketName}.${endpointInfo.host}`;
 
     const now = new Date();
     const dateStamp = this.formatDateStamp(now);

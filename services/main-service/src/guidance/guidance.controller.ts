@@ -1,6 +1,7 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
+import { Readable } from 'stream';
 import type { UploadedBinaryFile } from '../storage/storage.service';
 import { AuthService } from '../auth/auth.service';
 import { GuidanceService } from './guidance.service';
@@ -22,6 +23,25 @@ export class GuidanceController {
   getGuidanceDetailByAction(@Req() req: Request, @Param('actionType') actionType: string) {
     this.authService.requireUser(req, ['patient', 'admin', 'nurse']);
     return this.guidanceService.getGuidanceDetailByAction(actionType);
+  }
+
+  @Get('guidance/assets')
+  async proxyPublicGuidanceAsset(@Query('key') key: string, @Req() req: Request, @Res() res: Response) {
+    const targetUrl = this.guidanceService.getPublicAssetUrl(key);
+    const upstream = await fetch(targetUrl, {
+      headers: req.headers.range ? { range: req.headers.range } : undefined,
+    });
+    if (!upstream.ok && upstream.status !== 206) {
+      res.sendStatus(upstream.status);
+      return;
+    }
+    ['content-type', 'content-length', 'content-range', 'accept-ranges', 'cache-control'].forEach((header) => {
+      const value = upstream.headers.get(header);
+      if (value) res.setHeader(header, value);
+    });
+    res.status(upstream.status);
+    if (!upstream.body) { res.end(); return; }
+    Readable.fromWeb(upstream.body as import('stream/web').ReadableStream).pipe(res);
   }
 
   @Get('guidance/:contentId')

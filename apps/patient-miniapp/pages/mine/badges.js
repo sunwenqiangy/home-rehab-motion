@@ -133,7 +133,4 @@ Page({
     onFilterLocked() {
         this.setData({ filterMode: 'locked' });
     },
-    onShowConditions() {
-        wx.showToast({ title: '继续训练即可逐步解锁', icon: 'none' });
-    },
 });

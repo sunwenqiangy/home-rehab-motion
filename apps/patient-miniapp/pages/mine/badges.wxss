@@ -151,50 +151,6 @@
 .v4-panel-title--muted {
   color: #718096;
 }
-.v4-panel-title--teal {
-  color: #0e9aa7;
-}
-
-/* 提示面板 — teal 背景 */
-.v4-panel--teal {
-  background: #e6f7f8;
-  border: 2rpx solid rgba(14, 154, 167, 0.18);
-}
-.v4-panel-desc {
-  font-size: 28rpx;
-  color: #2d3748;
-  line-height: 1.7;
-}
-.v4-panel-actions {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 24rpx;
-}
-
-/* 小按钮 */
-.v4-btn-sm {
-  flex: 1;
-  padding: 24rpx 0;
-  border-radius: 28rpx;
-  font-size: 28rpx;
-  font-weight: 700;
-  text-align: center;
-  line-height: 1;
-  box-sizing: border-box;
-}
-.v4-btn-sm::after {
-  border: none;
-}
-.v4-btn-sm--outline {
-  background: #fff;
-  color: #0e9aa7;
-  border: 3rpx solid #0e9aa7;
-}
-.v4-btn-sm--teal {
-  background: #0e9aa7;
-  color: #fff;
-}
-
 /* 徽章网格 */
 .v4-badge-grid {
   display: flex;

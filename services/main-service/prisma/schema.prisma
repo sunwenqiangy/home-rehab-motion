@@ -161,7 +161,7 @@ model AnalysisTask {
   task_status       String        @default("pending") @db.VarChar(30)
   retry_count       Int           @default(0)
   fail_reason       String?       @db.VarChar(255)
-  callback_status   String        @default("pending") @db.VarChar(20)
+  callback_status   String        @default("pending") @db.VarChar(32)
   callback_attempt_count Int      @default(0)
   callback_last_error String?     @db.VarChar(255)
   callback_next_retry_at DateTime?
