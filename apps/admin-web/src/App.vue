@@ -374,6 +374,32 @@ h4,
   font-size: 13px;
 }
 
+.pagination-bar,
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+  color: var(--ink-500);
+  font-size: 12px;
+}
+
+.pagination-bar > span,
+.pagination-row__total {
+  flex: 0 0 auto;
+}
+
+.pagination-bar .el-pagination,
+.pagination-row .el-pagination {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.el-message {
+  z-index: 4000 !important;
+}
+
 .toolbar-row,
 .toolbar-group {
   display: flex;
@@ -756,6 +782,17 @@ h4,
   .surface-card > .el-card__body {
     padding-left: 18px !important;
     padding-right: 18px !important;
+  }
+
+  .pagination-bar,
+  .pagination-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pagination-bar .el-pagination,
+  .pagination-row .el-pagination {
+    margin-left: 0;
   }
 
   .info-pair {

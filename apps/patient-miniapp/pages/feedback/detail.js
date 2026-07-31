@@ -35,9 +35,10 @@ function buildMessages(detail) {
   const source = Array.isArray(detail.messages) ? detail.messages : [];
   const messages = source.map((item, index) => ({
     messageId: item.messageId || index + 1,
-    senderRole: item.senderRole === 'staff' ? 'staff' : 'patient',
-    senderLabel: item.senderRole === 'staff' ? '工作人员' : '我',
+    senderRole: ['patient', 'staff', 'system'].includes(item.senderRole) ? item.senderRole : 'patient',
+    senderLabel: item.senderRole === 'staff' ? '工作人员' : item.senderRole === 'system' ? '系统安全提示' : '我',
     displayText: item.content || '（未填写消息内容）',
+    imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : [],
     timeText: formatTime(item.createdAt),
   }));
 
@@ -201,14 +202,47 @@ Page({
     this.setData({ followUpText: event.detail.value || '' });
   },
 
-  onChooseFollowUpImage() {
-    wx.showToast({ title: '图片补充即将支持', icon: 'none' });
+  async onChooseFollowUpImage() {
+    if (this.data.followUpUploading || this.data.followUpImages.length >= 3) return;
+    try {
+      const result = await wx.chooseMedia({ count: 1, mediaType: ['image'], sourceType: ['album', 'camera'] });
+      const file = result.tempFiles && result.tempFiles[0];
+      if (!file?.tempFilePath) return;
+      if (Number(file.size || 0) > 5 * 1024 * 1024) {
+        wx.showToast({ title: '单张图片不能超过 5MB', icon: 'none' });
+        return;
+      }
+      this.setData({ followUpUploading: true });
+      const feedbackService = getFeedbackService();
+      const target = await feedbackService.getFeedbackImageUploadTarget();
+      const uploaded = await feedbackService.uploadFeedbackImage(target, file.tempFilePath);
+      this.setData({
+        followUpImages: [...this.data.followUpImages, { objectKey: uploaded.objectKey, previewUrl: uploaded.assetUrl || file.tempFilePath }],
+      });
+    } catch (_error) {
+      wx.showToast({ title: '图片上传失败，请重试', icon: 'none' });
+    } finally {
+      this.setData({ followUpUploading: false });
+    }
+  },
+
+  onRemoveFollowUpImage(event) {
+    const index = Number(event.currentTarget.dataset.index);
+    const followUpImages = [...this.data.followUpImages];
+    followUpImages.splice(index, 1);
+    this.setData({ followUpImages });
+  },
+
+  onPreviewMessageImage(event) {
+    const urls = event.currentTarget.dataset.urls || [];
+    const current = event.currentTarget.dataset.url;
+    if (Array.isArray(urls) && current) wx.previewImage({ current, urls });
   },
 
   onSubmitFollowUp() {
     const content = (this.data.followUpText || '').trim();
-    if (content.length < 1) {
-      wx.showToast({ title: '请至少输入 1 个字', icon: 'none' });
+    if (content.length < 1 && !this.data.followUpImages.length) {
+      wx.showToast({ title: '请填写内容或补充图片', icon: 'none' });
       return;
     }
 
@@ -221,20 +255,33 @@ Page({
     }
 
     this.setData({ followUpSubmitting: true });
-    feedbackService.appendPatientFeedbackMessage(this.data.feedbackId, { content })
+    feedbackService.appendPatientFeedbackMessage(this.data.feedbackId, {
+      content,
+      imageUrls: this.data.followUpImages.map((item) => item.objectKey),
+    })
       .then(() => {
-        this.setData({ followUpText: '' });
+        this.setData({ followUpText: '', followUpImages: [] });
         wx.showToast({ title: '补充已发送', icon: 'success' });
         return this.loadDetail(this.data.feedbackId);
       })
-      .catch(() => wx.showToast({ title: '发送失败，请重试', icon: 'none' }))
+      .catch((error) => wx.showToast({ title: (error?.userMessage || error?.message || '发送失败，请重试').replace(/^HTTP_\d+:\s*/, '').slice(0, 20), icon: 'none' }))
       .finally(() => this.setData({ followUpSubmitting: false }));
   },
 
   onViewReport() {
-    if (this.data.videoId) {
-      wx.navigateTo({ url: `/pages/report/index?videoId=${this.data.videoId}` });
+    if (!this.data.videoId) return;
+
+    // 从同一份报告进入反馈时，优先回到已有报告页，避免“报告 → 反馈 → 报告”循环堆叠页面。
+    const pages = getCurrentPages();
+    const previousPage = pages[pages.length - 2];
+    const previousVideoId = Number(previousPage?.options?.videoId || 0);
+    if (previousPage?.route === 'pages/report/index' && previousVideoId === this.data.videoId) {
+      wx.navigateBack({ delta: 1 });
+      return;
     }
+
+    // 消息中心等其他入口没有已有报告页时，才新开关联报告，保留原入口的返回路径。
+    wx.navigateTo({ url: `/pages/report/index?videoId=${this.data.videoId}` });
   },
 
   onBackHistory() {

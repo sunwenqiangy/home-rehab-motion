@@ -342,7 +342,7 @@ Page({
         }
         this.setData({ submitting: true, statusText: '正在准备上传视频...' });
         try {
-            const presign = await (0, video_1.getPresignUpload)();
+            const presign = await (0, video_1.getPresignUpload)(this.data.actionType);
             console.info('[视频上传目标]', {
                 videoId: presign.videoId,
                 uploadType: presign.uploadType,
@@ -356,19 +356,17 @@ Page({
             });
             this.setData({ statusText: '正在上传视频，请稍候...' });
             await (0, video_1.uploadVideoFile)(presign.videoId, presign, this.data.filePath);
-            this.setData({ statusText: '视频上传完成，正在进入分析页面...' });
-            wx.navigateTo({
-                url: `/pages/analyzing/index?videoId=${presign.videoId}`,
-                success: () => {
-                    // 上传已完成；确认文件、登记训练记录和投递分析任务在后台执行，避免阻塞用户进入分析页。
-                    void (0, video_1.confirmUpload)({
-                        videoId: presign.videoId,
-                        actionType: this.data.actionType,
-                        duration: this.data.duration || 30,
-                    }).catch(() => {
-                        // 服务端会记录确认或投递失败状态，分析页轮询后展示可重传的结果反馈。
-                    });
-                },
+            this.setData({ statusText: '视频上传完成，正在确认分析任务...' });
+            const confirmed = await (0, video_1.confirmUpload)({
+                videoId: presign.videoId,
+                actionType: this.data.actionType,
+                duration: this.data.duration || 30,
+            });
+            this.setData({ statusText: confirmed.status === 'completed' ? '分析已完成，正在打开报告...' : '已提交分析，正在进入分析页面...' });
+            wx.redirectTo({
+                url: confirmed.status === 'completed'
+                    ? `/pages/report/index?videoId=${presign.videoId}`
+                    : `/pages/analyzing/index?videoId=${presign.videoId}`,
             });
         }
         catch (error) {

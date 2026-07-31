@@ -11,6 +11,31 @@
   <scroll-view scroll-y class="home-v4-screen" enable-back-to-top="true">
     <view class="home-v4-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
     <view class="home-v4-screen-inner">
+      <view wx:if="{{homeLoading}}" class="home-v4-loading-content">
+        <view class="v4-hero-card home-v4-skeleton-hero">
+          <view class="home-v4-skeleton home-v4-skeleton--badge"></view>
+          <view class="home-v4-skeleton home-v4-skeleton--hero-title"></view>
+          <view class="home-v4-skeleton home-v4-skeleton--hero-line"></view>
+          <view class="home-v4-skeleton home-v4-skeleton--hero-button"></view>
+        </view>
+        <view class="home-v4-skeleton-card" wx:for="{{[1, 2, 3]}}" wx:key="*this">
+          <view class="home-v4-skeleton home-v4-skeleton--section-title"></view>
+          <view class="home-v4-skeleton home-v4-skeleton--line"></view>
+          <view class="home-v4-skeleton home-v4-skeleton--line-short"></view>
+        </view>
+      </view>
+
+      <view wx:elif="{{homeLoadFailed}}" class="home-v4-error-wrap">
+        <view class="home-v4-state-card">
+          <view class="home-v4-state-card__icon">{{homeErrorIcon}}</view>
+          <view class="home-v4-state-card__title">{{homeErrorTitle}}</view>
+          <view class="home-v4-state-card__desc">{{homeErrorDesc}}</view>
+          <view class="home-v4-state-card__hint">您的训练记录不会因此丢失。</view>
+          <view class="home-v4-state-card__action" bindtap="onRetryHomeLoad">重新加载</view>
+        </view>
+      </view>
+
+      <block wx:else>
       <view class="v4-hero-card">
       <text class="v4-hero-badge">📋 今日训练</text>
       <view class="v4-hero-title">{{heroTitle}}</view>
@@ -33,7 +58,7 @@
     </view>
 
     <view class="v4-action-grid">
-      <view class="v4-action-card" wx:for="{{quickActions}}" wx:key="actionType" data-content-id="{{item.contentId}}" bindtap="onOpenAction">
+      <view class="v4-action-card" wx:for="{{quickActions}}" wx:key="actionType" data-action-type="{{item.actionType}}" bindtap="onOpenAction">
         <view class="v4-action-icon">{{item.icon}}</view>
         <view class="v4-action-title">{{item.label}}</view>
         <view class="v4-action-chip-wrap">
@@ -84,6 +109,7 @@
       </view>
       <view wx:else class="v4-empty-training">还没有训练记录，完成首次训练后会显示在这里。</view>
     </view>
+      </block>
     </view>
   </scroll-view>
 

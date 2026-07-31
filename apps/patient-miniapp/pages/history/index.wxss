@@ -145,6 +145,33 @@
   margin-top: 8rpx;
 }
 
+.v4-summary-skeleton,
+.v4-progress-skeleton {
+  border-radius: 999rpx;
+  background: #edf2f7;
+  animation: history-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.v4-summary-skeleton {
+  width: 68rpx;
+  height: 48rpx;
+  margin: 0 auto;
+}
+
+.v4-progress-skeleton--chip {
+  width: 108rpx;
+  height: 40rpx;
+}
+
+.v4-progress-skeleton--bar {
+  height: 20rpx;
+  margin-top: 16rpx;
+}
+
+@keyframes history-skeleton-pulse {
+  50% { opacity: 0.45; }
+}
+
 /* 信息面板 */
 .v4-info-panel {
   background: #fff;
@@ -291,11 +318,25 @@
   color: #2d3748;
 }
 .v4-empty-desc {
-  font-size: 28rpx;
-  color: #718096;
-  margin-top: 12rpx;
-  line-height: 1.6;
+font-size: 28rpx;
+color: #718096;
+margin-top: 12rpx;
+line-height: 1.6;
 }
+.v4-empty-action {
+  display: inline-flex;
+  min-height: 64rpx;
+  margin-top: 28rpx;
+  padding: 0 36rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  color: #087f8b;
+  background: #e6f7f8;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+.v4-empty-action:active { opacity: .72; transform: scale(.98); }
 
 /* TabBar */
 .v4-tabbar {
@@ -310,21 +351,43 @@
   z-index: 10;
 }
 .v4-tab-item {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4rpx;
   justify-content: center;
+  min-height: 82rpx;
   font-size: 22rpx;
   color: #718096;
 }
 .v4-tab-item--active {
-  color: #0e9aa7;
+  color: #087f8b;
+  font-weight: 800;
+}
+.v4-tab-item--active::after {
+  position: absolute;
+  top: -2rpx;
+  width: 56rpx;
+  height: 6rpx;
+  border-radius: 999rpx;
+  background: #0e9aa7;
+  content: '';
 }
 .v4-tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
   font-size: 40rpx;
   line-height: 1;
+}
+.v4-tab-item--active .v4-tab-icon {
+  border-radius: 16rpx;
+  background: #e6f7f8;
+  transform: translateY(-2rpx) scale(1.08);
 }
 .v4-tab-label {
   font-size: 22rpx;

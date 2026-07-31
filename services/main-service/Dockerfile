@@ -34,6 +34,8 @@ COPY --from=build /app/services/main-service/prisma ./services/main-service/pris
 COPY --from=build /app/services/main-service/package.json ./services/main-service/package.json
 COPY --from=build /app/packages ./packages
 COPY --from=build /app/tsconfig.base.json ./tsconfig.base.json
+# 保留仅用于一次性初始化管理员的源码；运行镜像中的 bootstrap:admin 脚本依赖它。
+COPY --from=build /app/services/main-service/src/admin ./services/main-service/src/admin
 COPY --from=build /app/services/main-service/assets ./services/main-service/assets
 USER home_rehab_motion
 EXPOSE 3000

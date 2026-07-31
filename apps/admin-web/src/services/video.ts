@@ -11,6 +11,33 @@ export interface AdminVideoItem {
   qualityStatus?: string | null;
 }
 
+export interface AdminAnalysisTaskItem {
+  videoId: number;
+  actionType: TrainingActionType;
+  sourceType: string;
+  patientName: string;
+  analysisStatus: AnalysisStatus;
+  taskStatus: string;
+  providerTaskId: string | null;
+  retryCount: number;
+  retryAt: string | null;
+  callbackStatus: string | null;
+  failReason: string | null;
+  qualityStatus: string | null;
+  reportReady: boolean;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  canReanalyze: boolean;
+}
+
+export interface AdminAnalysisTaskPage {
+  items: AdminAnalysisTaskItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface AdminVideoDetail {
   videoId: number;
   actionType: TrainingActionType;
@@ -107,12 +134,46 @@ export interface AdminVideoAnalysisDetail {
   }>;
 }
 
+export interface AdminDashboardOverview {
+  days: number;
+  totalPatients: number;
+  activePatientCount: number;
+  newPatientCount: number;
+  videoUploadCount: number;
+  completedAnalysisCount: number;
+  allVideoCount: number;
+  allCompletedAnalysisCount: number;
+  analysisStatusCounts: Record<string, number>;
+  trend: Array<{ date: string; uploads: number; completed: number; newPatients: number }>;
+}
+
+export interface AdminVideoPage {
+  items: AdminVideoItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/** 获取工作台运营趋势（管理端） */
+export function getAdminDashboardOverview(days: 7 | 30): Promise<AdminDashboardOverview> {
+  return request<AdminDashboardOverview>({ url: '/videos/admin/dashboard-overview', method: 'GET', params: { days } });
+}
+
 /** 获取视频列表（管理端） */
-export function getAdminVideoList(): Promise<AdminVideoItem[]> {
-  return request<AdminVideoItem[]>({
+export function getAdminVideoList(params: { page?: number; limit?: number } = {}): Promise<AdminVideoPage> {
+  return request<AdminVideoPage>({
     url: '/videos/admin/list',
     method: 'GET',
+    params,
   });
+}
+
+export function getAdminAnalysisTasks(params: { page?: number; limit?: number; status?: string } = {}): Promise<AdminAnalysisTaskPage> {
+  return request<AdminAnalysisTaskPage>({ url: '/videos/admin/tasks', method: 'GET', params });
+}
+
+export function reanalyzeVideo(videoId: number): Promise<{ videoId: number; status: AnalysisStatus; message: string }> {
+  return request({ url: `/videos/admin/${videoId}/reanalyze`, method: 'POST' });
 }
 
 /** 获取视频详情（管理端） */

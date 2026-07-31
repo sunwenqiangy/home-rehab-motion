@@ -50,6 +50,14 @@ function formatDuration(seconds) {
     const remainSeconds = Math.round(seconds % 60);
     return remainSeconds ? `训练 ${minutes} 分 ${remainSeconds} 秒` : `训练 ${minutes} 分钟`;
 }
+function getNetworkType() {
+    return new Promise((resolve) => {
+        wx.getNetworkType({
+            success: (result) => resolve(result.networkType || 'unknown'),
+            fail: () => resolve('unknown'),
+        });
+    });
+}
 function resolveStageFocus(stage) {
     if (stage === 'corrective') {
         return {
@@ -81,6 +89,8 @@ Page({
         loading: true,
         loadFailed: false,
         errorMessage: '',
+        errorIcon: '⚠️',
+        errorTitle: '',
         isAnalysisFailed: false,
         failureTitle: '',
         failureReason: '',
@@ -123,6 +133,12 @@ Page({
     },
     onReady() {
         this.updateTopPlaceholderHeight();
+    },
+    onShow() {
+        // 从反馈页返回时重新查询关联工单，避免仍显示“提交反馈”。
+        if (this.data.videoId && !this.data.loading) {
+            this.refreshFeedbackEntry();
+        }
     },
     async onLoad(query) {
         const sysInfo = wx.getSystemInfoSync();
@@ -207,15 +223,22 @@ Page({
                     this.setData({
                         loadFailed: true,
                         isAnalysisFailed: false,
-                        errorMessage: '当前还无法读取报告，可能分析仍在处理中。您可以稍后重试，或先返回历史记录查看状态。',
+                        errorIcon: '⏳',
+                        errorTitle: '报告仍在生成中',
+                        errorMessage: '分析结果尚未生成完成，您可以继续等待，或稍后从训练历史查看。',
                     });
                 }
             }
             catch (_statusError) {
+                const isOffline = (await getNetworkType()) === 'none';
                 this.setData({
                     loadFailed: true,
                     isAnalysisFailed: false,
-                    errorMessage: '当前还无法读取报告，可能分析仍在处理中。您可以稍后重试，或先返回历史记录查看状态。',
+                    errorIcon: isOffline ? '📡' : '⚠️',
+                    errorTitle: isOffline ? '网络连接不可用' : '报告暂时不可用',
+                    errorMessage: isOffline
+                        ? '请检查网络连接后重新获取报告。'
+                        : '服务可能正在繁忙或维护中，请稍后重新获取报告。',
                 });
             }
         }
@@ -292,7 +315,8 @@ Page({
         wx.redirectTo({ url: `/pages/analyzing/index?videoId=${this.data.videoId}` });
     },
     onViewHistory() {
-        wx.navigateTo({ url: '/pages/history/index' });
+        // 从报告查看列表属于流程切换，替换当前报告页，避免“报告 → 历史 → 报告”反复累积。
+        wx.redirectTo({ url: '/pages/history/index' });
     },
     getResultTagText() {
         return getGradeTag(this.data.grade, this.data.averageScore);

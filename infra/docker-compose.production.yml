@@ -188,7 +188,7 @@ services:
   # 仅运行一个 Beat 实例，负责每分钟调度失败分析回调的重试任务。
   analysis-beat:
     image: ${ANALYSIS_SERVICE_IMAGE:?ANALYSIS_SERVICE_IMAGE is required}
-    command: ['celery', '-A', 'app.tasks.celery_app:celery_app', 'beat', '--loglevel=INFO']
+    command: ['celery', '-A', 'app.tasks.celery_app:celery_app', 'beat', '--loglevel=INFO', '--schedule=/tmp/celerybeat-schedule']
     environment:
       NODE_ENV: production
       DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE}

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { createHash, createHmac, randomBytes } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
 import { mkdir, access, writeFile } from 'fs/promises';
@@ -41,20 +41,57 @@ export class StorageService {
   private readonly guidanceBucketName = process.env.OSS_GUIDANCE_BUCKET || '';
   private readonly guidancePublicBaseUrl = (process.env.OSS_GUIDANCE_PUBLIC_BASE_URL || '').replace(/\/+$/, '');
 
-  buildVideoObjectKey(videoId: number) {
+  buildVideoObjectKey(videoId: number, userId?: number, actionType?: string) {
+    if (userId && actionType) {
+      return `videos/patients/${userId}/${actionType}/${videoId}`;
+    }
     return `videos/${videoId}/source`;
+  }
+
+  buildInternalSampleVideoObjectKey(
+    videoId: number,
+    sourceType: 'gold_template' | 'admin_flow_verify',
+    actionType: string,
+  ) {
+    return `videos/internal/${sourceType}/${actionType}/${videoId}`;
   }
 
   buildGuidanceAssetObjectKey(fileName = 'asset.png') {
     const extension = path.posix.extname(fileName).toLowerCase() || '.png';
     const baseName = path.posix.basename(fileName, extension)
-      .normalize('NFKD')
-      .replace(/[^a-zA-Z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .toLowerCase();
+      .normalize('NFC')
+      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
+      .replace(/^[-.\s]+|[-.\s]+$/g, '');
     const fileLabel = baseName || 'asset';
-    const suffix = randomBytes(4).toString('hex');
-    return `guidance/${Date.now()}-${suffix}-${fileLabel}${extension}`;
+    return `guidance/${Date.now()}-${fileLabel}${extension}`;
+  }
+
+  async createPrivateImageUploadTarget(objectKey: string) {
+    const normalizedKey = this.normalizeObjectKey(objectKey);
+    const keyWithExt = path.posix.extname(normalizedKey)
+      ? normalizedKey
+      : `${normalizedKey}.png`;
+
+    if (this.isS3PostEnabled()) {
+      return {
+        uploadType: 's3_post' as const,
+        uploadUrl: this.buildDirectUploadUrl(),
+        objectKey: keyWithExt,
+        uploadFields: this.buildPresignedPostFields(
+          keyWithExt,
+          this.assetUploadMaxBytes,
+          this.resolveContentType(keyWithExt),
+        ),
+        assetUrl: '',
+      };
+    }
+
+    return {
+      uploadType: 'local_proxy' as const,
+      uploadUrl: `${this.publicApiBaseUrl}/feedback/upload-image`,
+      objectKey: keyWithExt,
+      assetUrl: '',
+    };
   }
 
   async createUploadTarget(videoId: number, objectKey: string) {

@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
-import { ElLoading } from 'element-plus';
+import ElementPlus, { ElLoading } from 'element-plus';
+import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import 'element-plus/theme-chalk/base.css';
 import 'element-plus/theme-chalk/el-alert.css';
 import 'element-plus/theme-chalk/el-button-group.css';
@@ -29,6 +30,8 @@ import 'element-plus/theme-chalk/el-loading.css';
 import 'element-plus/theme-chalk/el-main.css';
 import 'element-plus/theme-chalk/el-menu.css';
 import 'element-plus/theme-chalk/el-menu-item.css';
+import 'element-plus/theme-chalk/el-message.css';
+import 'element-plus/theme-chalk/el-message-box.css';
 import 'element-plus/theme-chalk/el-option.css';
 import 'element-plus/theme-chalk/el-pagination.css';
 import 'element-plus/theme-chalk/el-scrollbar.css';
@@ -42,6 +45,7 @@ import router from './router';
 
 const app = createApp(App);
 
+app.use(ElementPlus, { locale: zhCn });
 app.use(ElLoading);
 app.use(router);
 app.mount('#app');

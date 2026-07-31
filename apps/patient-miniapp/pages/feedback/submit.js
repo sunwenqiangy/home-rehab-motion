@@ -76,23 +76,26 @@ Page({
       });
       const file = result.tempFiles && result.tempFiles[0];
       if (!file || !file.tempFilePath) return;
+      const maxImageBytes = 5 * 1024 * 1024;
+      if (Number(file.size || 0) > maxImageBytes) {
+        wx.showToast({ title: '单张图片不能超过 5MB', icon: 'none' });
+        return;
+      }
 
       this.setData({ feedbackUploading: true });
       const feedbackService = getFeedbackService();
       const target = await feedbackService.getFeedbackImageUploadTarget();
-      const uploaded = await feedbackService.uploadFeedbackImage(
-        target.uploadUrl,
-        target.objectKey,
-        file.tempFilePath,
-      );
+      const uploaded = await feedbackService.uploadFeedbackImage(target, file.tempFilePath);
       this.setData({
         feedbackImages: [
           ...this.data.feedbackImages,
-          { objectKey: uploaded.objectKey, previewUrl: uploaded.assetUrl },
+          { objectKey: uploaded.objectKey, previewUrl: uploaded.assetUrl || file.tempFilePath },
         ],
       });
-    } catch (_error) {
-      wx.showToast({ title: '图片上传失败', icon: 'none' });
+    } catch (error) {
+      console.error('[反馈图片上传失败]', error);
+      const message = error instanceof Error ? error.message : '图片上传失败，请稍后重试。';
+      wx.showToast({ title: message.slice(0, 20), icon: 'none' });
     } finally {
       this.setData({ feedbackUploading: false });
     }

@@ -85,8 +85,8 @@ export class AdminAccountController {
     if (!username) {
       throw new BadRequestException('用户名不能为空');
     }
-    if (password.length < 12) {
-      throw new BadRequestException('密码长度至少 12 位');
+    if (password.length < 8) {
+      throw new BadRequestException('密码长度至少 8 位');
     }
 
     const role = parseRole(payload.role || 'nurse');
@@ -203,8 +203,8 @@ export class AdminAccountController {
     }
 
     const password = String(payload.password || '');
-    if (password.length < 12) {
-      throw new BadRequestException('密码长度至少 12 位');
+    if (password.length < 8) {
+      throw new BadRequestException('密码长度至少 8 位');
     }
 
     await this.prisma.adminAccount.update({
@@ -240,9 +240,16 @@ export class AdminAccountController {
       throw new BadRequestException('账号不存在');
     }
 
-    await this.prisma.adminAccount.delete({
-      where: { account_id: BigInt(id) },
-    });
+    try {
+      await this.prisma.adminAccount.delete({
+        where: { account_id: BigInt(id) },
+      });
+    } catch (error: any) {
+      if (error?.code === 'P2003') {
+        throw new BadRequestException('该账号已有操作记录，无法永久删除；请改为禁用账号');
+      }
+      throw error;
+    }
 
     return {
       accountId: id,

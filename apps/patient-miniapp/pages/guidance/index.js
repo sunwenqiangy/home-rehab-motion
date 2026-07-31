@@ -26,23 +26,59 @@ function resolveActionMeta(actionType) {
 function toViewItem(item) {
   return { ...item, ...resolveActionMeta(item.actionType), actionLabel: item.title || resolveActionMeta(item.actionType).actionLabel, coverUrl: resolveAssetUrl(item.coverImage?.url) || resolveAssetUrl(DEFAULT_COVERS[item.actionType]), durationLabel: item.estimatedMinutes ? `约 ${item.estimatedMinutes} 分钟` : '' };
 }
-function buildFallbackItems() {
-  return [
-    { contentId: 1, actionType: 'abdominal_crunch', briefInstruction: '仰卧收腹，每次保持5秒' },
-    { contentId: 2, actionType: 'pelvic_tilt', briefInstruction: '缓慢倾斜骨盆，保持平稳' },
-    { contentId: 3, actionType: 'knee_rotation', briefInstruction: '缓慢旋转，控制幅度' },
-  ].map(toViewItem);
+function getNetworkType() {
+  return new Promise((resolve) => {
+    wx.getNetworkType({
+      success: (result) => resolve(result.networkType || 'unknown'),
+      fail: () => resolve('unknown'),
+    });
+  });
 }
 Page({
-  data: { statusBarHeight: 20, topPlaceholderHeight: 128, loading: true, activeFilter: 'all', filters: FILTERS, items: [] },
+  data: {
+    statusBarHeight: 20,
+    topPlaceholderHeight: 128,
+    loading: true,
+    loadFailed: false,
+    errorIcon: '⚠️',
+    errorTitle: '',
+    errorDesc: '',
+    activeFilter: 'all',
+    filters: FILTERS,
+    items: [],
+  },
   onLoad() { try { const systemInfo = wx.getSystemInfoSync(); this.setData({ statusBarHeight: systemInfo.statusBarHeight || 20 }); } catch (_) { this.setData({ statusBarHeight: 20 }); } },
   onReady() { this.updateTopPlaceholderHeight(); },
   async onShow() {
-    this.setData({ loading: true });
-    try { const items = await (0, guidance_1.getGuidanceList)(); this.setData({ items: items.length ? items.map(toViewItem) : buildFallbackItems() }); }
-    catch (_) { this.setData({ items: buildFallbackItems() }); }
-    finally { this.setData({ loading: false }); this.updateTopPlaceholderHeight(); }
+    await this.loadGuidance();
   },
+  async loadGuidance() {
+    this.setData({ loading: true, loadFailed: false, errorTitle: '', errorDesc: '', items: [] });
+    try {
+      const items = await (0, guidance_1.getGuidanceList)();
+      this.setData({ items: items.map(toViewItem) });
+    }
+    catch (error) {
+      // 指导内容来自后台配置，加载失败时不展示无法进入详情的本地示例动作。
+      console.error('[训练指导加载失败]', error);
+      const networkType = await getNetworkType();
+      const isOffline = networkType === 'none';
+      this.setData({
+        loadFailed: true,
+        errorIcon: isOffline ? '📡' : '⚠️',
+        errorTitle: isOffline ? '网络连接不可用' : '训练指导暂时不可用',
+        errorDesc: isOffline
+          ? '请检查网络连接后重新加载。'
+          : '服务可能正在繁忙或维护中，请稍后重新加载。',
+        items: [],
+      });
+    }
+    finally {
+      this.setData({ loading: false });
+      this.updateTopPlaceholderHeight();
+    }
+  },
+  onRetryLoad() { this.loadGuidance(); },
   updateTopPlaceholderHeight() { wx.nextTick(() => wx.createSelectorQuery().select('.guidance-v4-top-sticky').boundingClientRect((rect) => { if (rect?.height) this.setData({ topPlaceholderHeight: Math.ceil(rect.height) }); }).exec()); },
   onFilterTap(event) { const { value } = event.currentTarget.dataset; this.setData({ activeFilter: value || 'all' }); },
   onViewDetail(event) { const { contentId } = event.currentTarget.dataset; wx.navigateTo({ url: `/pages/guidance/detail?contentId=${contentId}` }); },

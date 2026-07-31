@@ -36,6 +36,14 @@
       <view class="v4-empty-title">正在加载通知...</view>
     </view>
 
+    <!-- 请求失败态：不能与“暂无消息”混用。 -->
+    <view wx:elif="{{loadFailed}}" class="v4-empty-state">
+      <view class="v4-empty-icon">⚠️</view>
+      <view class="v4-empty-title">消息暂时无法加载</view>
+      <view class="v4-empty-desc">请检查网络后重新加载。</view>
+      <view class="v4-empty-action" bindtap="onRetryLoad">重新加载</view>
+    </view>
+
     <!-- 空态 -->
     <view wx:elif="{{!filteredItems.length}}" class="v4-empty-state">
       <view class="v4-empty-icon">📭</view>

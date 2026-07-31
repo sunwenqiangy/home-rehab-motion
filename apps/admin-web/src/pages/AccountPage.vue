@@ -116,8 +116,9 @@
             <el-option label="医护" value="nurse" />
           </el-select>
         </el-form-item>
-        <el-form-item label="初始密码">
-          <el-input v-model="createForm.password" show-password placeholder="至少 6 位" />
+        <el-form-item label="初始密码" :error="createPasswordError">
+          <el-input v-model="createForm.password" show-password placeholder="至少 8 位" @input="createPasswordError = ''" />
+          <div class="form-field-hint">密码至少 8 位。</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -158,8 +159,9 @@
         <el-form-item label="目标账号">
           <el-input :model-value="resetPasswordTarget?.username || ''" disabled />
         </el-form-item>
-        <el-form-item label="新密码">
-          <el-input v-model="resetPasswordForm.password" show-password placeholder="至少 6 位" />
+        <el-form-item label="新密码" :error="resetPasswordError">
+          <el-input v-model="resetPasswordForm.password" show-password placeholder="至少 8 位" @input="resetPasswordError = ''" />
+          <div class="form-field-hint">密码至少 8 位。</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -167,13 +169,18 @@
         <el-button type="primary" :loading="submitting" @click="onResetPassword">确认重置</el-button>
       </template>
     </el-dialog>
+
+<el-dialog v-model="deleteDialogVisible" title="确认删除账号" width="460px" :close-on-click-modal="false">
+  <div class="delete-dialog"><el-alert type="warning" :closable="false" show-icon title="删除后无法恢复"/><p>确认永久删除账号「{{ deleteTarget?.username }}」吗？</p><small>若账号仍有关联业务记录，系统会保留数据并提示具体原因；建议优先使用“禁用”。</small></div>
+  <template #footer><el-button @click="deleteDialogVisible = false">取消</el-button><el-button type="danger" :loading="submitting" @click="confirmDeleteAccount">确认删除</el-button></template>
+</el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { User, UserFilled } from '@element-plus/icons-vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import {
   createAccount,
   deleteAccount,
@@ -186,13 +193,17 @@ import {
 const accounts = ref<AccountItem[]>([]);
 const loading = ref(false);
 const submitting = ref(false);
+const createPasswordError = ref('');
+const resetPasswordError = ref('');
 
 const createDialogVisible = ref(false);
 const editDialogVisible = ref(false);
 const resetPasswordDialogVisible = ref(false);
+const deleteDialogVisible = ref(false);
 
 const editTarget = ref<AccountItem | null>(null);
 const resetPasswordTarget = ref<AccountItem | null>(null);
+const deleteTarget = ref<AccountItem | null>(null);
 
 const createForm = reactive({
   username: '',
@@ -225,14 +236,16 @@ function resetCreateForm() {
   createForm.displayName = '';
   createForm.role = 'nurse';
   createForm.password = '';
+  createPasswordError.value = '';
 }
 
 async function loadData() {
   loading.value = true;
   try {
     accounts.value = await getAccountList();
-  } catch {
+  } catch (error: any) {
     accounts.value = [];
+    ElMessage.error(error?.response?.data?.message || '加载账号列表失败');
   } finally {
     loading.value = false;
   }
@@ -254,6 +267,7 @@ function openEditDialog(item: AccountItem) {
 function openResetPasswordDialog(item: AccountItem) {
   resetPasswordTarget.value = item;
   resetPasswordForm.password = '';
+  resetPasswordError.value = '';
   resetPasswordDialogVisible.value = true;
 }
 
@@ -263,8 +277,9 @@ async function onCreateAccount() {
     ElMessage.warning('请输入用户名');
     return;
   }
-  if (createForm.password.length < 6) {
-    ElMessage.warning('密码长度至少 6 位');
+  if (createForm.password.length < 8) {
+    createPasswordError.value = '密码长度至少 8 位';
+    ElMessage.warning('密码长度至少 8 位');
     return;
   }
 
@@ -276,11 +291,12 @@ async function onCreateAccount() {
       role: createForm.role,
       password: createForm.password,
     });
-    ElMessage.success('账号创建成功');
+    ElMessage.success(`账号「${username}」创建成功`);
     createDialogVisible.value = false;
     await loadData();
   } catch (err: any) {
-    ElMessage.error(err?.response?.data?.message || '账号创建失败');
+    const message = err?.response?.data?.message || err?.message || '账号创建失败';
+    ElMessage.error(message);
   } finally {
     submitting.value = false;
   }
@@ -312,8 +328,9 @@ async function onResetPassword() {
   if (!resetPasswordTarget.value) {
     return;
   }
-  if (resetPasswordForm.password.length < 6) {
-    ElMessage.warning('密码长度至少 6 位');
+  if (resetPasswordForm.password.length < 8) {
+    resetPasswordError.value = '密码长度至少 8 位';
+    ElMessage.warning('密码长度至少 8 位');
     return;
   }
 
@@ -329,26 +346,22 @@ async function onResetPassword() {
   }
 }
 
-async function onDeleteAccount(item: AccountItem) {
-  try {
-    await ElMessageBox.confirm(
-      `确认删除账号「${item.username}」吗？该操作不可撤销。`,
-      '删除确认',
-      {
-        type: 'warning',
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
-      },
-    );
+function onDeleteAccount(item: AccountItem) {
+  deleteTarget.value = item;
+  deleteDialogVisible.value = true;
+}
 
-    submitting.value = true;
-    await deleteAccount(item.accountId);
+async function confirmDeleteAccount() {
+  if (!deleteTarget.value) return;
+  submitting.value = true;
+  try {
+    await deleteAccount(deleteTarget.value.accountId);
     ElMessage.success('账号删除成功');
+    deleteDialogVisible.value = false;
+    deleteTarget.value = null;
     await loadData();
   } catch (err: any) {
-    if (err !== 'cancel') {
-      ElMessage.error(err?.response?.data?.message || '账号删除失败');
-    }
+    ElMessage.error(err?.response?.data?.message || err?.message || '账号删除失败');
   } finally {
     submitting.value = false;
   }
@@ -356,3 +369,9 @@ async function onDeleteAccount(item: AccountItem) {
 
 onMounted(loadData);
 </script>
+
+<style scoped>
+.form-field-hint { margin-top: 6px; color: var(--ink-500); font-size: 12px; line-height: 1.5; }
+.delete-dialog p { margin: 16px 0 8px; color: var(--ink-900); font-weight: 700; }
+.delete-dialog small { display: block; color: var(--ink-500); line-height: 1.6; }
+</style>

@@ -13,8 +13,8 @@ async function bootstrap() {
   const password = String(process.env.BOOTSTRAP_ADMIN_PASSWORD || '');
   const displayName = String(process.env.BOOTSTRAP_ADMIN_DISPLAY_NAME || '初始管理员').trim();
 
-  if (!username || password.length < 12) {
-    throw new Error('请设置 BOOTSTRAP_ADMIN_USERNAME 和至少 12 位的 BOOTSTRAP_ADMIN_PASSWORD');
+  if (!username || password.length < 8) {
+    throw new Error('请设置 BOOTSTRAP_ADMIN_USERNAME 和至少 8 位的 BOOTSTRAP_ADMIN_PASSWORD');
   }
 
   const prisma = new PrismaClient();

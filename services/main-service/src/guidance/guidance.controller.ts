@@ -18,6 +18,12 @@ export class GuidanceController {
     return this.guidanceService.listPatientGuidance();
   }
 
+  @Get('guidance/by-action/:actionType')
+  getGuidanceDetailByAction(@Req() req: Request, @Param('actionType') actionType: string) {
+    this.authService.requireUser(req, ['patient', 'admin', 'nurse']);
+    return this.guidanceService.getGuidanceDetailByAction(actionType);
+  }
+
   @Get('guidance/:contentId')
   getGuidanceDetail(@Req() req: Request, @Param('contentId') contentId: string) {
     this.authService.requireUser(req, ['patient', 'admin', 'nurse']);
@@ -36,38 +42,45 @@ export class GuidanceController {
     return this.guidanceService.createAdminGuidance(payload);
   }
 
-  @Get('admin/guidance/:id/draft')
-  getAdminDraft(@Req() req: Request, @Param('id') id: string) {
+  @Get('admin/guidance/config-package')
+  exportGuidanceConfigPackage(@Req() req: Request) {
     this.authService.requireUser(req, ['admin']);
-    return this.guidanceService.getAdminDraft(Number(id));
+    return this.guidanceService.exportGuidanceConfigPackage();
   }
 
-  @Put('admin/guidance/:id/draft')
-  saveAdminDraft(
+  @Post('admin/guidance/config-package/import')
+  importGuidanceConfigPackage(@Req() req: Request, @Body() payload: unknown) {
+    this.authService.requireUser(req, ['admin']);
+    return this.guidanceService.importGuidanceConfigPackage(payload);
+  }
+
+  @Get('admin/guidance/presign-upload')
+  getAdminPresignUpload(
     @Req() req: Request,
-    @Param('id') id: string,
-    @Body() payload: Record<string, unknown>,
+    @Query('fileName') fileName?: string,
+    @Query('mediaKind') mediaKind?: string,
+    @Query('contentType') contentType?: string,
   ) {
     this.authService.requireUser(req, ['admin']);
-    return this.guidanceService.saveAdminDraft(Number(id), payload);
+    return this.guidanceService.getAdminPresignUpload(fileName, mediaKind === 'video' ? 'video' : 'image', contentType);
   }
 
-  @Post('admin/guidance/:id/validate')
-  validateAdminGuidance(@Req() req: Request, @Param('id') id: string) {
+  @Get('admin/guidance/:id')
+  getAdminGuidance(@Req() req: Request, @Param('id') id: string) {
     this.authService.requireUser(req, ['admin']);
-    return this.guidanceService.validateAdminGuidance(Number(id));
+    return this.guidanceService.getAdminGuidance(Number(id));
   }
 
-  @Post('admin/guidance/:id/publish')
-  publishAdminGuidance(@Req() req: Request, @Param('id') id: string) {
+  @Post('admin/guidance/:id/enabled')
+  setAdminGuidanceEnabled(@Req() req: Request, @Param('id') id: string, @Body() payload: { enabled?: boolean }) {
     this.authService.requireUser(req, ['admin']);
-    return this.guidanceService.publishAdminGuidance(Number(id));
+    return this.guidanceService.setAdminGuidanceEnabled(Number(id), payload.enabled === true);
   }
 
-  @Post('admin/guidance/:id/rollback')
-  rollbackAdminGuidance(@Req() req: Request, @Param('id') id: string, @Body() payload: { version?: number }) {
+  @Post('admin/guidance/:id/copy')
+  copyAdminGuidance(@Req() req: Request, @Param('id') id: string) {
     this.authService.requireUser(req, ['admin']);
-    return this.guidanceService.rollbackAdminGuidance(Number(id), Number(payload.version));
+    return this.guidanceService.copyAdminGuidance(Number(id));
   }
 
   @Put('admin/guidance/:id')
@@ -84,23 +97,6 @@ export class GuidanceController {
   deleteAdminGuidance(@Req() req: Request, @Param('id') id: string) {
     this.authService.requireUser(req, ['admin']);
     return this.guidanceService.deleteAdminGuidance(Number(id));
-  }
-
-  @Get('admin/guidance/:id/versions')
-  getGuidanceVersions(@Req() req: Request, @Param('id') id: string) {
-    this.authService.requireUser(req, ['admin']);
-    return this.guidanceService.getGuidanceVersions(Number(id));
-  }
-
-  @Get('admin/guidance/presign-upload')
-  getAdminPresignUpload(
-    @Req() req: Request,
-    @Query('fileName') fileName?: string,
-    @Query('mediaKind') mediaKind?: string,
-    @Query('contentType') contentType?: string,
-  ) {
-    this.authService.requireUser(req, ['admin']);
-    return this.guidanceService.getAdminPresignUpload(fileName, mediaKind === 'video' ? 'video' : 'image', contentType);
   }
 
   @Post('assets/upload')

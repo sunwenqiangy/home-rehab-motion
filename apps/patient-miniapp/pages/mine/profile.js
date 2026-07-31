@@ -4,6 +4,8 @@ const me_1 = require("../../services/me");
 Page({
     data: {
         statusBarHeight: 20,
+        navHeight: 112,
+        nicknameInputFocus: false,
         nickname: '',
         phoneBound: false,
         maskedPhone: '',
@@ -14,7 +16,9 @@ Page({
     },
     onLoad() {
         const systemInfo = wx.getSystemInfoSync();
-        this.setData({ statusBarHeight: systemInfo.statusBarHeight || 20 });
+        const statusBarHeight = systemInfo.statusBarHeight || 20;
+        // 导航内容区固定为 92rpx（46px），总高度用于为页面内容让位。
+        this.setData({ statusBarHeight, navHeight: statusBarHeight + 46 });
     },
     async onShow() {
         await this.loadProfile();
@@ -37,13 +41,11 @@ Page({
     onNicknameInput(event) {
         this.setData({ nickname: String(event.detail.value || '').slice(0, 50) });
     },
-    onChooseWechatNickname(event) {
-        const nickname = String(event.detail?.nickname || event.detail?.value || '').trim();
-        if (!nickname) {
-            wx.showToast({ title: '未获取到微信昵称，请手动填写', icon: 'none' });
-            return;
-        }
-        this.setData({ nickname });
+    onUseWechatNickname() {
+        // chooseNickname 不是有效的 button open-type；微信昵称能力由 input type="nickname" 提供。
+        // 切换 focus 能保证再次点击时重新触发输入框焦点与微信昵称选择面板。
+        this.setData({ nicknameInputFocus: false });
+        setTimeout(() => this.setData({ nicknameInputFocus: true }), 0);
     },
     onAgeInput(event) {
         this.setData({ age: String(event.detail.value || '').replace(/[^0-9]/g, '').slice(0, 3) });

@@ -38,6 +38,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '视频记录' },
       },
       {
+        path: 'analysis-tasks',
+        name: 'analysis-tasks',
+        component: () => import('@/pages/AnalysisTaskPage.vue'),
+        meta: { title: '分析任务监控' },
+      },
+      {
         path: 'videos/:videoId',
         name: 'video-detail',
         component: () => import('@/pages/VideoDetailPage.vue'),
@@ -89,7 +95,13 @@ const routes: RouteRecordRaw[] = [
         path: 'gold-templates',
         name: 'gold-templates',
         component: () => import('@/pages/GoldTemplatePage.vue'),
-        meta: { title: '金标准管理' },
+        meta: { title: '金标准提取' },
+      },
+      {
+        path: 'template-versions',
+        name: 'template-versions',
+        component: () => import('@/pages/TemplateVersionPage.vue'),
+        meta: { title: '评分模板版本管理' },
       },
       {
         path: 'motivation-rules',

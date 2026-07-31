@@ -503,20 +503,29 @@ def analyze_video(
             type(exc).__name__,
             exc,
         )
+        # 可重试异常不能提前写入终态或发送 failed 回调；否则下一次 Celery
+        # 重试会被持久化的 failed 状态拦截，形成“可恢复故障永久失败”。
+        if self.request.retries < self.max_retries:
+            logger.warning(
+                '[%s] Retrying analysis task: video_id=%d, attempt=%d/%d',
+                task_id,
+                video_id,
+                self.request.retries + 1,
+                self.max_retries,
+            )
+            raise self.retry(exc=exc)
+
+        failure_reason = str(exc)[:255]
         try:
             with sync_session_scope() as session:
                 repo = AnalysisRepository(session)
-                repo.mark_task_failed(video_id, str(exc)[:255])
+                repo.mark_task_failed(video_id, failure_reason)
         except Exception as db_exc:
             logger.error('Failed to mark task as failed: %s', db_exc)
 
-        _notify_callback(callback_url, video_id, 'failed', fail_reason=str(exc)[:255])
-
-        try:
-            raise self.retry(exc=exc)
-        except self.MaxRetriesExceededError:
-            logger.error('[%s] Max retries exceeded for video_id=%d', task_id, video_id)
-            return {'video_id': video_id, 'status': 'failed', 'reason': str(exc)[:255]}
+        _notify_callback(callback_url, video_id, 'failed', fail_reason=failure_reason)
+        logger.error('[%s] Analysis retries exhausted for video_id=%d', task_id, video_id)
+        return {'video_id': video_id, 'status': 'failed', 'reason': failure_reason}
     finally:
         if local_video_path and is_temp_file and os.path.exists(local_video_path):
             try:

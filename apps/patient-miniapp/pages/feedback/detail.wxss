@@ -170,6 +170,21 @@ page {
   justify-content: flex-start;
 }
 
+.message-row-system {
+  justify-content: flex-start;
+}
+
+.message-row-system .message-avatar {
+  background: #fff0db;
+  color: #c36a21;
+}
+
+.message-row-system .message-bubble {
+  border-color: #ffd8ac;
+  background: #fff8ef;
+  color: #884a20;
+}
+
 .message-avatar {
   width: 58rpx;
   height: 58rpx;
@@ -221,6 +236,42 @@ page {
   border-radius: 24rpx 10rpx 24rpx;
   background: #0e9aa7;
   color: #ffffff;
+}
+
+.message-images,
+.followup-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.message-image,
+.followup-image {
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: 12rpx;
+  background: #edf2f7;
+}
+
+.followup-image-wrap {
+  position: relative;
+  width: 132rpx;
+  height: 132rpx;
+}
+
+.followup-image-remove {
+  position: absolute;
+  top: -12rpx;
+  right: -12rpx;
+  width: 34rpx;
+  height: 34rpx;
+  border-radius: 50%;
+  background: #e65a4f;
+  color: #fff;
+  line-height: 34rpx;
+  text-align: center;
+  font-size: 28rpx;
 }
 
 .feedback-report-link {

@@ -264,7 +264,14 @@
 
 /* 已锁定状态整体降低透明度 */
 .v4-badge-item--locked {
-  opacity: 0.45;
+opacity: 0.45;
+}
+
+.v4-badge-item--highlighted {
+  padding: 10rpx 4rpx;
+  border-radius: 18rpx;
+  background: #fff7df;
+  box-shadow: 0 0 0 3rpx #f2bf50;
 }
 
 /* 空态 */
@@ -287,3 +294,17 @@
   margin-top: 12rpx;
   line-height: 1.6;
 }
+.v4-empty-action {
+  display: inline-flex;
+  min-height: 64rpx;
+  margin-top: 28rpx;
+  padding: 0 36rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  color: #087f8b;
+  background: #e6f7f8;
+  font-size: 26rpx;
+  font-weight: 800;
+}
+.v4-empty-action:active { opacity: .72; transform: scale(.98); }

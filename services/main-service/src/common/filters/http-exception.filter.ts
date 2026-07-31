@@ -44,7 +44,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
       );
     }
 
-    response.status(status).json({
+    // 参数校验、资源状态等可预期业务异常通过统一响应体返回 200，
+    // 前端据 success/code/message 展示业务提示；认证/授权与系统故障仍保留真实 HTTP 状态。
+    const responseStatus = [HttpStatus.BAD_REQUEST, HttpStatus.NOT_FOUND, HttpStatus.CONFLICT, HttpStatus.UNPROCESSABLE_ENTITY]
+      .includes(status) ? HttpStatus.OK : status;
+    response.status(responseStatus).json({
       success: false,
       path: request.url,
       code: typeof details.code === 'string' ? details.code : `HTTP_${status}`,

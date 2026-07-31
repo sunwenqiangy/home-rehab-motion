@@ -165,9 +165,35 @@ page {
   gap: 16rpx;
 }
 
-.rp-failure-result {
+.rp-error-state {
   min-height: 100vh;
   box-sizing: border-box;
+}
+
+.rp-error-state__card {
+  margin: 76rpx auto 0;
+  padding: 56rpx 36rpx;
+  border: 1rpx solid rgba(102, 159, 170, 0.14);
+  border-radius: 34rpx;
+  background: #ffffff;
+  box-shadow: 0 12rpx 28rpx rgba(30, 103, 111, 0.06);
+}
+
+.rp-error-state__icon {
+  width: 88rpx;
+  height: 88rpx;
+  margin: 0 auto 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #e6f7f8;
+  font-size: 48rpx;
+}
+
+.rp-failure-result {
+min-height: 100vh;
+box-sizing: border-box;
 }
 
 .rp-failure-result__icon {

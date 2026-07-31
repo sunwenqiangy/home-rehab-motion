@@ -88,14 +88,16 @@
       <div class="pagination-row">
         <span class="pagination-row__total">共 {{ total }} 条</span>
         <el-pagination
-          v-model:current-page="page"
+          :current-page="page"
           :page-size="limit"
+          :page-sizes="[10, 20, 50]"
           :total="total"
           :pager-count="5"
           small
           background
-          layout="prev, pager, next"
-          @current-change="loadPatients"
+          layout="sizes, prev, pager, next"
+          @current-change="handlePageChange"
+          @size-change="handlePageSizeChange"
         />
       </div>
     </el-card>
@@ -107,13 +109,14 @@ import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { TrendCharts, UserFilled, VideoCamera } from '@element-plus/icons-vue';
 import { getAdminPatientList, type PatientListItem } from '@/services/patient';
+import { ElMessage } from 'element-plus';
 
 const router = useRouter();
 const patients = ref<PatientListItem[]>([]);
 const total = ref(0);
 const overview = ref({ totalPatientCount: 0, activeTrainingPatientCount: 0, followUpPatientCount: 0 });
 const page = ref(1);
-const limit = 20;
+const limit = ref(10);
 const loading = ref(false);
 const keywordInput = ref('');
 const keyword = ref('');
@@ -142,13 +145,32 @@ function resetSearch() {
   loadPatients();
 }
 
-async function loadPatients() {
+function handlePageChange(nextPage: number) {
+  page.value = nextPage;
+  loadPatients();
+}
+
+function handlePageSizeChange(nextLimit: number) {
+  limit.value = nextLimit;
+  page.value = 1;
+  loadPatients();
+}
+
+async function loadPatients(nextPage = page.value) {
+  page.value = nextPage;
   loading.value = true;
   try {
-    const response = await getAdminPatientList({ keyword: keyword.value || undefined, page: page.value, limit });
+    const response = await getAdminPatientList({ keyword: keyword.value || undefined, page: page.value, limit: limit.value });
     patients.value = response.items;
     total.value = response.total;
     overview.value = response.overview;
+    // 以服务端归一化后的页码为准，避免筛选后页码超出范围。
+    page.value = response.page;
+    limit.value = response.limit;
+  } catch (error: any) {
+    patients.value = [];
+    total.value = 0;
+    ElMessage.error(error?.response?.data?.message || '加载患者列表失败');
   } finally {
     loading.value = false;
   }
@@ -162,9 +184,8 @@ onMounted(loadPatients);
 .patient-avatar { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; background: rgba(79, 195, 247, .14); color: var(--brand-700); font-weight: 800; }
 .patient-cell strong, .patient-cell small { display: block; }
 .patient-cell small { margin-top: 3px; color: var(--ink-500); font-size: 11px; }
-.pagination-row { display: flex; justify-content: flex-end; align-items: center; gap: 14px; min-width: 0; margin-top: 18px; color: var(--ink-500); font-size: 12px; }
-.pagination-row__total { flex: 0 0 auto; }
-.pagination-row :deep(.el-pagination) { display: inline-flex; flex: 0 0 auto; flex-wrap: nowrap; min-width: 0; white-space: nowrap; }
+.pagination-row { min-width: 0; }
+.pagination-row :deep(.el-pagination) { display: inline-flex; flex-wrap: nowrap; min-width: 0; white-space: nowrap; }
 .pagination-row :deep(.el-pagination button),
 .pagination-row :deep(.el-pagination .el-pager li) { min-width: 28px; min-height: 28px; height: 28px; margin: 0 2px; line-height: 28px; }
 @media (max-width: 640px) { .pagination-row { justify-content: space-between; gap: 8px; }.pagination-row :deep(.el-pagination .el-pager li:not(.is-active)) { display: none; } }

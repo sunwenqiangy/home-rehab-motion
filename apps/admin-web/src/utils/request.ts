@@ -39,6 +39,12 @@ http.interceptors.response.use(
 /** 通用请求方法 */
 export async function request<T = unknown>(config: AxiosRequestConfig): Promise<T> {
   const res = await http.request<ApiResponse<T>>(config);
+  if (!res.data.success) {
+    const error: any = new Error(res.data.message || '业务处理失败');
+    error.code = (res.data as any).code;
+    error.response = { data: res.data, status: res.status };
+    throw error;
+  }
   return res.data.data;
 }
 

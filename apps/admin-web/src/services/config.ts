@@ -5,8 +5,11 @@ import type {
   GoldTemplateSaveRequestDto,
   GoldTemplateSaveResponseDto,
   GoldTemplateSourceVideoListResponseDto,
+  GoldTemplateVersionDto,
   GoldTemplateVersionListResponseDto,
   GoldTemplateVersionStatusUpdateRequestDto,
+  TemplateVersionArchiveResponseDto,
+  TemplateVersionDeleteResponseDto,
   GoldTemplateVersionStatusUpdateResponseDto,
   MotivationRulesDto,
   PatientAppConfigDto,
@@ -24,11 +27,11 @@ export function getThresholds(): Promise<ThresholdConfigDto[]> {
 }
 
 /** 更新某动作类型的阈值配置 */
-export function updateThreshold(actionType: TrainingActionType, thresholdConfig: Record<string, unknown>): Promise<Record<string, unknown>> {
+export function updateThreshold(actionType: TrainingActionType, thresholdConfig: Record<string, unknown>, changeSummary?: string, parentTemplateId?: number, activate = true): Promise<Record<string, unknown>> {
   return request<Record<string, unknown>>({
     url: `/admin/thresholds/${actionType}`,
     method: 'PUT',
-    data: { thresholdConfig },
+    data: { thresholdConfig, changeSummary, parentTemplateId, activate },
   });
 }
 
@@ -63,7 +66,8 @@ export function saveGoldTemplate(payload: GoldTemplateSaveRequestDto): Promise<G
 export function getGoldTemplateVersions(params?: {
   actionType?: TrainingActionType;
   status?: number;
-  limit?: number;
+  page?: number;
+  pageSize?: number;
 }): Promise<GoldTemplateVersionListResponseDto> {
   return request<GoldTemplateVersionListResponseDto>({
     url: '/admin/thresholds/gold-templates',
@@ -73,6 +77,18 @@ export function getGoldTemplateVersions(params?: {
 }
 
 /** 更新版本状态（0=停用,1=启用） */
+export function getGoldTemplateVersion(templateId: number): Promise<GoldTemplateVersionDto> {
+  return request<GoldTemplateVersionDto>({ url: `/admin/thresholds/gold-templates/${templateId}`, method: 'GET' });
+}
+
+export function archiveGoldTemplateVersion(templateId: number): Promise<TemplateVersionArchiveResponseDto> {
+  return request<TemplateVersionArchiveResponseDto>({ url: `/admin/thresholds/gold-templates/${templateId}/archive`, method: 'PUT' });
+}
+
+export function deleteGoldTemplateVersion(templateId: number): Promise<TemplateVersionDeleteResponseDto> {
+  return request<TemplateVersionDeleteResponseDto>({ url: `/admin/thresholds/gold-templates/${templateId}`, method: 'DELETE' });
+}
+
 export function updateGoldTemplateVersionStatus(
   templateId: number,
   payload: GoldTemplateVersionStatusUpdateRequestDto,

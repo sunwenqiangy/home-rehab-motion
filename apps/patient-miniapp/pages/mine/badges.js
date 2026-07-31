@@ -48,23 +48,28 @@ Page({
         statusBarHeight: 20,
         topPlaceholderHeight: 128,
         loading: true,
-        progressText: '0 / 0 已获得',
+        loadFailed: false,
+        progressText: '--',
         progressPercent: 0,
         unlockedCount: 0,
         lockedCount: 0,
         filterMode: 'all',
         unlockedItems: [],
         lockedItems: [],
+        highlightBadgeCode: '',
     },
-    onLoad() {
+    onLoad(options) {
         const sysInfo = wx.getSystemInfoSync();
-        this.setData({ statusBarHeight: sysInfo.statusBarHeight || 20 });
+        this.setData({
+            statusBarHeight: sysInfo.statusBarHeight || 20,
+            highlightBadgeCode: decodeURIComponent((options || {}).highlight || ''),
+        });
     },
     onReady() {
         this.updateTopPlaceholderHeight();
     },
     async onShow() {
-        this.setData({ loading: true });
+        this.setData({ loading: true, loadFailed: false, unlockedItems: [], lockedItems: [], progressText: '--', progressPercent: 0 });
         try {
             const badgeWall = await (0, me_1.getBadgeWall)();
             const allItems = badgeWall.items.map((item) => ({
@@ -75,6 +80,7 @@ Page({
                 dateText: formatAwardedAt(item.awardedAt),
                 emoji: resolveBadgeEmoji({ badgeCode: item.badgeCode, title: item.title }),
                 bubbleColor: resolveBubbleColor({ badgeCode: item.badgeCode, title: item.title }),
+                highlighted: item.badgeCode === this.data.highlightBadgeCode,
             }));
             const unlockedItems = allItems.filter((item) => item.unlocked);
             const lockedItems = allItems.filter((item) => !item.unlocked);
@@ -90,8 +96,9 @@ Page({
                 progressPercent,
             });
         }
-        catch (_error) {
-            wx.showToast({ title: '徽章数据加载失败', icon: 'none' });
+        catch (error) {
+            console.error('[徽章数据加载失败]', error);
+            this.setData({ loadFailed: true, unlockedItems: [], lockedItems: [], progressText: '--', progressPercent: 0 });
         }
         finally {
             this.setData({ loading: false });
@@ -113,6 +120,9 @@ Page({
     },
     onGoBack() {
         wx.navigateBack({ delta: 1 });
+    },
+    onRetryLoad() {
+        this.onShow();
     },
     onFilterAll() {
         this.setData({ filterMode: 'all' });

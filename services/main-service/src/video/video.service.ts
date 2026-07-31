@@ -14,7 +14,7 @@ import type {
   SaveManualVideoReviewRequestDto,
   VideoStatusDto,
 } from '@home-rehab-motion/shared-contract';
-import type { AnalysisStatus, TrainingVideoSourceType } from '@home-rehab-motion/shared-types';
+import type { AnalysisStatus, TrainingActionType, TrainingVideoSourceType } from '@home-rehab-motion/shared-types';
 
 function resolveGrade(score: number | null | undefined, rawGrade?: string | null) {
   const numeric = Number(score ?? 0);
@@ -48,7 +48,7 @@ export class VideoService {
     private readonly privacyService: PrivacyService,
   ) {}
 
-  async getPresignUpload(userId: number): Promise<PresignUploadResponseDto> {
+  async getPresignUpload(userId: number, actionType: TrainingActionType): Promise<PresignUploadResponseDto> {
     await this.privacyService.requireActiveConsent(userId);
     if (userId <= 0) {
       throw new BadRequestException('无效的用户身份，无法创建上传任务');
@@ -59,7 +59,7 @@ export class VideoService {
     const created = await this.prisma.trainingVideo.create({
       data: {
         user_id: ownerId,
-        action_type: 'abdominal_crunch',
+        action_type: actionType,
         source_type: 'miniapp',
         video_key: null,
         analysis_status: 'uploading',
@@ -67,7 +67,7 @@ export class VideoService {
     });
 
     const videoId = Number(created.video_id);
-    const objectKey = this.storageService.buildVideoObjectKey(videoId);
+    const objectKey = this.storageService.buildVideoObjectKey(videoId, userId, actionType);
 
     await this.prisma.trainingVideo.update({
       where: { video_id: created.video_id },
@@ -91,7 +91,10 @@ export class VideoService {
     };
   }
 
-  async getInternalSamplePresignUpload(sourceType: Exclude<TrainingVideoSourceType, 'miniapp'>) {
+  async getInternalSamplePresignUpload(
+    sourceType: Exclude<TrainingVideoSourceType, 'miniapp'>,
+    actionType: TrainingActionType,
+  ) {
     const owner = await this.prisma.userProfile.upsert({
       where: { openid: `internal-sample:${sourceType}` },
       update: { role: 'patient', status: 1 },
@@ -106,7 +109,7 @@ export class VideoService {
     const created = await this.prisma.trainingVideo.create({
       data: {
         user_id: owner.user_id,
-        action_type: 'abdominal_crunch',
+        action_type: actionType,
         source_type: sourceType,
         analysis_status: 'uploading',
       },
@@ -114,7 +117,7 @@ export class VideoService {
     const videoId = Number(created.video_id);
     const uploadTarget = await this.storageService.createUploadTarget(
       videoId,
-      this.storageService.buildVideoObjectKey(videoId),
+      this.storageService.buildInternalSampleVideoObjectKey(videoId, sourceType, actionType),
     );
     await this.prisma.trainingVideo.update({
       where: { video_id: created.video_id },
@@ -152,7 +155,15 @@ export class VideoService {
       this.ensureVideoOwnership(video.user_id, userId);
     }
 
-    const objectKey = video.video_key || this.storageService.buildVideoObjectKey(videoId);
+    const objectKey = video.video_key || (
+      allowInternalAccess
+        ? this.storageService.buildInternalSampleVideoObjectKey(
+          videoId,
+          video.source_type as 'gold_template' | 'admin_flow_verify',
+          video.action_type,
+        )
+        : this.storageService.buildVideoObjectKey(videoId, Number(video.user_id), video.action_type)
+    );
     const stored = await this.storageService.saveVideoFile(objectKey, file);
 
     await this.prisma.trainingVideo.update({
@@ -200,7 +211,7 @@ export class VideoService {
       throw new BadRequestException(`视频时长不能超过 ${appConfig.videoMaxDurationSeconds} 秒`);
     }
 
-    const objectKey = video.video_key || this.storageService.buildVideoObjectKey(payload.videoId);
+    const objectKey = video.video_key || this.storageService.buildVideoObjectKey(payload.videoId, userId, video.action_type);
     const resolvedObjectKey = objectKey.endsWith('.mp4')
       || objectKey.endsWith('.mov')
       || objectKey.endsWith('.m4v')
@@ -463,25 +474,197 @@ export class VideoService {
     }
   }
 
-  async getAdminVideoList() {
-    const videos = await this.prisma.trainingVideo.findMany({
-      where: { source_type: 'miniapp' },
-      orderBy: { created_at: 'desc' },
-      take: 20,
-      include: {
-        user: true,
-      },
+  async getAdminDashboardOverview(days = 7) {
+    const rangeDays = days === 30 ? 30 : 7;
+    const startAt = new Date();
+    startAt.setHours(0, 0, 0, 0);
+    startAt.setDate(startAt.getDate() - rangeDays + 1);
+    const patientVideoWhere = { source_type: 'miniapp' as const };
+    const [videos, patients, totalPatients, allVideoCount, allCompletedAnalysisCount, analysisStatusGroups] = await this.prisma.$transaction([
+      this.prisma.trainingVideo.findMany({
+        where: { ...patientVideoWhere, created_at: { gte: startAt } },
+        select: { created_at: true, analysis_status: true, user_id: true },
+      }),
+      this.prisma.userProfile.findMany({
+        where: { role: 'patient' },
+        select: { user_id: true, created_at: true },
+      }),
+      this.prisma.userProfile.count({ where: { role: 'patient' } }),
+      this.prisma.trainingVideo.count({ where: patientVideoWhere }),
+      this.prisma.trainingVideo.count({ where: { ...patientVideoWhere, analysis_status: 'completed' } }),
+      this.prisma.trainingVideo.findMany({
+        where: patientVideoWhere,
+        select: { analysis_status: true },
+      }),
+    ]);
+    const dayKey = (value: Date) => value.toISOString().slice(0, 10);
+    const buckets = new Map<string, { date: string; uploads: number; completed: number; newPatients: number }>();
+    for (let offset = 0; offset < rangeDays; offset += 1) {
+      const date = new Date(startAt);
+      date.setDate(startAt.getDate() + offset);
+      const key = dayKey(date);
+      buckets.set(key, { date: key, uploads: 0, completed: 0, newPatients: 0 });
+    }
+    videos.forEach((video) => {
+      const bucket = buckets.get(dayKey(video.created_at));
+      if (!bucket) return;
+      bucket.uploads += 1;
+      if (video.analysis_status === 'completed') bucket.completed += 1;
     });
+    patients.forEach((patient) => {
+      const bucket = buckets.get(dayKey(patient.created_at));
+      if (bucket) bucket.newPatients += 1;
+    });
+    const activePatientIds = new Set(videos.map((video) => video.user_id.toString()));
+    return {
+      days: rangeDays,
+      totalPatients,
+      activePatientCount: activePatientIds.size,
+      newPatientCount: [...buckets.values()].reduce((sum, item) => sum + item.newPatients, 0),
+      videoUploadCount: videos.length,
+      completedAnalysisCount: videos.filter((video) => video.analysis_status === 'completed').length,
+      allVideoCount,
+      allCompletedAnalysisCount,
+      analysisStatusCounts: analysisStatusGroups.reduce<Record<string, number>>((counts, item) => {
+        counts[item.analysis_status] = (counts[item.analysis_status] || 0) + 1;
+        return counts;
+      }, {}),
+      trend: [...buckets.values()],
+    };
+  }
 
-    return videos.map((video) => ({
+  async getAdminVideoList(options: { page?: number; limit?: number } = {}) {
+    const page = Math.max(1, Math.floor(options.page || 1));
+    const limit = Math.min(100, Math.max(1, Math.floor(options.limit || 10)));
+    const where = { source_type: 'miniapp' as const };
+    const [total, videos] = await this.prisma.$transaction([
+      this.prisma.trainingVideo.count({ where }),
+      this.prisma.trainingVideo.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { user: true },
+      }),
+    ]);
+
+    return {
+      items: videos.map((video) => ({
       videoId: Number(video.video_id),
       actionType: video.action_type,
       status: video.analysis_status,
       qualityStatus: video.quality_status,
       patientName: video.user?.name || '未命名患者',
       uploadedAt: video.created_at.toISOString(),
-      createdAt: video.created_at.toISOString(),
-    }));
+        createdAt: video.created_at.toISOString(),
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getAdminAnalysisTasks(options: { page?: number; limit?: number; status?: string } = {}) {
+    const page = Math.max(1, Math.floor(options.page || 1));
+    const limit = Math.min(100, Math.max(1, Math.floor(options.limit || 10)));
+    const allowedStatuses = new Set(['pending', 'uploading', 'queued', 'processing', 'completed', 'failed', 'quality_insufficient', 'review_required']);
+    const status = options.status && allowedStatuses.has(options.status) ? options.status : undefined;
+    const where = {
+      source_type: { in: ['miniapp', 'admin_flow_verify', 'gold_template'] as any },
+      ...(status ? { analysis_status: status } : {}),
+    };
+    const [total, videos] = await this.prisma.$transaction([
+      this.prisma.trainingVideo.count({ where }),
+      this.prisma.trainingVideo.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { created_at: 'desc' },
+        include: { user: true, analysis_task: true, video_evaluation_result: true },
+      }),
+    ]);
+    return {
+      items: videos.map((video) => ({
+        videoId: Number(video.video_id),
+        actionType: video.action_type,
+        sourceType: video.source_type,
+        patientName: video.user?.name || (video.source_type === 'miniapp' ? '未命名患者' : '内部样本'),
+        analysisStatus: video.analysis_status,
+        taskStatus: video.analysis_task?.task_status || video.analysis_status,
+        providerTaskId: video.analysis_task?.provider_task_id || null,
+        retryCount: video.analysis_task?.retry_count || 0,
+        retryAt: video.analysis_task?.callback_next_retry_at?.toISOString() || null,
+        callbackStatus: video.analysis_task?.callback_status || null,
+        failReason: video.fail_reason || video.analysis_task?.fail_reason || null,
+        qualityStatus: video.quality_status,
+        reportReady: Boolean(video.video_evaluation_result),
+        createdAt: video.created_at.toISOString(),
+        startedAt: video.analysis_task?.started_at?.toISOString() || null,
+        finishedAt: video.analysis_task?.finished_at?.toISOString() || null,
+        canReanalyze: ['failed', 'quality_insufficient', 'review_required'].includes(video.analysis_status),
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async retryAnalysis(videoId: number) {
+    const video = await this.prisma.trainingVideo.findUnique({ where: { video_id: BigInt(videoId) } });
+    if (!video) throw new NotFoundException(`视频不存在: ${videoId}`);
+    if (!video.video_key) throw new BadRequestException('原视频不存在，无法重新分析');
+    if (!['failed', 'quality_insufficient', 'review_required'].includes(video.analysis_status)) {
+      throw new BadRequestException('仅失败、质量不足或待复核任务可以重新分析');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.trainingVideo.update({
+        where: { video_id: BigInt(videoId) },
+        data: { analysis_status: 'queued', fail_reason: null, quality_status: null, quality_score: null },
+      }),
+      this.prisma.analysisTask.upsert({
+        where: { video_id: BigInt(videoId) },
+        update: {
+          provider_task_id: null,
+          task_status: 'queued',
+          retry_count: 0,
+          fail_reason: null,
+          callback_status: 'enqueue_retry_pending',
+          callback_last_error: null,
+          callback_next_retry_at: new Date(),
+          started_at: null,
+          finished_at: null,
+        },
+        create: {
+          video_id: BigInt(videoId),
+          task_status: 'queued',
+          callback_status: 'enqueue_retry_pending',
+          callback_next_retry_at: new Date(),
+        },
+      }),
+    ]);
+
+    try {
+      const task = await this.analysisService.enqueueVideo({
+        videoId,
+        actionType: video.action_type as TrainingActionType,
+        videoKey: video.video_key,
+      });
+      await this.prisma.analysisTask.update({
+        where: { video_id: BigInt(videoId) },
+        data: {
+          provider_task_id: task.task_id,
+          task_status: task.status === 'completed' ? 'completed' : 'queued',
+          callback_status: 'pending',
+          callback_next_retry_at: null,
+        },
+      });
+      return { videoId, status: 'queued', message: '已重新提交分析任务' };
+    } catch (error) {
+      // 即时投递失败时保留补偿状态，由协调器自动退避重试，无需患者重新上传。
+      this.logger.warn(`Manual reanalysis deferred: videoId=${videoId}, error=${error instanceof Error ? error.message : String(error)}`);
+      return { videoId, status: 'queued', message: '分析服务暂不可用，已加入自动重试队列' };
+    }
   }
 
   async getAdminVideoDetail(videoId: number) {

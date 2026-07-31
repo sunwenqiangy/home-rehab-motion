@@ -66,6 +66,7 @@ Page({
         statusBarHeight: 20,
         topPlaceholderHeight: 128,
         loading: true,
+        loadFailed: false,
         items: [],
         filteredItems: [],
         typeChips: [],
@@ -79,7 +80,7 @@ Page({
         this.updateTopPlaceholderHeight();
     },
     async onShow() {
-        this.setData({ loading: true });
+        this.setData({ loading: true, loadFailed: false, items: [], filteredItems: [], typeChips: [] });
         try {
             const [items, _unread] = await Promise.all([(0, notification_1.getNotifications)(), (0, notification_1.getNotificationUnreadCount)()]);
             const viewItems = items.map(buildViewItem);
@@ -101,6 +102,10 @@ Page({
                 typeChips,
             });
         }
+        catch (error) {
+            console.error('[消息中心加载失败]', error);
+            this.setData({ loadFailed: true, items: [], filteredItems: [], typeChips: [] });
+        }
         finally {
             this.setData({ loading: false });
             this.updateTopPlaceholderHeight();
@@ -121,6 +126,9 @@ Page({
     },
     onGoBack() {
         wx.navigateBack({ delta: 1 });
+    },
+    onRetryLoad() {
+        this.onShow();
     },
     filterItems(items, filter) {
         if (filter === 'all')
@@ -147,7 +155,7 @@ Page({
         const notificationId = Number(dataset.notificationId);
         const readFlag = Boolean(dataset.readFlag);
         const type = dataset.type;
-        const relatedId = dataset.relatedId ? Number(dataset.relatedId) : 0;
+        const relatedId = dataset.relatedId || '';
         if (!readFlag) {
             try {
                 await (0, notification_1.markNotificationAsRead)(notificationId);
@@ -162,7 +170,7 @@ Page({
             }
         }
         if (type === 'analysis_completed') {
-            const reportVideoId = relatedId || notificationId;
+            const reportVideoId = Number(relatedId) || notificationId;
             if (reportVideoId > 0) {
                 wx.navigateTo({ url: `/pages/report/index?videoId=${reportVideoId}` });
                 return;
@@ -171,7 +179,7 @@ Page({
             return;
         }
         if (type === 'feedback_replied' || type === 'system_message') {
-            const feedbackId = relatedId || notificationId;
+            const feedbackId = Number(relatedId) || notificationId;
             if (feedbackId > 0) {
                 wx.navigateTo({ url: `/pages/feedback/detail?feedbackId=${feedbackId}&returnTo=notification` });
                 return;
@@ -180,7 +188,8 @@ Page({
             return;
         }
         if (type === 'badge_earned') {
-            wx.navigateTo({ url: '/pages/mine/badges' });
+            const badgeCode = encodeURIComponent(String(relatedId || ''));
+            wx.navigateTo({ url: `/pages/mine/badges?highlight=${badgeCode}` });
             return;
         }
         wx.showToast({ title: '已查看通知', icon: 'none' });

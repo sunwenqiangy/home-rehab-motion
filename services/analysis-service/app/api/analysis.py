@@ -3,7 +3,9 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+
+from app.core.config import settings
 
 from app.schemas.analysis import (
     AnalysisResultResponse,
@@ -15,7 +17,18 @@ from app.schemas.analysis import (
 from app.tasks.analyze_video import analyze_video
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+
+
+def require_internal_token(
+    x_internal_token: Optional[str] = Header(default=None, alias='X-Internal-Token'),
+) -> None:
+    """仅允许主服务调用分析任务与结果接口，避免内部分析能力被暴露。"""
+    expected = settings.analysis_internal_token.strip()
+    if not expected or x_internal_token != expected:
+        raise HTTPException(status_code=401, detail='分析服务内部鉴权失败')
+
+
+router = APIRouter(dependencies=[Depends(require_internal_token)])
 
 
 def _sanitize_json_values(value: Any) -> Any:
@@ -172,7 +185,8 @@ def submit_analysis(req: AnalyzeRequest) -> AnalyzeResponse:
                 'video_id': req.video_id,
                 'action_type': req.action_type,
                 'video_key': req.video_key,
-                'callback_url': req.callback_url,
+                # 回调地址仅允许使用服务端配置，不能由请求方指定，避免 SSRF 和内部令牌泄露。
+                'callback_url': None,
                 'sample_fps': req.sample_fps,
                 'threshold_config': req.threshold_config,
             },

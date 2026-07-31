@@ -27,7 +27,7 @@ export class FeedbackController {
   ) {}
 
   @Get('feedback/presign-upload')
-  getFeedbackImageUploadTarget(@Req() req: Request) {
+  async getFeedbackImageUploadTarget(@Req() req: Request) {
     const user = this.authService.requireUser(req, ['patient']);
     return this.feedbackService.getFeedbackImageUploadTarget(user.userId);
   }
@@ -75,15 +75,15 @@ export class FeedbackController {
   }
 
   @Get('admin/feedback')
-  getAdminFeedbackList(@Req() req: Request, @Query('keyword') keyword?: string) {
+  getAdminFeedbackList(@Req() req: Request, @Query('keyword') keyword?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
     this.authService.requireUser(req, ['admin', 'nurse']);
-    return this.feedbackService.getAdminFeedbackList({ keyword });
+    return this.feedbackService.getAdminFeedbackList({ keyword, page: Number(page) || 1, limit: Number(limit) || 10 });
   }
 
   @Get('admin/feedback/safety-records')
-  getSafetyRecords(@Req() req: Request, @Query('keyword') keyword?: string) {
+  getSafetyRecords(@Req() req: Request, @Query('keyword') keyword?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
     this.authService.requireUser(req, ['admin', 'nurse']);
-    return this.feedbackService.getAdminFeedbackList({ safetyOnly: true, keyword });
+    return this.feedbackService.getAdminFeedbackList({ safetyOnly: true, keyword, page: Number(page) || 1, limit: Number(limit) || 10 });
   }
 
   @Get('admin/feedback/reply-templates')

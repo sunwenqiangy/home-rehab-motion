@@ -34,11 +34,14 @@
 
       <view class="feedback-timeline-title">本次训练反馈记录</view>
       <block wx:for="{{messages}}" wx:key="messageId">
-        <view class="message-row {{item.senderRole === 'staff' ? 'message-row-staff' : 'message-row-patient'}}">
-          <view class="message-avatar">{{item.senderRole === 'staff' ? '护' : '我'}}</view>
+        <view class="message-row {{item.senderRole === 'staff' ? 'message-row-staff' : item.senderRole === 'system' ? 'message-row-system' : 'message-row-patient'}}">
+          <view class="message-avatar">{{item.senderRole === 'staff' ? '护' : item.senderRole === 'system' ? '系' : '我'}}</view>
           <view class="message-main">
             <view class="message-meta"><text>{{item.senderLabel}}</text><text>{{item.timeText}}</text></view>
             <view class="message-bubble"><text>{{item.displayText}}</text></view>
+            <view wx:if="{{item.imageUrls.length}}" class="message-images">
+              <image wx:for="{{item.imageUrls}}" wx:for-item="imageUrl" wx:key="*this" class="message-image" src="{{imageUrl}}" mode="aspectFill" data-url="{{imageUrl}}" data-urls="{{item.imageUrls}}" bindtap="onPreviewMessageImage" />
+            </view>
           </view>
         </view>
       </block>
@@ -59,9 +62,15 @@
       <text>查看关联训练报告</text><text>›</text>
     </view>
     <textarea class="feedback-input" value="{{followUpText}}" maxlength="500" auto-height="true" placeholder="补充本次训练的问题…" bindinput="onFollowUpInput" />
+    <view wx:if="{{followUpImages.length}}" class="followup-images">
+      <view wx:for="{{followUpImages}}" wx:key="objectKey" class="followup-image-wrap">
+        <image class="followup-image" src="{{item.previewUrl}}" mode="aspectFill" />
+        <text class="followup-image-remove" data-index="{{index}}" bindtap="onRemoveFollowUpImage">×</text>
+      </view>
+    </view>
     <view class="feedback-actions">
-      <button class="feedback-image-button" bindtap="onChooseFollowUpImage">图片</button>
-      <button class="feedback-send-button" bindtap="onSubmitFollowUp">发送</button>
+      <button class="feedback-image-button" loading="{{followUpUploading}}" disabled="{{followUpUploading || followUpImages.length >= 3}}" bindtap="onChooseFollowUpImage">图片</button>
+      <button class="feedback-send-button" loading="{{followUpSubmitting}}" disabled="{{followUpSubmitting || followUpUploading}}" bindtap="onSubmitFollowUp">发送</button>
     </view>
   </view>
 </view>

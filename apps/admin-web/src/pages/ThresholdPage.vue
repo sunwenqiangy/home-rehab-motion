@@ -78,7 +78,8 @@
     </el-card>
 
     <!-- 核心参数调优弹窗 -->
-    <el-dialog v-model="tuneDialogVisible" title="核心参数调优" width="820px" align-center>
+    <el-dialog v-model="tuneDialogVisible" title="核心参数调优" width="820px" class="tune-dialog" modal-class="tune-dialog-overlay" :close-on-click-modal="false">
+      <div class="tune-dialog__body">
       <!-- 顶部信息条 -->
       <div class="tune-header">
         <div class="tune-meta">
@@ -196,6 +197,7 @@
           </div>
         </div>
       </div>
+      </div>
 
       <template #footer>
         <el-button @click="tuneDialogVisible = false">取消</el-button>
@@ -246,8 +248,9 @@ async function loadData() {
   loading.value = true;
   try {
     thresholds.value = await getThresholds();
-  } catch {
+  } catch (error: any) {
     thresholds.value = [];
+    ElMessage.error(error?.response?.data?.message || '加载阈值配置失败');
   } finally {
     loading.value = false;
   }
@@ -658,6 +661,13 @@ onMounted(loadData);
 }
 .feature-chip--warn { background: rgba(245,158,11,0.1); color: #d97706; border-color: rgba(245,158,11,0.2); }
 
+/* ── 调优弹窗布局：由遮罩层强制居中，避免 Teleport 后脱离 scoped 样式 ── */
+:global(.el-overlay.tune-dialog-overlay) { display: flex; align-items: center; justify-content: center; overflow: auto; }
+:global(.el-overlay.tune-dialog-overlay .el-overlay-dialog) { width: 100%; min-height: 100%; display: flex; align-items: center; justify-content: center; }
+:global(.el-dialog.tune-dialog) { width: 820px; height: 1000px; margin: 0 !important; display: flex; flex-direction: column; }
+:global(.el-dialog.tune-dialog .el-dialog__body) { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; padding-top: 10px !important; }
+:global(.el-dialog.tune-dialog .tune-dialog__body) { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 4px 8px; overscroll-behavior: contain; }
+:global(.el-dialog.tune-dialog .el-dialog__footer) { flex: 0 0 auto; padding-top: 14px !important; border-top: 1px solid var(--el-border-color-lighter); }
 /* ── 调优弹窗顶部 ─────────────────────────── */
 .tune-header { margin-bottom: 14px; }
 .tune-meta {

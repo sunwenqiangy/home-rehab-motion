@@ -82,6 +82,7 @@ export interface AdminGuidanceListItemDto {
   contentId: number;
   actionType: TrainingActionType;
   title: string;
+  enabled: boolean;
   updatedAt: string;
 }
 
@@ -481,6 +482,8 @@ export interface ThresholdConfigDto {
   thresholdConfig: Record<string, unknown>;
 }
 
+export type GoldTemplateVersionType = 'gold_template' | 'threshold_tuning';
+
 export interface GoldTemplateVersionDto {
   templateId: number;
   actionType: TrainingActionType;
@@ -489,12 +492,20 @@ export interface GoldTemplateVersionDto {
   referenceStats: Record<string, unknown>;
   thresholdConfig: Record<string, unknown>;
   status: number;
+  versionType: GoldTemplateVersionType;
+  parentTemplateId?: number;
+  changeSummary?: string;
+  changeDiff?: Record<string, unknown>;
+  everActivated: boolean;
   createdBy?: string;
   createdAt: string;
 }
 
 export interface GoldTemplateVersionListResponseDto {
   items: GoldTemplateVersionDto[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface GoldTemplateVersionStatusUpdateRequestDto {
@@ -504,6 +515,23 @@ export interface GoldTemplateVersionStatusUpdateRequestDto {
 export interface GoldTemplateVersionStatusUpdateResponseDto {
   templateId: number;
   status: number;
+}
+
+export interface CreateThresholdVersionRequestDto {
+  actionType: TrainingActionType;
+  thresholdConfig: Record<string, unknown>;
+  changeSummary?: string;
+  activate?: boolean;
+}
+
+export interface TemplateVersionArchiveResponseDto {
+  templateId: number;
+  status: number;
+}
+
+export interface TemplateVersionDeleteResponseDto {
+  templateId: number;
+  deleted: boolean;
 }
 
 export interface GoldTemplateSourceVideoDto {

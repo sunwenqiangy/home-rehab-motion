@@ -16,8 +16,33 @@
         <view wx:for="{{filters}}" wx:key="value" class="guidance-v4-filter-chip {{activeFilter === item.value ? 'guidance-v4-filter-chip--active' : ''}}" data-value="{{item.value}}" bindtap="onFilterTap">{{item.label}}</view>
       </view>
 
-      <view wx:if="{{loading}}" class="guidance-v4-card guidance-v4-loading-card">
-        <view class="guidance-v4-card-title">正在加载训练指导...</view>
+      <view wx:if="{{loading}}" class="guidance-v4-loading-list">
+        <view class="guidance-v4-card guidance-v4-loading-card" wx:for="{{[1,2,3]}}" wx:key="*this">
+          <view class="guidance-v4-skeleton guidance-v4-skeleton--cover"></view>
+          <view class="guidance-v4-skeleton-copy">
+            <view class="guidance-v4-skeleton guidance-v4-skeleton--title"></view>
+            <view class="guidance-v4-skeleton guidance-v4-skeleton--line"></view>
+            <view class="guidance-v4-skeleton guidance-v4-skeleton--chip"></view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:elif="{{loadFailed}}" class="guidance-v4-error-wrap">
+        <view class="guidance-v4-state-card">
+          <view class="guidance-v4-state-card__icon">{{errorIcon}}</view>
+          <view class="guidance-v4-state-card__title">{{errorTitle}}</view>
+          <view class="guidance-v4-state-card__desc">{{errorDesc}}</view>
+          <view class="guidance-v4-state-card__hint">网络恢复后，可继续查看训练动作。</view>
+          <view class="guidance-v4-state-card__action" bindtap="onRetryLoad">重新加载</view>
+        </view>
+      </view>
+
+      <view wx:elif="{{!items.length}}" class="guidance-v4-error-wrap">
+        <view class="guidance-v4-state-card">
+          <view class="guidance-v4-state-card__icon">📋</view>
+          <view class="guidance-v4-state-card__title">暂未配置训练动作</view>
+          <view class="guidance-v4-state-card__desc">管理员发布训练指导后，将在这里展示。</view>
+        </view>
       </view>
 
       <view wx:else>
@@ -29,7 +54,7 @@
             </view>
             <view class="guidance-v4-card__main">
               <view class="guidance-v4-card__title">{{item.actionLabel}}</view>
-              <view class="guidance-v4-card__desc">{{item.briefInstruction || '动作说明待更新'}}</view>
+              <view wx:if="{{item.briefInstruction}}" class="guidance-v4-card__desc">{{item.briefInstruction}}</view>
               <view wx:if="{{item.durationLabel}}" class="guidance-v4-card__duration">建议用时：{{item.durationLabel}}</view>
               <view class="guidance-v4-card__chip-row">
                 <text class="{{item.chipClassName}}">查看详情 ›</text>

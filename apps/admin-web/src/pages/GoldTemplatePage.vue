@@ -4,9 +4,9 @@
       <div class="page-hero__content">
         <div>
           <div class="page-hero__eyebrow">Gold Template Studio</div>
-          <h1 class="page-hero__title">金标准提取与版本管理</h1>
+          <h1 class="page-hero__title">金标准提取</h1>
           <p class="page-hero__subtitle">
-            支持上传新视频并自动分析，或从历史已完成视频提模。生成后可保存版本并切换启停状态。
+            支持上传新视频并自动分析，或从历史已完成视频提取统计参数，生成后保存为新的评分模板版本。
           </p>
           <div class="page-hero__meta">
             <span class="page-pill">流程：上传分析 / 选历史视频 → 提模预览 → 保存版本</span>
@@ -15,9 +15,9 @@
         </div>
         <div class="page-hero__side">
           <div class="hero-glass-card">
-            <div class="hero-glass-card__label">当前动作启用版本</div>
-            <div class="hero-glass-card__value">{{ activeVersionLabel }}</div>
-            <div class="hero-glass-card__hint">共 {{ versionRows.length }} 条版本记录</div>
+            <div class="hero-glass-card__label">提模结果</div>
+            <div class="hero-glass-card__value">{{ generatedResult ? '已生成' : '等待生成' }}</div>
+            <div class="hero-glass-card__hint">版本详情请前往「版本管理」查看</div>
           </div>
         </div>
       </div>
@@ -38,10 +38,10 @@
         </div>
       </article>
       <article class="summary-card">
-        <div class="summary-card__label">启用版本数</div>
-        <div class="summary-card__value summary-card__value--sm">{{ activeVersionCount }}</div>
+        <div class="summary-card__label">当前提模动作</div>
+        <div class="summary-card__value summary-card__value--sm">{{ actionTypeLabel(selectedActionType) }}</div>
         <div class="summary-card__foot">
-          <span>每个动作最多保留一个启用版本</span>
+          <span>生成后可到版本管理页启用或归档</span>
         </div>
       </article>
       <article class="summary-card">
@@ -276,72 +276,6 @@
         </div>
       </div>
     </el-card>
-
-    <!-- 版本管理 -->
-    <el-card class="surface-card" shadow="never">
-      <template #header>
-        <div class="section-header">
-          <div>
-            <div class="section-header__title">版本管理</div>
-            <div class="section-header__subtitle">查看全部历史版本，支持启用/停用切换。</div>
-          </div>
-          <el-button :loading="loadingVersions" @click="reloadVersions">刷新版本</el-button>
-        </div>
-      </template>
-
-      <div class="filter-shell">
-        <el-select v-model="versionStatusFilter" style="width: 180px" @change="reloadVersions">
-          <el-option label="全部状态" :value="-1" />
-          <el-option label="已启用" :value="1" />
-          <el-option label="已停用" :value="0" />
-        </el-select>
-      </div>
-
-      <div class="table-shell" v-loading="loadingVersions">
-        <el-table :data="versionRows" stripe>
-          <el-table-column prop="actionType" label="动作" min-width="120">
-            <template #default="{ row }">{{ actionTypeLabel(row.actionType) }}</template>
-          </el-table-column>
-          <el-table-column prop="version" label="版本" min-width="130" />
-          <el-table-column prop="createdAt" label="创建时间" min-width="180">
-            <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
-          </el-table-column>
-          <el-table-column prop="createdBy" label="创建人" min-width="130" />
-          <el-table-column label="状态" width="110">
-            <template #default="{ row }">
-              <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
-                {{ row.status === 1 ? '启用' : '停用' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="说明" min-width="220">
-            <template #default="{ row }">{{ row.description || '-' }}</template>
-          </el-table-column>
-          <el-table-column label="操作" width="180" fixed="right">
-            <template #default="{ row }">
-              <el-button
-                v-if="row.status === 0"
-                type="success"
-                size="small"
-                :loading="togglingVersionId === row.templateId"
-                @click="handleToggleStatus(row.templateId, 1)"
-              >
-                {{ togglingVersionId === row.templateId ? '正在启用…' : '启用' }}
-              </el-button>
-              <el-button
-                v-if="row.status === 1"
-                type="warning"
-                size="small"
-                :loading="togglingVersionId === row.templateId"
-                @click="handleToggleStatus(row.templateId, 0)"
-              >
-                {{ togglingVersionId === row.templateId ? '正在停用…' : '停用' }}
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-    </el-card>
   </div>
 </template>
 
@@ -352,7 +286,6 @@ import axios from 'axios';
 import type {
   GoldTemplateGenerateResponseDto,
   GoldTemplateSourceVideoDto,
-  GoldTemplateVersionDto,
 PresignUploadResponseDto,
 ConfirmUploadResponseDto,
   VideoStatusDto,
@@ -362,8 +295,6 @@ import {
   getGoldTemplateSourceVideos,
   generateGoldTemplate,
   saveGoldTemplate,
-  getGoldTemplateVersions,
-  updateGoldTemplateVersionStatus,
 } from '@/services/config';
 
 /* ========== 工具函数 ========== */
@@ -512,10 +443,6 @@ const saving = ref(false);
 
 /* ========== 状态：版本管理 ========== */
 
-const versionRows = ref<GoldTemplateVersionDto[]>([]);
-const loadingVersions = ref(false);
-const versionStatusFilter = ref(-1);
-const togglingVersionId = ref<number | null>(null);
 const operationState = ref<{ kind: 'idle' | 'saving' | 'success' | 'error'; title: string; detail: string; retry?: () => void }>({ kind: 'idle', title: '操作状态', detail: '尚未执行保存或版本操作。' });
 
 function setOperationState(kind: 'saving' | 'success' | 'error', title: string, detail: string, retry?: () => void) {
@@ -531,15 +458,6 @@ const sourceVideoOptions = computed(() =>
 const selectedVideoInfo = computed(() =>
   sourceVideoOptions.value.find((v) => v.videoId === selectedVideoId.value) ?? null,
 );
-
-const activeVersionCount = computed(
-  () => versionRows.value.filter((v) => v.status === 1).length,
-);
-
-const activeVersionLabel = computed(() => {
-  const active = versionRows.value.find((v) => v.status === 1 && v.actionType === selectedActionType.value);
-  return active ? `${active.version}（${actionTypeLabel(active.actionType)}）` : '暂无启用版本';
-});
 
 const latestGeneratedAtLabel = computed(() =>
   generatedResult.value ? formatDateTime(generatedResult.value.generatedAt) : '-',
@@ -643,7 +561,7 @@ async function handleUploadAnalyzeGenerate() {
     /* 1. 以管理员身份创建金标准内部样本 */
     uploadProgressText.value = '步骤 1/4：创建金标准内部样本...';
     const presignRes = await axios.get<ApiEnvelope<PresignUploadResponseDto>>(
-      '/api/videos/admin/internal-samples/gold_template/presign-upload',
+      `/api/videos/admin/internal-samples/gold_template/presign-upload?actionType=${encodeURIComponent(selectedActionType.value)}`,
       { headers: adminAuthHeaders() },
     );
     const presign = unwrap(presignRes.data);
@@ -819,7 +737,6 @@ async function handleSaveVersion() {
     setOperationState('success', '新版本已保存', `版本 ${newVersion.value.trim()} 已加入版本列表，可按需要启用。`);
     ElMessage.success('版本保存成功');
     clearGenerated();
-    await reloadVersions();
   } catch (err: unknown) {
     const msg = extractErrorMessage(err);
     setOperationState('error', '新版本保存失败', msg, () => void handleSaveVersion());
@@ -831,23 +748,6 @@ async function handleSaveVersion() {
 
 /* ========== 方法：版本管理 ========== */
 
-async function handleToggleStatus(templateId: number, newStatus: number) {
-  togglingVersionId.value = templateId;
-  setOperationState('saving', newStatus === 1 ? '正在启用版本' : '正在停用版本', '正在更新版本状态，完成后列表将自动刷新。', () => void handleToggleStatus(templateId, newStatus));
-  try {
-    await updateGoldTemplateVersionStatus(templateId, { status: newStatus });
-    setOperationState('success', newStatus === 1 ? '版本已启用' : '版本已停用', '版本状态已更新，当前列表已刷新。');
-    ElMessage.success(newStatus === 1 ? '已启用' : '已停用');
-    await reloadVersions();
-  } catch (err: unknown) {
-    const msg = extractErrorMessage(err);
-    setOperationState('error', '版本状态更新失败', msg, () => void handleToggleStatus(templateId, newStatus));
-    ElMessage.error(`操作失败：${msg}`);
-  } finally {
-    togglingVersionId.value = null;
-  }
-}
-
 /* ========== 数据加载 ========== */
 
 async function loadSourceVideos() {
@@ -855,8 +755,9 @@ async function loadSourceVideos() {
   try {
     const res = await getGoldTemplateSourceVideos(selectedActionType.value);
     sourceVideos.value = res.items ?? [];
-  } catch {
+  } catch (error: any) {
     sourceVideos.value = [];
+    ElMessage.error(error?.response?.data?.message || '加载候选视频失败');
   } finally {
     loadingSources.value = false;
   }
@@ -866,31 +767,11 @@ async function reloadSources() {
   await loadSourceVideos();
 }
 
-async function loadVersions() {
-  loadingVersions.value = true;
-  try {
-    const params: { status?: number; limit?: number } = {};
-    if (versionStatusFilter.value >= 0) params.status = versionStatusFilter.value;
-    params.limit = 50;
-    const res = await getGoldTemplateVersions(params);
-    versionRows.value = res.items ?? [];
-  } catch {
-    versionRows.value = [];
-  } finally {
-    loadingVersions.value = false;
-  }
-}
-
-async function reloadVersions() {
-  await loadVersions();
-}
-
 /* ========== 生命周期 ========== */
 
 onMounted(() => {
   applyParamPreset(ACTION_DEFAULT_PRESET[selectedActionType.value]);
   loadSourceVideos();
-  loadVersions();
 });
 
 onBeforeUnmount(() => {

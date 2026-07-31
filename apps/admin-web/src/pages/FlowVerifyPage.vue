@@ -751,6 +751,7 @@ async function startVerification() {
 try {
 appendLog('步骤1：创建流程验证内部样本');
 const presignResponse = await api.get<ApiEnvelope<PresignData>>('/videos/admin/internal-samples/admin_flow_verify/presign-upload', {
+params: { actionType: form.actionType },
 headers: adminAuthHeaders(),
 });
     const presign = unwrap(presignResponse.data);

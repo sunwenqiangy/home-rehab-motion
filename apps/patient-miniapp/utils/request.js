@@ -25,7 +25,19 @@ function createRequestError(statusCode, payload) {
     error.code = code;
     error.statusCode = statusCode;
     error.userMessage = message;
+    error.isBusinessError = (statusCode >= 200 && statusCode < 500);
+    error.isNetworkError = false;
     return error;
+}
+function createNetworkError(error) {
+    const message = error?.errMsg || '网络连接失败，请检查网络后重试。';
+    const requestError = new Error(message);
+    requestError.code = 'NETWORK_ERROR';
+    requestError.statusCode = 0;
+    requestError.userMessage = '网络连接失败，请检查网络后重试。';
+    requestError.isBusinessError = false;
+    requestError.isNetworkError = true;
+    return requestError;
 }
 let lastNetworkError = null;
 function getNetworkDiagnostics() {
@@ -76,7 +88,7 @@ function doRequest({ url, method = 'GET', data }, allowRelogin) {
                     at: new Date().toISOString(),
                 };
                 console.error('[网络请求失败]', lastNetworkError);
-                reject(new Error(errMsg));
+                reject(createNetworkError(error));
             },
         });
     });

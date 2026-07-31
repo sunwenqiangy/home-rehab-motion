@@ -2,12 +2,13 @@ import { request } from '@/utils/request';
 import type { AdminFeedbackListItemDto, FeedbackDto } from '@home-rehab-motion/shared-contract';
 
 export type ReplyTemplate = { code: string; label: string; content: string };
+export type FeedbackPage = { items: AdminFeedbackListItemDto[]; total: number; page: number; limit: number };
 
-export function getFeedbackList(safetyOnly = false, keyword = ''): Promise<AdminFeedbackListItemDto[]> {
-  return request<AdminFeedbackListItemDto[]>({
+export function getFeedbackList(safetyOnly = false, params: { keyword?: string; page?: number; limit?: number } = {}): Promise<FeedbackPage> {
+  return request<FeedbackPage>({
     url: safetyOnly ? '/admin/feedback/safety-records' : '/admin/feedback',
     method: 'GET',
-    params: keyword.trim() ? { keyword: keyword.trim() } : undefined,
+    params: { ...params, keyword: params.keyword?.trim() || undefined },
   });
 }
 export function getFeedbackDetail(feedbackId: number): Promise<AdminFeedbackListItemDto> {

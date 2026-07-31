@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseInterceptors,
@@ -12,7 +13,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
 import type { ConfirmUploadRequestDto, SaveManualVideoReviewRequestDto } from '@home-rehab-motion/shared-contract';
-import type { TrainingVideoSourceType } from '@home-rehab-motion/shared-types';
+import type { TrainingActionType, TrainingVideoSourceType } from '@home-rehab-motion/shared-types';
 import { AuditService } from '../audit/audit.service';
 import { AuthService } from '../auth/auth.service';
 import type { UploadedBinaryFile } from '../storage/storage.service';
@@ -27,9 +28,14 @@ export class VideoController {
   ) {}
 
   @Get('presign-upload')
-  getPresignUpload(@Req() req: Request) {
+  getPresignUpload(@Req() req: Request, @Query('actionType') actionType?: string) {
     const user = this.authService.requireUser(req, ['patient']);
-    return this.videoService.getPresignUpload(user.userId);
+    const supportedActionTypes = new Set<TrainingActionType>(['abdominal_crunch', 'pelvic_tilt', 'knee_rotation']);
+    const resolvedActionType = actionType as TrainingActionType;
+    if (!supportedActionTypes.has(resolvedActionType)) {
+      throw new BadRequestException('请选择有效的训练动作类型');
+    }
+    return this.videoService.getPresignUpload(user.userId, resolvedActionType);
   }
 
   @Post('confirm-upload')
@@ -39,13 +45,23 @@ export class VideoController {
   }
 
   @Get('admin/internal-samples/:sourceType/presign-upload')
-  getInternalSamplePresignUpload(@Req() req: Request, @Param('sourceType') sourceType: string) {
+  getInternalSamplePresignUpload(
+    @Req() req: Request,
+    @Param('sourceType') sourceType: string,
+    @Query('actionType') actionType?: string,
+  ) {
     this.authService.requireUser(req, ['admin']);
     if (sourceType !== 'admin_flow_verify' && sourceType !== 'gold_template') {
       throw new BadRequestException('不支持的内部样本类型');
     }
+    const supportedActionTypes = new Set<TrainingActionType>(['abdominal_crunch', 'pelvic_tilt', 'knee_rotation']);
+    const resolvedActionType = actionType as TrainingActionType;
+    if (!supportedActionTypes.has(resolvedActionType)) {
+      throw new BadRequestException('请选择有效的训练动作类型');
+    }
     return this.videoService.getInternalSamplePresignUpload(
       sourceType as Exclude<TrainingVideoSourceType, 'miniapp'>,
+      resolvedActionType,
     );
   }
 
@@ -95,10 +111,33 @@ export class VideoController {
     return this.videoService.getVideoStatus(Number(videoId), user.userId);
   }
 
-  @Get('admin/list')
-  getAdminVideoList(@Req() req: Request) {
+  @Get('admin/dashboard-overview')
+  getAdminDashboardOverview(@Req() req: Request, @Query('days') days?: string) {
     this.authService.requireUser(req, ['admin', 'nurse']);
-    return this.videoService.getAdminVideoList();
+    return this.videoService.getAdminDashboardOverview(Number(days) || 7);
+  }
+
+  @Get('admin/list')
+  getAdminVideoList(@Req() req: Request, @Query('page') page?: string, @Query('limit') limit?: string) {
+    this.authService.requireUser(req, ['admin', 'nurse']);
+    return this.videoService.getAdminVideoList({ page: Number(page) || 1, limit: Number(limit) || 10 });
+  }
+
+  @Get('admin/tasks')
+  getAdminAnalysisTasks(
+    @Req() req: Request,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    this.authService.requireUser(req, ['admin', 'nurse']);
+    return this.videoService.getAdminAnalysisTasks({ page: Number(page) || 1, limit: Number(limit) || 10, status });
+  }
+
+  @Post('admin/:videoId/reanalyze')
+  reanalyzeVideo(@Req() req: Request, @Param('videoId') videoId: string) {
+    this.authService.requireUser(req, ['admin']);
+    return this.videoService.retryAnalysis(Number(videoId));
   }
 
   @Get('admin/:videoId')

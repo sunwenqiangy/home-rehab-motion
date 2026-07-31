@@ -30,6 +30,10 @@
             <el-icon><VideoCamera /></el-icon>
             <template #title>视频记录</template>
           </el-menu-item>
+          <el-menu-item v-if="hasPermission('videos')" index="/analysis-tasks">
+            <el-icon><Timer /></el-icon>
+            <template #title>分析任务监控</template>
+          </el-menu-item>
           <el-menu-item v-if="hasPermission('guidance')" index="/guidance">
             <el-icon><Reading /></el-icon>
             <template #title>指导内容</template>
@@ -43,6 +47,10 @@
           <el-menu-item v-if="hasPermission('thresholds')" index="/thresholds">
             <el-icon><Setting /></el-icon>
             <template #title>阈值参数</template>
+          </el-menu-item>
+          <el-menu-item v-if="hasPermission('template-versions')" index="/template-versions">
+            <el-icon><Collection /></el-icon>
+            <template #title>版本管理</template>
           </el-menu-item>
           <el-menu-item v-if="hasPermission('motivation-rules')" index="/motivation-rules">
             <el-icon><Setting /></el-icon>
@@ -64,7 +72,7 @@
           </el-menu-item>
           <el-menu-item v-if="hasPermission('gold-templates')" index="/gold-templates">
             <el-icon><Collection /></el-icon>
-            <template #title>金标准管理</template>
+            <template #title>金标准提取</template>
           </el-menu-item>
         </el-menu>
       </el-scrollbar>
@@ -145,6 +153,7 @@ import {
   Expand,
   ArrowDown,
   Collection,
+  Timer,
 } from '@element-plus/icons-vue';
 import { hasPermission, getCurrentRole } from '@/utils/permission';
 
@@ -155,10 +164,12 @@ const isCollapse = ref(false);
 const activeMenu = computed(() => {
   const path = route.path;
   if (path.startsWith('/users')) return '/users';
+  if (path.startsWith('/analysis-tasks')) return '/analysis-tasks';
   if (path.startsWith('/videos')) return '/videos';
   if (path.startsWith('/flow-verify')) return '/flow-verify';
   if (path.startsWith('/guidance')) return '/guidance';
   if (path.startsWith('/gold-templates')) return '/gold-templates';
+  if (path.startsWith('/template-versions')) return '/template-versions';
   return path;
 });
 
@@ -171,11 +182,13 @@ const currentDescription = computed(() => {
     '/dashboard': '查看训练完成率、业务节奏与异常入口。',
     '/users': '汇总患者训练档案、训练记录与评分变化。',
     '/videos': '聚合患者视频状态、分析结果与质量风险。',
+    '/analysis-tasks': '查看分析队列、失败原因、补偿状态并执行重新分析。',
     '/flow-verify': '一键验证上传、分析与结果展示主链路。',
     '/guidance': '管理训练动作说明、多媒体素材与版本变化。',
     '/feedback': '跟进患者问题，快速处理上传与报告反馈。',
     '/thresholds': '统一维护算法模板、阈值版本和参考配置。',
-    '/gold-templates': '上传分析视频生成金标准，完成版本保存、启停与对比。',
+    '/gold-templates': '上传或选择内部样本，提取金标准统计参数并保存新版本。',
+    '/template-versions': '集中查看评分模板参数、阈值调优链路、启停与归档记录。',
     '/motivation-rules': '维护进步提示阈值和温和提醒频率，不影响既有训练快照。',
     '/patient-config': '管理患者端视频限制、周目标、分析等待时长等全局参数。',
     '/accounts': '查看当前后台账号与角色信息。',

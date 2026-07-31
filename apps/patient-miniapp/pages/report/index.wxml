@@ -34,13 +34,17 @@
   </view>
 
   <!-- 加载失败 -->
-  <view wx:elif="{{loadFailed}}" class="rp-loading">
+  <view wx:elif="{{loadFailed}}" class="rp-loading rp-error-state">
     <view class="rp-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
-    <view class="rp-loading__text">报告暂时不可用</view>
-    <view class="rp-loading__sub">{{errorMessage}}</view>
-    <view class="rp-loading__actions">
-      <button class="btn-big btn-teal" bindtap="onRetryLoad">重新获取报告</button>
-      <button class="btn-big btn-outline" bindtap="onViewAnalyzing">继续等待分析</button>
+    <view class="rp-error-state__card">
+      <view class="rp-error-state__icon">{{errorIcon}}</view>
+      <view class="rp-loading__text">{{errorTitle}}</view>
+      <view class="rp-loading__sub">{{errorMessage}}</view>
+      <view class="rp-loading__actions">
+        <button class="btn-big btn-teal" bindtap="onRetryLoad">重新获取报告</button>
+        <button wx:if="{{errorIcon === '⏳'}}" class="btn-big btn-outline" bindtap="onViewAnalyzing">继续等待分析</button>
+        <button wx:else class="btn-big btn-outline" bindtap="onViewHistory">查看训练记录</button>
+      </view>
     </view>
   </view>
 
@@ -115,15 +119,15 @@
             <text class="rp-metric-val rp-metric-val--orange">{{durationMetricText}}</text>
           </view>
         </view>
-        <view class="rp-metric-summary">最需要继续巩固的是<text class="rp-metric-summary__strong">动作控制</text>和<text class="rp-metric-summary__strong">保持时间</text>。</view>
+        <view class="rp-metric-summary">四项指标基于本次视频分析生成，可结合下方建议继续练习。</view>
       </view>
 
       <!-- 阶段重点 (绿色左边框) -->
       <view wx:if="{{!requiresManualReview}}" class="rp-stage-focus">
         <view class="rp-stage-focus__title">🌿 当前阶段：{{stageLabel}}</view>
         <view class="rp-stage-focus__body">
-          <text class="rp-stage-focus__line">✅ 这次节奏比上次更稳，您已经开始形成正确训练感觉</text>
-          <text class="rp-stage-focus__line">💡 继续把回正动作放慢，保持阶段多坚持1~2秒</text>
+          <text class="rp-stage-focus__line">💡 {{stageFocusDesc}}</text>
+          <text class="rp-stage-focus__line">✅ 请结合下方动作建议，按自己的节奏持续练习。</text>
         </view>
       </view>
 
@@ -160,7 +164,7 @@
           <block wx:for="{{adviceSummary}}" wx:key="adviceCode">
             <view class="rp-advice-item"><text class="rp-advice-item__dot"></text><text>{{item.patientText}}</text></view>
           </block>
-          <view wx:if="{{!adviceSummary.length}}" class="rp-advice-item"><text class="rp-advice-item__dot"></text><text>建议每日练习 2～3 组，保持自己的节奏。</text></view>
+          <view wx:if="{{!adviceSummary.length}}" class="rp-advice-item"><text class="rp-advice-item__dot"></text><text>本次暂未生成具体动作建议，可按训练指导中的步骤继续练习。</text></view>
         </view>
       </view>
 

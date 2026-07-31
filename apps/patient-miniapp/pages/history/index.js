@@ -16,6 +16,7 @@ const STATUS_LABEL_MAP = {
     completed: '已完成',
     failed: '分析失败',
     quality_insufficient: '视频质量不足',
+    review_required: '待人工复核',
 };
 function formatTime(uploadedAt) {
     const date = new Date(uploadedAt);
@@ -42,13 +43,15 @@ function buildDotColor(status) {
         return 'teal';
     if (status === 'quality_insufficient')
         return 'orange';
+    if (status === 'review_required')
+        return 'orange';
     return 'red';
 }
 function buildRecordItem(item) {
     const status = item.status;
     const dotColor = buildDotColor(status);
     const actionLabel = ACTION_LABEL_MAP[item.actionType] || '训练动作';
-    const statusLabel = STATUS_LABEL_MAP[status] || '处理中';
+    const statusLabel = STATUS_LABEL_MAP[status] || '状态待确认';
     const timeLabel = `${formatTime(item.uploadedAt)} · ${statusLabel}`;
     const showScore = status === 'completed' && typeof item.averageScore === 'number';
     let scoreText = '';
@@ -68,6 +71,10 @@ function buildRecordItem(item) {
     else if (status === 'quality_insufficient') {
         chipColor = 'orange';
         chipText = '重新上传';
+    }
+    else if (status === 'review_required') {
+        chipColor = 'orange';
+        chipText = '查看说明';
     }
     return {
         videoId: item.videoId,
@@ -99,6 +106,7 @@ Page({
         statusBarHeight: 20,
         topPlaceholderHeight: 128,
         loading: true,
+        listLoadFailed: false,
         activeFilter: 'all',
         filterChips: [
             { key: 'all', label: '全部' },
@@ -106,10 +114,13 @@ Page({
             { key: 'pelvic_tilt', label: '骨盆' },
             { key: 'knee_rotation', label: '膝关节' },
         ],
-        monthCount: 0,
-        avgScore: 0,
-        scoreTrend: '↑3',
-        weeklyLabel: '0 / 7 天',
+        summaryLoading: true,
+        summaryItems: [
+            { label: '累计训练', value: '--', color: 'teal' },
+            { label: '平均得分', value: '--', color: 'green' },
+            { label: '分数趋势', value: '--', color: 'orange' },
+        ],
+        weeklyLabel: '--',
         weeklyProgress: 0,
         weeklyProgressUnavailable: false,
         groupedItems: [],
@@ -128,35 +139,73 @@ Page({
             wx.reLaunch({ url: '/pages/auth/login' });
             return;
         }
-        this.setData({ loading: true });
+        this.setData({
+            loading: true,
+            listLoadFailed: false,
+            summaryLoading: true,
+            summaryItems: [
+                { label: '累计训练', value: '--', color: 'teal' },
+                { label: '平均得分', value: '--', color: 'green' },
+                { label: '分数趋势', value: '--', color: 'orange' },
+            ],
+            weeklyLabel: '--',
+            weeklyProgress: 0,
+            weeklyProgressUnavailable: false,
+            groupedItems: [],
+            allRawItems: [],
+            allRecords: [],
+        });
         try {
             const [items, trainingSummary] = await Promise.all([(0, history_1.getHistoryVideos)(), (0, me_1.getTrainingSummary)()]);
             const allRecords = items.map(buildRecordItem);
             const groupedItems = groupByDate(allRecords, items);
-            const completedItems = items.filter((i) => i.status === 'completed');
-            const avgScore = completedItems.length
-                ? Math.round(completedItems.reduce((s, i) => s + (i.averageScore || 0), 0) / completedItems.length)
-                : 0;
+            const scoredItems = items.filter((item) =>
+                item.status === 'completed' && typeof item.averageScore === 'number' && Number.isFinite(item.averageScore),
+            );
+            const avgScore = scoredItems.length
+                ? Math.round(scoredItems.reduce((sum, item) => sum + item.averageScore, 0) / scoredItems.length)
+                : '--';
+            const improvementLevel = trainingSummary.improvementLevel;
+            const scoreTrend = improvementLevel === 'clear'
+                ? '进步明显'
+                : improvementLevel === 'slight'
+                    ? '稳步提升'
+                    : improvementLevel === 'stable'
+                        ? '稳定中'
+                        : '--';
+            const weeklyProgress = trainingSummary.weeklyProgress;
+            const hasWeeklyProgress = Boolean(weeklyProgress && typeof weeklyProgress.progressPercent === 'number');
             this.setData({
+                summaryLoading: false,
                 allRawItems: items,
                 allRecords,
                 groupedItems: this.filterRecords(this.data.activeFilter, allRecords, items),
-                monthCount: trainingSummary.totalTrainingCount || 0,
-                avgScore,
-                scoreTrend: trainingSummary.improvementLevel === 'clear'
-                    ? '进步明显'
-                    : trainingSummary.improvementLevel === 'slight'
-                        ? '稳步提升'
-                        : '稳定中',
-                weeklyLabel: trainingSummary.weeklyProgress.label || '0/7天',
-                weeklyProgress: trainingSummary.weeklyProgress.progressPercent || 0,
+                summaryItems: [
+                    { label: '累计训练', value: trainingSummary.totalTrainingCount || 0, color: 'teal' },
+                    { label: '平均得分', value: avgScore, color: 'green' },
+                    { label: '分数趋势', value: scoreTrend, color: 'orange' },
+                ],
+                weeklyLabel: hasWeeklyProgress && weeklyProgress.label ? weeklyProgress.label : '--',
+                weeklyProgress: hasWeeklyProgress ? weeklyProgress.progressPercent : 0,
+                weeklyProgressUnavailable: !hasWeeklyProgress,
             });
         }
-        catch (_error) {
+        catch (error) {
+            console.error('[训练历史加载失败]', error);
             this.setData({
+                listLoadFailed: true,
+                summaryLoading: false,
+                summaryItems: [
+                    { label: '累计训练', value: '--', color: 'teal' },
+                    { label: '平均得分', value: '--', color: 'green' },
+                    { label: '分数趋势', value: '--', color: 'orange' },
+                ],
                 weeklyLabel: '暂时无法加载',
                 weeklyProgress: 0,
                 weeklyProgressUnavailable: true,
+                groupedItems: [],
+                allRawItems: [],
+                allRecords: [],
             });
         }
         finally {
@@ -165,6 +214,9 @@ Page({
         }
     },
     onRetryWeeklyProgress() {
+        this.onShow();
+    },
+    onRetryHistoryLoad() {
         this.onShow();
     },
     updateTopPlaceholderHeight() {
@@ -196,7 +248,7 @@ Page({
     },
     onViewReport(event) {
         const { videoId, status, actionType } = event.currentTarget.dataset;
-        if (status === 'completed') {
+        if (status === 'completed' || status === 'review_required') {
             wx.navigateTo({ url: `/pages/report/index?videoId=${videoId}` });
             return;
         }

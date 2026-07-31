@@ -31,17 +31,10 @@
 
     <!-- 统计概览 3列 -->
     <view class="v4-stats-grid">
-      <view class="v4-stats-card">
-        <view class="v4-stats-value v4-stats-value--teal">{{monthCount}}</view>
-        <view class="v4-stats-label">本月训练</view>
-      </view>
-      <view class="v4-stats-card">
-        <view class="v4-stats-value v4-stats-value--green">{{avgScore}}</view>
-        <view class="v4-stats-label">平均得分</view>
-      </view>
-      <view class="v4-stats-card">
-        <view class="v4-stats-value v4-stats-value--orange">{{scoreTrend}}</view>
-        <view class="v4-stats-label">分数趋势</view>
+      <view class="v4-stats-card" wx:for="{{summaryItems}}" wx:key="label">
+        <view wx:if="{{summaryLoading}}" class="v4-summary-skeleton"></view>
+        <view wx:else class="v4-stats-value v4-stats-value--{{item.color}}">{{item.value}}</view>
+        <view class="v4-stats-label">{{item.label}}</view>
       </view>
     </view>
 
@@ -49,12 +42,14 @@
     <view class="v4-info-panel">
       <view class="v4-info-head">
         <view class="v4-info-title">📈 本周成长进度</view>
-        <text class="v4-chip v4-chip--teal v4-chip--sm">{{weeklyLabel}}</text>
+        <view wx:if="{{summaryLoading}}" class="v4-progress-skeleton v4-progress-skeleton--chip"></view>
+        <text wx:else class="v4-chip v4-chip--teal v4-chip--sm">{{weeklyLabel}}</text>
       </view>
-      <view class="v4-progress-bar">
+      <view wx:if="{{summaryLoading}}" class="v4-progress-skeleton v4-progress-skeleton--bar"></view>
+      <view wx:else class="v4-progress-bar">
         <view class="v4-progress-fill" style="width: {{weeklyProgress}}%;"></view>
       </view>
-      <view wx:if="{{weeklyProgressUnavailable}}" class="v4-progress-error">
+      <view wx:if="{{!summaryLoading && weeklyProgressUnavailable}}" class="v4-progress-error">
         <text>成长进度暂时无法加载</text>
         <text class="v4-progress-retry" bindtap="onRetryWeeklyProgress">点击重试</text>
       </view>
@@ -64,6 +59,14 @@
     <view wx:if="{{loading}}" class="v4-empty-state">
       <view class="v4-empty-icon">⏳</view>
       <view class="v4-empty-title">正在加载历史记录...</view>
+    </view>
+
+    <!-- 请求失败态：不能与“还没有训练记录”混用。 -->
+    <view wx:elif="{{listLoadFailed}}" class="v4-empty-state">
+      <view class="v4-empty-icon">⚠️</view>
+      <view class="v4-empty-title">训练历史暂时无法加载</view>
+      <view class="v4-empty-desc">请检查网络后重新加载。</view>
+      <view class="v4-empty-action" bindtap="onRetryHistoryLoad">重新加载</view>
     </view>
 
     <!-- 空态 -->

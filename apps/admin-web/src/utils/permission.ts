@@ -26,6 +26,7 @@ export const PERMISSION_MAP: Record<string, UserRole[]> = {
   'feedback': ['admin', 'nurse'],
   'thresholds': ['admin'],
   'gold-templates': ['admin'],
+  'template-versions': ['admin'],
   'motivation-rules': ['admin'],
   'patient-config': ['admin'],
   'accounts': ['admin'],

@@ -72,6 +72,68 @@ page {
   box-sizing: border-box;
 }
 
+.home-v4-loading-content {
+  display: flex;
+  flex-direction: column;
+  gap: 28rpx;
+}
+
+.home-v4-skeleton-hero {
+  margin-bottom: 0;
+}
+
+.home-v4-skeleton-card {
+  padding: 40rpx;
+  border-radius: 40rpx;
+  background: #ffffff;
+  box-shadow: 0 4rpx 24rpx rgba(14, 154, 167, 0.08);
+}
+
+.home-v4-skeleton {
+  border-radius: 16rpx;
+  background: #e6eef1;
+  animation: home-v4-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.home-v4-skeleton--badge { width: 150rpx; height: 44rpx; background: rgba(255, 255, 255, 0.32); }
+.home-v4-skeleton--hero-title { width: 54%; height: 52rpx; margin-top: 22rpx; background: rgba(255, 255, 255, 0.42); }
+.home-v4-skeleton--hero-line { width: 88%; height: 32rpx; margin-top: 18rpx; background: rgba(255, 255, 255, 0.32); }
+.home-v4-skeleton--hero-button { width: 100%; height: 88rpx; margin-top: 34rpx; background: rgba(255, 255, 255, 0.78); }
+.home-v4-skeleton--section-title { width: 42%; height: 34rpx; }
+.home-v4-skeleton--line { width: 92%; height: 28rpx; margin-top: 22rpx; }
+.home-v4-skeleton--line-short { width: 66%; height: 28rpx; margin-top: 16rpx; }
+
+@keyframes home-v4-skeleton-pulse {
+  50% { opacity: 0.45; }
+}
+
+.home-v4-error-wrap {
+  min-height: 640rpx;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 110rpx;
+  box-sizing: border-box;
+}
+
+.home-v4-state-card {
+  width: 100%;
+  margin: 0;
+  padding: 64rpx 38rpx;
+  border: 1rpx solid rgba(102, 159, 170, 0.14);
+  border-radius: 34rpx;
+  background: #ffffff;
+  text-align: center;
+  box-shadow: 0 12rpx 28rpx rgba(30, 103, 111, 0.06);
+}
+
+.home-v4-state-card__icon { font-size: 68rpx; }
+.home-v4-state-card__title { margin-top: 16rpx; color: #173b50; font-size: 32rpx; font-weight: 800; }
+.home-v4-state-card__desc { margin-top: 12rpx; color: #718096; font-size: 26rpx; line-height: 1.6; }
+.home-v4-state-card__hint { margin-top: 18rpx; color: #9aaab8; font-size: 22rpx; line-height: 1.5; }
+.home-v4-state-card__action { display: inline-flex; margin-top: 30rpx; min-height: 64rpx; padding: 0 36rpx; align-items: center; justify-content: center; border-radius: 999rpx; color: #087f8b; background: #e6f7f8; font-size: 26rpx; font-weight: 800; }
+.home-v4-state-card__action:active { opacity: 0.72; transform: scale(0.98); }
+
 .v4-card,
 .v4-weekly-panel,
 .v4-info-panel {
@@ -545,24 +607,48 @@ display: flex;
 }
 
 .home-v4-tab {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4rpx;
+  min-height: 82rpx;
   font-size: 22rpx;
   color: #718096;
   text-decoration: none;
 }
 
 .home-v4-tab-active {
-  color: #0e9aa7;
+  color: #087f8b;
+  font-weight: 800;
+}
+
+.home-v4-tab-active::after {
+  position: absolute;
+  top: -2rpx;
+  width: 56rpx;
+  height: 6rpx;
+  border-radius: 999rpx;
+  background: #0e9aa7;
+  content: '';
 }
 
 .home-v4-tab__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
   font-size: 40rpx;
   line-height: 1;
+}
+
+.home-v4-tab-active .home-v4-tab__icon {
+  border-radius: 16rpx;
+  background: #e6f7f8;
+  transform: translateY(-2rpx) scale(1.08);
 }
 
 .home-v4-tab__label {

@@ -29,15 +29,12 @@ export class FeedbackService {
     private readonly storage: StorageService,
   ) {}
 
-  getFeedbackImageUploadTarget(userId: number): FeedbackImageUploadTargetDto {
+  async getFeedbackImageUploadTarget(userId: number): Promise<FeedbackImageUploadTargetDto> {
     const timestamp = Date.now();
     const objectKey = `feedback/${userId}/${timestamp}.png`;
-    return {
-      uploadUrl: `${process.env.PUBLIC_API_BASE_URL || 'http://127.0.0.1:3000/api'}/feedback/upload-image`,
-      objectKey,
-      // 上传完成前没有可用预览地址；数据库始终保存 objectKey。
-      assetUrl: '',
-    };
+    // 生产环境主服务为只读容器，反馈图片必须像训练视频一样直传私有 OSS，
+    // 不能再经过会写本地文件系统的 /feedback/upload-image 代理接口。
+    return this.storage.createPrivateImageUploadTarget(objectKey);
   }
 
   async uploadFeedbackImage(userId: number, objectKey: string, file?: UploadedBinaryFile) {
@@ -57,8 +54,8 @@ export class FeedbackService {
   }
 
   async createFeedback(userId: number, payload: CreateFeedbackRequestDto): Promise<FeedbackDto> {
-    const content = this.validateContent(payload.content);
     const imageUrls = this.validateImageUrls(userId, payload.imageUrls);
+    const content = this.validateContent(payload.content, MAX_CONTENT_LENGTH, imageUrls.length > 0);
     if (payload.videoId) await this.ensureOwnVideo(userId, payload.videoId);
 
     const isSafety = payload.feedbackType === 'body_discomfort';
@@ -127,8 +124,8 @@ export class FeedbackService {
   }
 
   async appendPatientMessage(userId: number, feedbackId: number, payload: { content?: string; imageUrls?: string[] }): Promise<FeedbackDto> {
-    const content = this.validateContent(payload.content);
     const imageUrls = this.validateImageUrls(userId, payload.imageUrls);
+    const content = this.validateContent(payload.content, MAX_CONTENT_LENGTH, imageUrls.length > 0);
     const feedback = await this.prisma.feedback.findUnique({ where: { feedback_id: BigInt(feedbackId) } });
     if (!feedback) throw new NotFoundException(`反馈不存在: ${feedbackId}`);
     if (Number(feedback.user_id) !== userId) throw new ForbiddenException('无权补充他人的反馈');
@@ -146,28 +143,40 @@ export class FeedbackService {
     return this.getPatientFeedbackDetail(userId, feedbackId);
   }
 
-  async getAdminFeedbackList(options: { safetyOnly?: boolean; keyword?: string } = {}): Promise<AdminFeedbackListItemDto[]> {
+  async getAdminFeedbackList(options: { safetyOnly?: boolean; keyword?: string; page?: number; limit?: number } = {}) {
     const keyword = options.keyword?.trim();
+    const page = Math.max(1, Math.floor(options.page || 1));
+    const limit = Math.min(100, Math.max(1, Math.floor(options.limit || 10)));
     const numericKeyword = keyword && /^\d+$/.test(keyword) ? BigInt(keyword) : undefined;
-    const feedbacks = await this.prisma.feedback.findMany({
-      where: {
-        handling_mode: options.safetyOnly ? 'safety_auto' : 'manual',
-        ...(keyword ? {
-          OR: [
-            ...(numericKeyword ? [{ feedback_id: numericKeyword }, { user_id: numericKeyword }] : []),
-            { user: { name: { contains: keyword } } },
-          ],
-        } : {}),
-      },
-      orderBy: [{ status: 'asc' }, { last_message_at: 'asc' }],
-      take: 100,
-      include: { user: true, video: { include: { video_evaluation_result: true } }, messages: { orderBy: { created_at: 'desc' }, take: 1 } },
-    });
-    return feedbacks.map((item) => ({
-      ...this.toFeedbackDto(item, item.messages),
-      patientId: Number(item.user_id),
-      patientName: item.user.name || undefined,
-    }));
+    const where = {
+      handling_mode: options.safetyOnly ? 'safety_auto' : 'manual',
+      ...(keyword ? {
+        OR: [
+          ...(numericKeyword ? [{ feedback_id: numericKeyword }, { user_id: numericKeyword }] : []),
+          { user: { name: { contains: keyword } } },
+        ],
+      } : {}),
+    };
+    const [total, feedbacks] = await this.prisma.$transaction([
+      this.prisma.feedback.count({ where }),
+      this.prisma.feedback.findMany({
+        where,
+        orderBy: [{ status: 'asc' }, { last_message_at: 'asc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { user: true, video: { include: { video_evaluation_result: true } }, messages: { orderBy: { created_at: 'desc' }, take: 1 } },
+      }),
+    ]);
+    return {
+      items: feedbacks.map((item) => ({
+        ...this.toFeedbackDto(item, item.messages),
+        patientId: Number(item.user_id),
+        patientName: item.user.name || undefined,
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 
   async getAdminFeedbackDetail(feedbackId: number): Promise<AdminFeedbackListItemDto> {
@@ -338,9 +347,9 @@ export class FeedbackService {
     };
   }
 
-  private validateContent(value: unknown, maxLength = MAX_CONTENT_LENGTH) {
+  private validateContent(value: unknown, maxLength = MAX_CONTENT_LENGTH, allowEmpty = false) {
     const content = String(value || '').trim();
-    if (content.length < 1) throw new BadRequestException('反馈内容至少需要 1 个字');
+    if (content.length < 1 && !allowEmpty) throw new BadRequestException('请填写反馈内容或至少上传一张图片');
     if (content.length > maxLength) throw new BadRequestException(`反馈内容不能超过 ${maxLength} 个字`);
     return content;
   }

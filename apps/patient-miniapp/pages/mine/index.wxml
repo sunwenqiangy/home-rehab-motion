@@ -22,8 +22,18 @@
       <view class="v4-profile-row">
         <view class="v4-profile-avatar">{{isLoggedIn ? '👩' : '👤'}}</view>
         <view class="v4-profile-info">
-          <view class="v4-profile-name">{{isLoggedIn ? nickname : '先登录，再保存你的练习'}}</view>
-          <view class="v4-profile-sub">{{isLoggedIn ? profileLine : '登录后可同步训练记录、动作分析和成长进度'}}</view>
+          <view wx:if="{{isLoggedIn && profileLoading}}" class="v4-profile-skeleton">
+            <view class="v4-skeleton-line v4-skeleton-line--name"></view>
+            <view class="v4-skeleton-line v4-skeleton-line--sub"></view>
+          </view>
+          <block wx:elif="{{isLoggedIn}}">
+            <view class="v4-profile-name">{{nickname}}</view>
+            <view class="v4-profile-sub" wx:if="{{profileLine}}">{{profileLine}}</view>
+          </block>
+          <block wx:else>
+            <view class="v4-profile-name">先登录，再保存你的练习</view>
+            <view class="v4-profile-sub">登录后可同步训练记录、动作分析和成长进度</view>
+          </block>
         </view>
       </view>
       <button wx:if="{{!isLoggedIn}}" class="v4-hero-login-button" bindtap="goToLogin">微信登录</button>
@@ -36,17 +46,10 @@
 
     <!-- 训练概况 3列 -->
     <view class="v4-stats-grid v4-stats-grid--3">
-      <view class="v4-stats-card">
-        <view class="v4-stats-value v4-stats-value--teal">{{totalCount}}</view>
-        <view class="v4-stats-label">总训练次数</view>
-      </view>
-      <view class="v4-stats-card">
-        <view class="v4-stats-value v4-stats-value--green">{{totalDays}}</view>
-        <view class="v4-stats-label">坚持天数</view>
-      </view>
-      <view class="v4-stats-card">
-        <view class="v4-stats-value v4-stats-value--orange">{{maxScore}}</view>
-        <view class="v4-stats-label">最高评分</view>
+      <view class="v4-stats-card" wx:for="{{statsItems}}" wx:key="label">
+        <view wx:if="{{profileLoading}}" class="v4-skeleton-block v4-skeleton-block--stat"></view>
+        <view wx:else class="v4-stats-value v4-stats-value--{{item.color}}">{{item.value}}</view>
+        <view class="v4-stats-label">{{item.label}}</view>
       </view>
     </view>
 
@@ -54,9 +57,11 @@
     <view class="v4-info-panel">
       <view class="v4-info-head">
         <view class="v4-info-title">🏅 我的徽章</view>
-        <text class="v4-chip v4-chip--teal v4-chip--sm">{{badgeCountText}}</text>
+        <view wx:if="{{profileLoading}}" class="v4-skeleton-block v4-skeleton-block--chip"></view>
+        <text wx:else class="v4-chip v4-chip--teal v4-chip--sm">{{badgeCountText}}</text>
       </view>
-      <view class="v4-badge-quick" wx:if="{{badgeWallItems.length}}">
+      <view wx:if="{{profileLoading}}" class="v4-badge-loading">正在加载徽章与训练数据…</view>
+      <view class="v4-badge-quick" wx:elif="{{badgeWallItems.length}}">
         <view class="v4-badge-item" wx:for="{{badgeWallItems}}" wx:key="badgeCode">
           <view class="v4-badge-bubble v4-badge-bubble--{{item.colorVar}}">{{item.emoji}}</view>
           <view class="v4-badge-name">{{item.title}}</view>

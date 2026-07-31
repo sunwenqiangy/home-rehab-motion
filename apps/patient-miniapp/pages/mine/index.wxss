@@ -108,6 +108,29 @@
   min-width: 0;
 }
 
+.v4-profile-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.v4-skeleton-line,
+.v4-skeleton-block {
+  background: rgba(255, 255, 255, 0.32);
+  border-radius: 999rpx;
+  animation: v4-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.v4-skeleton-line--name { width: 180rpx; height: 34rpx; }
+.v4-skeleton-line--sub { width: 250rpx; height: 24rpx; }
+.v4-skeleton-block { background: #edf2f7; }
+.v4-skeleton-block--stat { width: 62rpx; height: 48rpx; margin: 0 auto; }
+.v4-skeleton-block--chip { width: 110rpx; height: 40rpx; }
+
+@keyframes v4-skeleton-pulse {
+  50% { opacity: 0.45; }
+}
+
 .v4-hero-login-button {
   width: 100%;
   height: 76rpx;
@@ -223,6 +246,16 @@
 .v4-chip--sm { padding: 8rpx 24rpx; font-size: 24rpx; }
 
 /* 徽章快速入口 */
+.v4-badge-loading {
+  margin-top: 24rpx;
+  padding: 28rpx;
+  border-radius: 20rpx;
+  color: #718096;
+  background: #f8fafc;
+  font-size: 26rpx;
+  text-align: center;
+}
+
 .v4-badge-quick {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -378,21 +411,43 @@
   z-index: 10;
 }
 .v4-tab-item {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4rpx;
   justify-content: center;
+  min-height: 82rpx;
   font-size: 22rpx;
   color: #718096;
 }
 .v4-tab-item--active {
-  color: #0e9aa7;
+  color: #087f8b;
+  font-weight: 800;
+}
+.v4-tab-item--active::after {
+  position: absolute;
+  top: -2rpx;
+  width: 56rpx;
+  height: 6rpx;
+  border-radius: 999rpx;
+  background: #0e9aa7;
+  content: '';
 }
 .v4-tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
   font-size: 40rpx;
   line-height: 1;
+}
+.v4-tab-item--active .v4-tab-icon {
+  border-radius: 16rpx;
+  background: #e6f7f8;
+  transform: translateY(-2rpx) scale(1.08);
 }
 .v4-tab-label {
   font-size: 22rpx;

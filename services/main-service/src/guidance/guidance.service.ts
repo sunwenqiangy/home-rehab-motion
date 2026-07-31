@@ -8,13 +8,25 @@ import type {
   GuidanceContentDto,
   GuidanceListItemDto,
   GuidanceValidationResultDto,
-  GuidanceVersionDto,
   GuidanceStepDto,
   ShootingRequirementDto,
 } from '@home-rehab-motion/shared-contract';
 import type { TrainingActionType } from '@home-rehab-motion/shared-types';
 import { StorageService, type UploadedBinaryFile } from '../storage/storage.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+type GuidanceConfigPackageItem = {
+  actionType: TrainingActionType;
+  title: string;
+  snapshot: Record<string, unknown>;
+};
+
+type GuidanceConfigPackage = {
+  format: 'home-rehab-motion.guidance-config';
+  version: 1;
+  exportedAt: string;
+  items: GuidanceConfigPackageItem[];
+};
 
 type GuidanceRecord = {
   content_id: bigint;
@@ -186,6 +198,22 @@ export class GuidanceService {
     return content as GuidanceRecord;
   }
 
+  async getGuidanceDetailByAction(actionTypeInput: string): Promise<GuidanceContentDto> {
+    const actionType = asText(actionTypeInput, 30) as TrainingActionType;
+    if (!ACTION_TYPES.includes(actionType)) throw new BadRequestException('不支持的动作类型');
+    const contents = await this.prisma.guidanceContent.findMany({
+      where: { action_type: actionType, status: 1, published_version: { not: null } },
+      orderBy: { updated_at: 'desc' },
+      take: 2,
+    });
+    const content = contents[0];
+    if (!content) throw new NotFoundException('当前动作暂未上架指导内容');
+    if (contents.length > 1) {
+      await this.prisma.guidanceContent.updateMany({ where: { content_id: { in: contents.slice(1).map((item) => item.content_id) } }, data: { status: 0 } });
+    }
+    return this.getGuidanceDetail(Number(content.content_id));
+  }
+
   async getGuidanceDetail(contentId: number): Promise<GuidanceContentDto> {
     const content = await this.findContent(contentId);
     if (!content.published_version) throw new NotFoundException('当前动作指导暂未准备好');
@@ -211,11 +239,21 @@ export class GuidanceService {
   }
 
   async listAdminGuidance(): Promise<AdminGuidanceListItemDto[]> {
-    const list = await this.prisma.guidanceContent.findMany({ orderBy: { updated_at: 'desc' }, take: 50 });
+    const list = await this.prisma.guidanceContent.findMany({ orderBy: { updated_at: 'desc' }, take: 100 });
+    // 兼容历史数据：同一动作曾被错误地标记为多条启用时，仅保留最新一条为启用态。
+    const activeIdByAction = new Map<string, bigint>();
+    list.filter((item) => item.status === 1).forEach((item) => {
+      if (!activeIdByAction.has(item.action_type)) activeIdByAction.set(item.action_type, item.content_id);
+    });
+    const invalidActiveIds = list.filter((item) => item.status === 1 && activeIdByAction.get(item.action_type) !== item.content_id).map((item) => item.content_id);
+    if (invalidActiveIds.length) {
+      await this.prisma.guidanceContent.updateMany({ where: { content_id: { in: invalidActiveIds } }, data: { status: 0 } });
+    }
     return list.map((item) => ({
       contentId: Number(item.content_id),
       actionType: item.action_type as TrainingActionType,
       title: item.title,
+      enabled: item.status === 1 && activeIdByAction.get(item.action_type) === item.content_id,
       updatedAt: item.updated_at.toISOString(),
     }));
   }
@@ -223,64 +261,100 @@ export class GuidanceService {
   async createAdminGuidance(payload: Record<string, unknown>) {
     const actionType = asText(payload.actionType, 30) as TrainingActionType;
     if (!ACTION_TYPES.includes(actionType)) throw new BadRequestException('请选择有效的动作类型');
-    const draft = normalizeSnapshot(payload, 0, actionType);
-    const validation = validateSnapshot(draft);
+    const snapshot = normalizeSnapshot(payload, 0, actionType);
+    const validation = validateSnapshot(snapshot);
     if (!validation.valid) throw new BadRequestException({ message: '请补充完整内容后再保存', errors: validation.errors });
     const created = await this.prisma.guidanceContent.create({
-      data: { action_type: actionType, title: draft.title || '未命名指导内容', status: 1, version: 1, published_version: 1, draft_snapshot: toJson(draft) },
+      data: {
+        action_type: actionType,
+        title: snapshot.title || '未命名指导内容',
+        status: 0,
+        version: 1,
+        published_version: 1,
+        draft_snapshot: toJson(snapshot),
+      },
     });
-    const snapshot = { ...draft, contentId: Number(created.content_id), version: 1 };
-    await this.prisma.$transaction([
-      this.prisma.guidanceContentVersion.create({
-        data: { content_id: created.content_id, version: 1, snapshot: toJson(snapshot) },
-      }),
-      this.prisma.guidanceContent.update({
-        where: { content_id: created.content_id }, data: { draft_snapshot: toJson(snapshot) },
-      }),
-    ]);
-    return snapshot;
+    const result = { ...snapshot, contentId: Number(created.content_id), version: 1 };
+    await this.prisma.guidanceContentVersion.create({ data: { content_id: created.content_id, version: 1, snapshot: toJson(result) } });
+    return result;
   }
 
-  async getAdminDraft(id: number): Promise<GuidanceContentDto> {
+  async exportGuidanceConfigPackage(): Promise<GuidanceConfigPackage> {
+    const contents = await this.prisma.guidanceContent.findMany({
+      where: { action_type: { in: ACTION_TYPES } },
+      orderBy: [{ status: 'desc' }, { updated_at: 'desc' }],
+    });
+    const selectedByAction = new Map<TrainingActionType, GuidanceRecord>();
+    for (const content of contents as GuidanceRecord[]) {
+      const actionType = content.action_type as TrainingActionType;
+      if (!selectedByAction.has(actionType)) selectedByAction.set(actionType, content);
+    }
+
+    const items: GuidanceConfigPackageItem[] = [];
+    for (const actionType of ACTION_TYPES) {
+      const content = selectedByAction.get(actionType);
+      if (!content?.published_version) continue;
+      const version = await this.prisma.guidanceContentVersion.findUnique({
+        where: { content_id_version: { content_id: content.content_id, version: content.published_version } },
+      });
+      if (!isRecord(version?.snapshot)) continue;
+      const { contentId: _contentId, version: _version, ...snapshot } = version.snapshot;
+      items.push({ actionType, title: content.title, snapshot });
+    }
+
+    return { format: 'home-rehab-motion.guidance-config', version: 1, exportedAt: new Date().toISOString(), items };
+  }
+
+  async importGuidanceConfigPackage(payload: unknown) {
+    if (!isRecord(payload) || payload.format !== 'home-rehab-motion.guidance-config' || payload.version !== 1 || !Array.isArray(payload.items)) {
+      throw new BadRequestException('指导内容配置包格式无效');
+    }
+    const imported: string[] = [];
+    const skipped: string[] = [];
+    const invalid: string[] = [];
+    const seenActionTypes = new Set<TrainingActionType>();
+
+    for (const item of payload.items) {
+      if (!isRecord(item)) { invalid.push('存在无效配置项'); continue; }
+      const actionType = asText(item.actionType, 30) as TrainingActionType;
+      if (!ACTION_TYPES.includes(actionType) || seenActionTypes.has(actionType) || !isRecord(item.snapshot)) {
+        invalid.push(asText(item.title, 30) || actionType || '未知动作');
+        continue;
+      }
+      seenActionTypes.add(actionType);
+      const exists = await this.prisma.guidanceContent.count({ where: { action_type: actionType } });
+      if (exists) { skipped.push(actionType); continue; }
+      const snapshot = normalizeSnapshot(item.snapshot, 0, actionType);
+      const validation = validateSnapshot(snapshot);
+      if (!validation.valid) { invalid.push(`${actionType}（${validation.errors.join('、')}）`); continue; }
+      const created = await this.prisma.guidanceContent.create({
+        data: {
+          action_type: actionType,
+          title: snapshot.title,
+          status: 0,
+          version: 1,
+          published_version: 1,
+          draft_snapshot: toJson(snapshot),
+        },
+      });
+      const storedSnapshot = { ...snapshot, contentId: Number(created.content_id), version: 1 };
+      await this.prisma.guidanceContentVersion.create({
+        data: { content_id: created.content_id, version: 1, snapshot: toJson(storedSnapshot) },
+      });
+      imported.push(actionType);
+    }
+    return { imported, skipped, invalid };
+  }
+
+  async getAdminGuidance(id: number): Promise<GuidanceContentDto> {
     const content = await this.findContent(id);
-    const draft = normalizeStoredSnapshot(content.draft_snapshot, id, content.action_type as TrainingActionType);
-    if (draft.title || content.draft_snapshot) return this.withAccessibleAssetUrls(draft);
-    if (content.published_version) return this.getGuidanceDetail(id);
-    return draft;
-  }
-
-  async saveAdminDraft(id: number, payload: Record<string, unknown>) {
-    const current = await this.findContent(id);
-    const actionType = current.action_type as TrainingActionType;
-    const draft = normalizeSnapshot(payload, id, actionType);
-    await this.prisma.guidanceContent.update({
-      where: { content_id: BigInt(id) },
-      data: { title: draft.title || current.title, draft_snapshot: toJson(draft) },
+    if (!content.published_version) throw new NotFoundException('指导内容数据不完整');
+    const version = await this.prisma.guidanceContentVersion.findUnique({
+      where: { content_id_version: { content_id: BigInt(id), version: content.published_version } },
     });
-    return draft;
-  }
-
-  async validateAdminGuidance(id: number): Promise<GuidanceValidationResultDto> {
-    return validateSnapshot(await this.getAdminDraft(id));
-  }
-
-  async publishAdminGuidance(id: number) {
-    const current = await this.findContent(id);
-    const draft = await this.getAdminDraft(id);
-    const validation = validateSnapshot(draft);
-    if (!validation.valid) throw new BadRequestException({ message: '发布校验未通过', errors: validation.errors });
-    const nextVersion = current.version + 1;
-    const snapshot = { ...draft, version: nextVersion };
-    await this.prisma.$transaction([
-      this.prisma.guidanceContentVersion.create({
-        data: { content_id: BigInt(id), version: nextVersion, snapshot: toJson(snapshot) },
-      }),
-      this.prisma.guidanceContent.update({
-        where: { content_id: BigInt(id) },
-        data: { title: snapshot.title, status: 1, version: nextVersion, published_version: nextVersion, draft_snapshot: toJson(snapshot) },
-      }),
-    ]);
-    return snapshot;
+    if (!version?.snapshot) throw new NotFoundException('指导内容数据不完整');
+    const snapshot = normalizeStoredSnapshot(version.snapshot, id, content.action_type as TrainingActionType);
+    return { ...this.withAccessibleAssetUrls(snapshot), version: content.published_version };
   }
 
   async updateAdminGuidance(id: number, payload: Record<string, unknown>) {
@@ -288,57 +362,58 @@ export class GuidanceService {
     const snapshot = normalizeSnapshot(payload, id, current.action_type as TrainingActionType);
     const validation = validateSnapshot(snapshot);
     if (!validation.valid) throw new BadRequestException({ message: '请补充完整内容后再保存', errors: validation.errors });
-    // 对外不再维护版本：始终覆盖唯一的患者可见快照，并清理历史快照。
-    const publishedSnapshot = { ...snapshot, version: 1 };
+    const nextVersion = Math.max(1, current.version + 1);
+    const storedSnapshot = { ...snapshot, version: nextVersion };
     await this.prisma.$transaction([
-      this.prisma.guidanceContentVersion.upsert({
-        where: { content_id_version: { content_id: BigInt(id), version: 1 } },
-        update: { snapshot: toJson(publishedSnapshot) },
-        create: { content_id: BigInt(id), version: 1, snapshot: toJson(publishedSnapshot) },
-      }),
-      this.prisma.guidanceContentVersion.deleteMany({
-        where: { content_id: BigInt(id), version: { not: 1 } },
-      }),
+      this.prisma.guidanceContentVersion.create({ data: { content_id: BigInt(id), version: nextVersion, snapshot: toJson(storedSnapshot) } }),
       this.prisma.guidanceContent.update({
         where: { content_id: BigInt(id) },
-        data: {
-          title: snapshot.title || current.title,
-          status: 1,
-          version: 1,
-          published_version: 1,
-          draft_snapshot: toJson(publishedSnapshot),
-        },
+        data: { title: storedSnapshot.title || current.title, version: nextVersion, published_version: nextVersion, draft_snapshot: toJson(storedSnapshot) },
       }),
     ]);
-    return publishedSnapshot;
+    return storedSnapshot;
+  }
+
+  async setAdminGuidanceEnabled(id: number, enabled: boolean) {
+    const content = await this.findContent(id);
+    if (!enabled) {
+      await this.prisma.guidanceContent.update({ where: { content_id: BigInt(id) }, data: { status: 0 } });
+      return { contentId: id, enabled: false };
+    }
+    if (!content.published_version) throw new BadRequestException('内容不完整，无法启用');
+    await this.prisma.$transaction([
+      this.prisma.guidanceContent.updateMany({ where: { action_type: content.action_type, status: 1 }, data: { status: 0 } }),
+      this.prisma.guidanceContent.update({ where: { content_id: BigInt(id) }, data: { status: 1 } }),
+    ]);
+    return { contentId: id, enabled: true };
+  }
+
+  async copyAdminGuidance(id: number) {
+    const source = await this.findContent(id);
+    const snapshot = await this.getAdminGuidance(id);
+    const copiedTitle = `${snapshot.title}（副本）`.slice(0, 30);
+    const copySnapshot = { ...snapshot, contentId: 0, title: copiedTitle, version: 1 };
+    const created = await this.prisma.guidanceContent.create({
+      data: { action_type: source.action_type, title: copiedTitle, status: 0, version: 1, published_version: 1, draft_snapshot: toJson(copySnapshot) },
+    });
+    const result = { ...copySnapshot, contentId: Number(created.content_id) };
+    await this.prisma.guidanceContentVersion.create({ data: { content_id: created.content_id, version: 1, snapshot: toJson(result) } });
+    return result;
   }
 
   async deleteAdminGuidance(id: number): Promise<void> {
     const content = await this.findContent(id);
-    await this.prisma.$transaction([
-      this.prisma.guidanceContentVersion.deleteMany({ where: { content_id: content.content_id } }),
-      this.prisma.guidanceContent.delete({ where: { content_id: content.content_id } }),
-    ]);
-  }
-
-  async getGuidanceVersions(id: number): Promise<GuidanceVersionDto[]> {
-    await this.findContent(id);
-    const versions = await this.prisma.guidanceContentVersion.findMany({ where: { content_id: BigInt(id) }, orderBy: { version: 'desc' }, take: 20 });
-    return versions.map((item) => ({
-      contentId: id,
-      version: item.version,
-      createdAt: item.created_at.toISOString(),
-      snapshot: normalizeStoredSnapshot(item.snapshot, id, (item.snapshot as Record<string, unknown>)?.actionType as TrainingActionType || 'abdominal_crunch'),
-    }));
-  }
-
-  async rollbackAdminGuidance(id: number, version: number) {
-    const current = await this.findContent(id);
-    const target = await this.prisma.guidanceContentVersion.findUnique({ where: { content_id_version: { content_id: BigInt(id), version } } });
-    if (!target?.snapshot) throw new NotFoundException(`历史版本不存在: V${version}`);
-    const draft = normalizeStoredSnapshot(target.snapshot, id, current.action_type as TrainingActionType);
-    await this.prisma.guidanceContent.update({ where: { content_id: BigInt(id) }, data: { draft_snapshot: toJson(draft) } });
-    return draft;
+    try {
+      await this.prisma.$transaction([
+        this.prisma.guidanceContentVersion.deleteMany({ where: { content_id: content.content_id } }),
+        this.prisma.guidanceContent.delete({ where: { content_id: content.content_id } }),
+      ]);
+    } catch (error: any) {
+      if (error?.code === 'P2003') {
+        throw new BadRequestException('该指导内容仍被关联数据引用，暂时无法删除，请先下线保留记录');
+      }
+      throw error;
+    }
   }
 
   private withAccessibleAssetUrls(snapshot: GuidanceContentDto): GuidanceContentDto {

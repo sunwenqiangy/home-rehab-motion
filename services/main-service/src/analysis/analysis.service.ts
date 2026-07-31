@@ -36,6 +36,8 @@ export class AnalysisService {
   private readonly fallbackVideoBaseUrl =
     process.env.ANALYSIS_FALLBACK_VIDEO_BASE_URL || 'http://127.0.0.1:3000/oss-assets';
   private readonly allowCompatAnalyzeFallback = process.env.ANALYSIS_ALLOW_COMPAT_FALLBACK === 'true';
+  private readonly requestTimeoutMs = Number(process.env.ANALYSIS_REQUEST_TIMEOUT_MS || 15_000);
+  private readonly internalToken = process.env.ANALYSIS_INTERNAL_TOKEN || '';
 
   private postJson<T>(urlString: string, payload: Record<string, unknown>): Promise<T> {
     return new Promise((resolve, reject) => {
@@ -53,6 +55,7 @@ export class AnalysisService {
           headers: {
             'Content-Type': 'application/json',
             'Content-Length': Buffer.byteLength(body),
+            ...(this.internalToken ? { 'X-Internal-Token': this.internalToken } : {}),
           },
         },
         (res) => {
@@ -78,6 +81,9 @@ export class AnalysisService {
         },
       );
 
+      req.setTimeout(this.requestTimeoutMs, () => {
+        req.destroy(new Error(`analysis request timed out after ${this.requestTimeoutMs}ms`));
+      });
       req.on('error', reject);
       req.write(body);
       req.end();
@@ -102,6 +108,7 @@ export class AnalysisService {
           port: url.port,
           path: `${url.pathname}${url.search}`,
           method: 'GET',
+          headers: this.internalToken ? { 'X-Internal-Token': this.internalToken } : undefined,
         },
         (res) => {
           let data = '';
@@ -126,6 +133,9 @@ export class AnalysisService {
         },
       );
 
+      req.setTimeout(this.requestTimeoutMs, () => {
+        req.destroy(new Error(`analysis request timed out after ${this.requestTimeoutMs}ms`));
+      });
       req.on('error', reject);
       req.end();
     });
@@ -144,10 +154,6 @@ export class AnalysisService {
     sampleFps?: number;
     sigmaMultiplier?: number;
   }): Promise<AnalysisEnqueueResult> {
-    const callbackUrl =
-      process.env.ANALYSIS_CALLBACK_URL ||
-      'http://127.0.0.1:3000/api/videos/internal/analysis-callback';
-
     const thresholdConfig: Record<string, number> = {};
     if (typeof params.sigmaMultiplier === 'number' && Number.isFinite(params.sigmaMultiplier)) {
       thresholdConfig.sigma_multiplier = params.sigmaMultiplier;
@@ -158,7 +164,6 @@ export class AnalysisService {
       video_id: params.videoId,
       action_type: params.actionType,
       video_key: params.videoKey || undefined,
-      callback_url: callbackUrl,
       sample_fps:
         typeof params.sampleFps === 'number' && Number.isFinite(params.sampleFps)
           ? Math.max(5, Math.min(30, Math.round(params.sampleFps)))

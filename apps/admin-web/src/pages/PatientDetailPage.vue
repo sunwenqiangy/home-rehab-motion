@@ -55,6 +55,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getAdminPatientDetail, type PatientDetail } from '@/services/patient';
+import { ElMessage } from 'element-plus';
 import { ANALYSIS_STATUS_LABELS } from '@home-rehab-motion/shared-constants';
 import type { AnalysisStatus, TrainingActionType } from '@home-rehab-motion/shared-types';
 
@@ -109,7 +110,7 @@ async function loadDetail() {
   const patientId = Number(route.params.patientId);
   if (!patientId) return;
   loading.value = true;
-  try { detail.value = await getAdminPatientDetail(patientId); } finally { loading.value = false; }
+  try { detail.value = await getAdminPatientDetail(patientId); } catch (error: any) { detail.value = null; ElMessage.error(error?.response?.data?.message || '加载患者档案失败'); } finally { loading.value = false; }
 }
 
 onMounted(loadDetail);

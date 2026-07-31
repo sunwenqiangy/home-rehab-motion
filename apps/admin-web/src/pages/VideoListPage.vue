@@ -9,7 +9,7 @@
             汇总患者训练视频的上传状态、分析结果和质量情况，快速进入详情查看失败原因与分数表现。
           </p>
           <div class="page-hero__meta">
-            <span class="page-pill">共 {{ videos.length }} 条记录</span>
+            <span class="page-pill">共 {{ total }} 条记录</span>
             <span class="page-pill">完成分析 {{ completedCount }} 条</span>
             <span class="page-pill">异常/失败 {{ riskCount }} 条</span>
           </div>
@@ -59,7 +59,7 @@
             <div class="section-header__subtitle">支持按状态快速筛查问题视频，提升医护跟进效率。</div>
           </div>
           <div class="toolbar-group">
-            <span class="page-pill page-pill--light">当前加载 {{ videos.length }} 条</span>
+            <span class="page-pill page-pill--light">当前页 {{ videos.length }} 条</span>
             <el-button type="primary" @click="loadData" :loading="loading">刷新数据</el-button>
           </div>
         </div>
@@ -109,6 +109,10 @@
           </el-table-column>
         </el-table>
       </div>
+      <div class="pagination-bar">
+        <span>共 {{ total }} 条</span>
+        <el-pagination background layout="sizes, prev, pager, next" :current-page="page" :page-size="limit" :page-sizes="[10, 20, 50]" :total="total" @current-change="loadData" @size-change="handlePageSizeChange" />
+      </div>
     </el-card>
   </div>
 </template>
@@ -117,6 +121,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Setting, TrendCharts, VideoCamera } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 import { getAdminVideoList, type AdminVideoItem } from '@/services/video';
 import type { AnalysisStatus, TrainingActionType } from '@home-rehab-motion/shared-types';
 import { ANALYSIS_STATUS_LABELS } from '@home-rehab-motion/shared-constants';
@@ -125,6 +130,9 @@ const router = useRouter();
 const videos = ref<AdminVideoItem[]>([]);
 const loading = ref(false);
 const statusFilter = ref<AnalysisStatus | ''>('');
+const total = ref(0);
+const page = ref(1);
+const limit = ref(10);
 
 const statusOptions = [
   'pending',
@@ -218,12 +226,23 @@ function formatRelativeTime(value: string): string {
   return '较早上传';
 }
 
-async function loadData() {
+function handlePageSizeChange(nextLimit: number) {
+  limit.value = nextLimit;
+  loadData(1);
+}
+
+async function loadData(nextPage = page.value) {
   loading.value = true;
   try {
-    videos.value = await getAdminVideoList();
-  } catch {
+    const response = await getAdminVideoList({ page: nextPage, limit: limit.value });
+    videos.value = response.items;
+    total.value = response.total;
+    page.value = response.page;
+    limit.value = response.limit;
+  } catch (error: any) {
     videos.value = [];
+    total.value = 0;
+    ElMessage.error(error?.response?.data?.message || '加载视频列表失败');
   } finally {
     loading.value = false;
   }
@@ -236,4 +255,5 @@ onMounted(loadData);
 .time-cell { display: flex; flex-direction: column; gap: 3px; line-height: 1.25; }
 .time-cell__main { color: var(--ink-800); font-size: 12px; font-weight: 700; }
 .time-cell__relative { color: var(--ink-500); font-size: 11px; }
+.pagination-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; color: var(--ink-500); }
 </style>

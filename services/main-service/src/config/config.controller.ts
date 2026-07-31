@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import type {
   GoldTemplateGenerateRequestDto,
@@ -38,15 +38,18 @@ export class ConfigController {
     @Req() req: Request,
     @Query('actionType') actionType?: string,
     @Query('status') status?: string,
-    @Query('limit') limit?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
     this.authService.requireUser(req, ['admin']);
     const parsedStatus = status == null ? undefined : Number(status);
-    const parsedLimit = limit == null ? undefined : Number(limit);
+    const parsedPage = page == null ? undefined : Number(page);
+    const parsedPageSize = pageSize == null ? undefined : Number(pageSize);
     return this.configService.listGoldTemplateVersions({
       actionType,
       status: Number.isFinite(parsedStatus as number) ? parsedStatus : undefined,
-      limit: Number.isFinite(parsedLimit as number) ? parsedLimit : undefined,
+      page: Number.isFinite(parsedPage as number) ? parsedPage : undefined,
+      pageSize: Number.isFinite(parsedPageSize as number) ? parsedPageSize : undefined,
     });
   }
 
@@ -61,6 +64,24 @@ export class ConfigController {
     const user = this.authService.requireUser(req, ['admin']);
     const operator = user.accountId ? `admin:${user.accountId}` : 'admin';
     return this.configService.saveGoldTemplateVersion(payload, operator);
+  }
+
+  @Get('gold-templates/:templateId')
+  getGoldTemplateVersion(@Req() req: Request, @Param('templateId') templateId: string) {
+    this.authService.requireUser(req, ['admin']);
+    return this.configService.getGoldTemplateVersion(Number(templateId));
+  }
+
+  @Put('gold-templates/:templateId/archive')
+  archiveGoldTemplateVersion(@Req() req: Request, @Param('templateId') templateId: string) {
+    this.authService.requireUser(req, ['admin']);
+    return this.configService.archiveGoldTemplateVersion(Number(templateId));
+  }
+
+  @Delete('gold-templates/:templateId')
+  deleteGoldTemplateVersion(@Req() req: Request, @Param('templateId') templateId: string) {
+    this.authService.requireUser(req, ['admin']);
+    return this.configService.deleteGoldTemplateVersion(Number(templateId));
   }
 
   @Put('gold-templates/:templateId/status')
@@ -106,7 +127,14 @@ export class ConfigController {
     @Param('actionType') actionType: string,
     @Body() payload: Record<string, unknown>,
   ) {
-    this.authService.requireUser(req, ['admin']);
-    return this.configService.updateThreshold(actionType, payload);
+    const user = this.authService.requireUser(req, ['admin']);
+    const operator = user.accountId ? `admin:${user.accountId}` : 'admin';
+    return this.configService.createThresholdVersion({
+      actionType: actionType as any,
+      thresholdConfig: ((payload.thresholdConfig as Record<string, unknown> | undefined) || payload),
+      changeSummary: typeof payload.changeSummary === 'string' ? payload.changeSummary : undefined,
+      activate: payload.activate !== false,
+      parentTemplateId: typeof payload.parentTemplateId === 'number' ? payload.parentTemplateId : undefined,
+    }, operator);
   }
 }

@@ -26,13 +26,11 @@ function getAppConfig() {
     return app.globalData.appConfig || appConfig_1.DEFAULT_APP_CONFIG;
 }
 function buildQuickActions() {
-    const cfg = getAppConfig();
-    const supported = cfg.supportedActionTypes.length
-        ? cfg.supportedActionTypes
-        : ['abdominal_crunch'];
+    // 首页固定展示当前已运营的三类动作；接口配置仍用于训练规则、周目标等动态数据，
+    // 避免后台误配置额外动作导致患者看到没有完整指导与分析能力的入口。
+    const supported = ['abdominal_crunch', 'pelvic_tilt', 'knee_rotation'];
     return supported.map((actionType) => ({
         actionType,
-        contentId: CONTENT_ID_MAP[actionType] || 1,
         icon: ACTION_ICON_MAP[actionType] || '🏋️',
         label: ACTION_LABEL_MAP[actionType] || '训练动作',
         chipText: '去训练',
@@ -78,6 +76,14 @@ function formatRelativeDate(dateText) {
     if (diff === 1)
         return `昨天 ${formatTime(dateText)}`;
     return `${date.getMonth() + 1}月${date.getDate()}日`;
+}
+function getNetworkType() {
+    return new Promise((resolve) => {
+        wx.getNetworkType({
+            success: (result) => resolve(result.networkType || 'unknown'),
+            fail: () => resolve('unknown'),
+        });
+    });
 }
 function getActionColorClass(actionType) {
     if (actionType === 'abdominal_crunch')
@@ -170,6 +176,11 @@ Page({
         statusBarHeight: 20,
         topPlaceholderHeight: 128,
         isLoggedIn: false,
+        homeLoading: false,
+        homeLoadFailed: false,
+        homeErrorIcon: '⚠️',
+        homeErrorTitle: '',
+        homeErrorDesc: '',
         greetingText: '👋 您好',
         unreadCount: 0,
         showMessageReminder: false,
@@ -239,6 +250,10 @@ Page({
         const quickActions = buildQuickActions();
         const stage = buildStageItems('corrective');
         this.setData({
+            homeLoading: false,
+            homeLoadFailed: false,
+            homeErrorTitle: '',
+            homeErrorDesc: '',
             greetingText: '👋 您好，欢迎体验',
             unreadCount: 0,
             showMessageReminder: false,
@@ -298,18 +313,31 @@ Page({
         }
     },
     async loadHomeData() {
+        this.setData({
+            homeLoading: true,
+            homeLoadFailed: false,
+            homeErrorTitle: '',
+            homeErrorDesc: '',
+            recentTrainings: [],
+        });
+        const cfg = getAppConfig();
+        const quickActions = buildQuickActions();
         try {
-            const [profile, historyItems, trainingSummary] = await Promise.all([(0, me_1.getProfile)(), (0, history_1.getHistoryVideos)(), (0, me_1.getTrainingSummary)()]);
-            const stage = buildStageItems(trainingSummary.stage);
-            const cfg = getAppConfig();
-            const quickActions = buildQuickActions();
-            const weeklyLabel = trainingSummary.weeklyProgress.label || `0 / ${cfg.weeklyTarget} 天`;
-            const weeklyProgressPercent = trainingSummary.weeklyProgress.progressPercent || 0;
-            const sortedHistory = [...historyItems].sort((a, b) => {
-                const t1 = new Date(a.uploadedAt).getTime();
-                const t2 = new Date(b.uploadedAt).getTime();
-                return t2 - t1;
-            });
+            // 三个接口彼此独立：任一非核心请求失败都不应让首页整体空白。
+            const [profileResult, historyResult, summaryResult] = await Promise.allSettled([
+                (0, me_1.getProfile)(),
+                (0, history_1.getHistoryVideos)(),
+                (0, me_1.getTrainingSummary)(),
+            ]);
+            const profile = profileResult.status === 'fulfilled' ? profileResult.value : null;
+            const historyItems = historyResult.status === 'fulfilled' ? historyResult.value : [];
+            const trainingSummary = summaryResult.status === 'fulfilled' ? summaryResult.value : null;
+            if (!profile && !trainingSummary && historyResult.status !== 'fulfilled') {
+                throw new Error('首页数据加载失败');
+            }
+            const stage = buildStageItems(trainingSummary?.stage || 'corrective');
+            const weeklyProgress = trainingSummary?.weeklyProgress;
+            const sortedHistory = [...historyItems].sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
             const recentTrainings = buildRecentItems(sortedHistory.map((item) => ({
                 videoId: item.videoId,
                 actionType: item.actionType,
@@ -318,34 +346,49 @@ Page({
                 averageScore: item.averageScore,
             })));
             this.setData({
-                greetingText: `👋 您好，${profile.nickname || '训练用户'}`,
-                heroTitle: trainingSummary.todayTrainingState === 'not_started' ? '今天还没训练' : '今天已完成训练',
-                heroSub: trainingSummary.todayTrainingState === 'not_started'
-                    ? (trainingSummary.encourageText || '完成 1 次训练后，系统会自动分析动作并给出建议。')
-                    : (trainingSummary.encourageText || '今天的训练记录已保存，继续保持自己的节奏。'),
+                homeLoadFailed: false,
+                greetingText: profile?.nickname ? `👋 您好，${profile.nickname}` : '👋 您好',
+                heroTitle: trainingSummary?.todayTrainingState === 'not_started' ? '今天还没训练' : trainingSummary ? '今天已完成训练' : '开始今天的训练',
+                heroSub: trainingSummary?.encourageText || (trainingSummary?.todayTrainingState === 'not_started'
+                    ? '完成 1 次训练后，系统会自动分析动作并给出建议。'
+                    : '选择训练动作，按自己的节奏开始练习。'),
                 quickActions,
                 defaultAction: quickActions[0] || this.data.defaultAction,
-                weeklyLabel,
-                weeklyDesc: trainingSummary.encourageText || trainingSummary.weeklyProgress.desc || '本周持续训练，会更稳定地看到动作改进。',
-                weeklyProgressPercent,
-                weekDays: buildWeekDays(trainingSummary.weeklyCalendar),
+                weeklyLabel: weeklyProgress?.label || `0 / ${cfg.weeklyTarget} 天`,
+                weeklyDesc: trainingSummary?.encourageText || weeklyProgress?.desc || '完成训练后，这里会更新本周成长进度。',
+                weeklyProgressPercent: weeklyProgress?.progressPercent || 0,
+                weekDays: buildWeekDays(trainingSummary?.weeklyCalendar),
                 stageTitle: stage.stageTitle,
-                stageTag: stage.stageTag,
+                stageTag: trainingSummary ? stage.stageTag : '完成训练后更新',
                 stageItems: stage.items,
                 recentTrainings,
             });
         }
         catch (error) {
             console.error('[首页数据加载失败]', error);
+            const networkType = await getNetworkType();
+            const isOffline = networkType === 'none';
             this.setData({
-                greetingText: '👋 您好，训练用户',
-                weeklyLabel: '暂未获取',
-                weeklyDesc: '暂时无法获取训练数据，请稍后刷新。',
-                weeklyProgressPercent: 0,
-                weekDays: buildWeekDays(),
+                homeLoadFailed: true,
+                homeErrorIcon: isOffline ? '📡' : '⚠️',
+                homeErrorTitle: isOffline ? '网络连接不可用' : '服务暂时不可用',
+                homeErrorDesc: isOffline
+                    ? '请检查网络连接后重新加载。'
+                    : '服务可能正在繁忙或维护中，请稍后重新加载。',
+                greetingText: '👋 您好',
+                quickActions,
+                defaultAction: quickActions[0] || this.data.defaultAction,
                 recentTrainings: [],
             });
         }
+        finally {
+            this.setData({ homeLoading: false });
+            this.updateTopPlaceholderHeight();
+        }
+    },
+    onRetryHomeLoad() {
+        this.loadHomeData();
+        this.loadNoticeAndFeedback();
     },
     updateTopPlaceholderHeight() {
         wx.nextTick(() => {
@@ -382,8 +425,8 @@ Page({
         if (!this.requireLogin()) {
             return;
         }
-        const { contentId } = event.currentTarget.dataset;
-        wx.navigateTo({ url: `/pages/guidance/detail?contentId=${contentId}` });
+        const { actionType } = event.currentTarget.dataset;
+        wx.navigateTo({ url: `/pages/guidance/detail?actionType=${encodeURIComponent(actionType)}` });
     },
     onOpenRecent(event) {
         if (!this.requireLogin()) {

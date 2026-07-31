@@ -210,6 +210,17 @@ export class AuthService {
     };
   }
 
+  async requireActiveUser(request: Request, allowedRoles?: UserRole[]): Promise<AuthenticatedUser> {
+    const user = this.requireUser(request, allowedRoles);
+    if (user.role !== 'admin' && user.role !== 'nurse') return user;
+    const accountId = user.accountId || user.userId;
+    const account = await this.prisma.adminAccount.findUnique({ where: { account_id: BigInt(accountId) } });
+    if (!account || account.status !== 1 || account.role !== user.role) {
+      throw new UnauthorizedException('账号已被禁用、删除或权限已变更，请重新登录');
+    }
+    return user;
+  }
+
   requireUser(request: Request, allowedRoles?: UserRole[]): AuthenticatedUser {
     const authHeader = request.headers.authorization || '';
     const token = this.extractBearerToken(authHeader);

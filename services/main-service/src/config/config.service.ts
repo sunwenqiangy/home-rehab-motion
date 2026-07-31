@@ -55,12 +55,19 @@ type GoldFeatureStats = {
   n_cycles: number;
 };
 
+type GoldTemplateVersionType = 'gold_template' | 'threshold_tuning';
+
 type GoldTemplateVersionView = {
   templateId: number;
   actionType: TrainingActionType;
   version: string;
   description: string;
   status: number;
+  versionType: GoldTemplateVersionType;
+  parentTemplateId?: number;
+  changeSummary?: string;
+  changeDiff?: Record<string, unknown>;
+  everActivated: boolean;
   createdBy: string;
   createdAt: string;
   referenceStats: Record<string, unknown>;
@@ -102,6 +109,14 @@ type SaveGoldTemplatePayload = {
   description?: string;
   referenceStats: Record<string, unknown>;
   thresholdConfig: Record<string, unknown>;
+};
+
+type CreateThresholdVersionPayload = {
+  actionType: TrainingActionType;
+  thresholdConfig: Record<string, unknown>;
+  changeSummary?: string;
+  activate?: boolean;
+  parentTemplateId?: number;
 };
 
 type GoldTemplateSourceVideo = {
@@ -240,6 +255,11 @@ function normalizeTemplateVersionView(row: {
   version: string;
   description: string | null;
   status: number;
+  version_type: string;
+  parent_template_id: bigint | null;
+  change_summary: string | null;
+  change_diff: Prisma.JsonValue | null;
+  ever_activated: boolean;
   created_by: string | null;
   created_at: Date;
   reference_stats: Prisma.JsonValue | null;
@@ -251,6 +271,11 @@ function normalizeTemplateVersionView(row: {
     version: row.version,
     description: row.description || '',
     status: row.status,
+    versionType: row.version_type === 'threshold_tuning' ? 'threshold_tuning' : 'gold_template',
+    parentTemplateId: row.parent_template_id ? Number(row.parent_template_id) : undefined,
+    changeSummary: row.change_summary || undefined,
+    changeDiff: (row.change_diff as Record<string, unknown>) || undefined,
+    everActivated: row.ever_activated,
     createdBy: row.created_by || '',
     createdAt: row.created_at.toISOString(),
     referenceStats: (row.reference_stats as Record<string, unknown>) || {},
@@ -396,25 +421,53 @@ export class ConfigService {
   }
 
   async updateThreshold(actionType: string, payload: Record<string, unknown>) {
-    const normalizedActionType = this.ensureActionType(actionType);
-    const thresholdConfig =
-      (((payload.thresholdConfig as Record<string, unknown> | undefined) || payload) as Prisma.InputJsonValue);
+    const thresholdConfig = (payload.thresholdConfig as Record<string, unknown> | undefined) || payload;
+    return this.createThresholdVersion({ actionType: this.ensureActionType(actionType), thresholdConfig, activate: true }, 'admin');
+  }
 
-    const row = await this.prisma.standardActionTemplate.create({
-      data: {
-        action_type: normalizedActionType,
-        version: `manual-${Date.now()}`,
-        threshold_config: thresholdConfig,
-        reference_stats: {},
-        status: 1,
-        created_by: 'admin',
-      },
+  async createThresholdVersion(payload: CreateThresholdVersionPayload, operator: string) {
+    const actionType = this.ensureActionType(payload.actionType);
+    const active = await this.prisma.standardActionTemplate.findFirst({
+      where: { action_type: actionType, status: 1 },
+      orderBy: { created_at: 'desc' },
     });
+    const parent = payload.parentTemplateId
+      ? await this.prisma.standardActionTemplate.findUnique({ where: { template_id: BigInt(payload.parentTemplateId) } })
+      : active;
+    if (!parent || parent.action_type !== actionType || parent.status === 2) {
+      throw new BadRequestException('请选择同一动作且未归档的版本作为调优基准');
+    }
 
-    return {
-      actionType: row.action_type,
-      thresholdConfig: (row.threshold_config as Record<string, unknown>) || {},
-    };
+    const changeDiff = this.buildChangeDiff(
+      (parent.threshold_config as Record<string, unknown>) || {},
+      payload.thresholdConfig,
+    );
+    const activate = payload.activate !== false;
+    const row = await this.prisma.$transaction(async (tx) => {
+      if (activate) {
+        await tx.standardActionTemplate.updateMany({
+          where: { action_type: actionType, status: 1 },
+          data: { status: 0 },
+        });
+      }
+      return tx.standardActionTemplate.create({
+        data: {
+          action_type: actionType,
+          version: this.buildThresholdVersionName(actionType),
+          description: payload.changeSummary || '基于当前金标准版本调整阈值',
+          reference_stats: parent.reference_stats || {},
+          threshold_config: payload.thresholdConfig as Prisma.InputJsonValue,
+          status: activate ? 1 : 0,
+          version_type: 'threshold_tuning',
+          parent_template_id: parent.template_id,
+          change_summary: payload.changeSummary || '阈值参数调优',
+          change_diff: changeDiff as Prisma.InputJsonValue,
+          ever_activated: activate,
+          created_by: operator,
+        },
+      });
+    });
+    return normalizeTemplateVersionView(row);
   }
 
   async listGoldTemplateSourceVideos(actionType?: string): Promise<{ items: GoldTemplateSourceVideo[] }> {
@@ -610,6 +663,8 @@ export class ConfigService {
         reference_stats: payload.referenceStats as Prisma.InputJsonValue,
         threshold_config: payload.thresholdConfig as Prisma.InputJsonValue,
         status: 0,
+        version_type: 'gold_template',
+        ever_activated: false,
         created_by: operator,
       },
     });
@@ -622,7 +677,7 @@ export class ConfigService {
     };
   }
 
-  async listGoldTemplateVersions(query?: { actionType?: string; status?: number; limit?: number }) {
+  async listGoldTemplateVersions(query?: { actionType?: string; status?: number; page?: number; pageSize?: number }) {
     const whereClause: Prisma.StandardActionTemplateWhereInput = {};
     if (query?.actionType) {
       whereClause.action_type = this.ensureActionType(query.actionType);
@@ -631,27 +686,53 @@ export class ConfigService {
       whereClause.status = query.status;
     }
 
-    const rows = await this.prisma.standardActionTemplate.findMany({
-      where: whereClause,
-      orderBy: { created_at: 'desc' },
-      take: Math.min(Math.max(query?.limit || 100, 1), 300),
-    });
-
+    const page = Math.max(Math.floor(query?.page || 1), 1);
+    const pageSize = Math.min(Math.max(Math.floor(query?.pageSize || 10), 1), 100);
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.standardActionTemplate.count({ where: whereClause }),
+      this.prisma.standardActionTemplate.findMany({
+        where: whereClause,
+        orderBy: { created_at: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
     return {
-      items: rows.map((row) =>
-        normalizeTemplateVersionView({
-          template_id: row.template_id,
-          action_type: row.action_type,
-          version: row.version,
-          description: row.description,
-          status: row.status,
-          created_by: row.created_by,
-          created_at: row.created_at,
-          reference_stats: row.reference_stats,
-          threshold_config: row.threshold_config,
-        }),
-      ),
+      items: rows.map((row) => normalizeTemplateVersionView(row)),
+      total,
+      page,
+      pageSize,
     };
+  }
+
+  async getGoldTemplateVersion(templateId: number) {
+    if (!Number.isFinite(templateId) || templateId <= 0) throw new BadRequestException('templateId 无效');
+    const row = await this.prisma.standardActionTemplate.findUnique({ where: { template_id: BigInt(templateId) } });
+    if (!row) throw new NotFoundException(`模板不存在: ${templateId}`);
+    return normalizeTemplateVersionView(row);
+  }
+
+  async archiveGoldTemplateVersion(templateId: number) {
+    const target = await this.prisma.standardActionTemplate.findUnique({ where: { template_id: BigInt(templateId) } });
+    if (!target) throw new NotFoundException(`模板不存在: ${templateId}`);
+    if (target.status === 1) throw new BadRequestException('当前启用版本不能归档，请先启用替代版本');
+    const updated = await this.prisma.standardActionTemplate.update({
+      where: { template_id: BigInt(templateId) },
+      data: { status: 2 },
+    });
+    return { templateId, status: updated.status };
+  }
+
+  async deleteGoldTemplateVersion(templateId: number) {
+    const target = await this.prisma.standardActionTemplate.findUnique({ where: { template_id: BigInt(templateId) } });
+    if (!target) throw new NotFoundException(`模板不存在: ${templateId}`);
+    if (target.status === 1 || target.ever_activated) {
+      throw new BadRequestException('已启用或曾启用的版本不可删除，请使用归档保留追溯记录');
+    }
+    const childCount = await this.prisma.standardActionTemplate.count({ where: { parent_template_id: BigInt(templateId) } });
+    if (childCount > 0) throw new BadRequestException('该版本已有派生版本，不能删除；请使用归档');
+    await this.prisma.standardActionTemplate.delete({ where: { template_id: BigInt(templateId) } });
+    return { templateId, deleted: true };
   }
 
   async updateGoldTemplateVersionStatus(templateId: number, status: number) {
@@ -666,6 +747,9 @@ export class ConfigService {
       throw new NotFoundException(`模板不存在: ${templateId}`);
     }
 
+    if (target.status === 2) {
+      throw new BadRequestException('已归档版本不能再修改状态');
+    }
     const normalizedStatus = status === 1 ? 1 : 0;
 
     if (normalizedStatus === 1) {
@@ -679,10 +763,16 @@ export class ConfigService {
         }),
         this.prisma.standardActionTemplate.update({
           where: { template_id: BigInt(templateId) },
-          data: { status: 1 },
+          data: { status: 1, ever_activated: true },
         }),
       ]);
     } else {
+      const activeCount = await this.prisma.standardActionTemplate.count({
+        where: { action_type: target.action_type, status: 1 },
+      });
+      if (target.status === 1 && activeCount <= 1) {
+        throw new BadRequestException('每个动作必须保留一个当前生效版本；请先启用替代版本');
+      }
       await this.prisma.standardActionTemplate.update({
         where: { template_id: BigInt(templateId) },
         data: { status: 0 },
@@ -697,6 +787,33 @@ export class ConfigService {
       templateId,
       status: updated?.status ?? normalizedStatus,
     };
+  }
+
+  private buildThresholdVersionName(actionType: TrainingActionType) {
+    const prefix: Record<TrainingActionType, string> = {
+      abdominal_crunch: '缩腹',
+      pelvic_tilt: '骨盆倾斜',
+      knee_rotation: '膝关节旋转',
+    };
+    const now = new Date();
+    const stamp = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('');
+    const time = [String(now.getHours()).padStart(2, '0'), String(now.getMinutes()).padStart(2, '0'), String(now.getSeconds()).padStart(2, '0')].join('');
+    return `${prefix[actionType]}-${stamp}-${time}`;
+  }
+
+  private buildChangeDiff(previous: Record<string, unknown>, next: Record<string, unknown>) {
+    const diff: Record<string, unknown> = {};
+    const keys = new Set([...Object.keys(previous), ...Object.keys(next)]);
+    keys.forEach((key) => {
+      const before = previous[key];
+      const after = next[key];
+      if (JSON.stringify(before) !== JSON.stringify(after)) diff[key] = { before, after };
+    });
+    return diff;
   }
 
   async getMotivationRules(): Promise<MotivationRulesDto> {

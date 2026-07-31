@@ -12,8 +12,8 @@ export class PatientAdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   async listPatients(query: PatientListQuery) {
-    const page = this.normalizePositiveInt(query.page, 1, 1);
-    const limit = this.normalizePositiveInt(query.limit, 20, 100);
+    const requestedPage = this.normalizePositiveInt(query.page, 1, Number.MAX_SAFE_INTEGER);
+    const limit = this.normalizePositiveInt(query.limit, 10, 100);
     const keyword = String(query.keyword || '').trim();
     const where = {
       role: 'patient',
@@ -26,6 +26,8 @@ export class PatientAdminService {
           }
         : {}),
     };
+
+    const page = requestedPage;
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);

@@ -177,16 +177,23 @@ model AnalysisTask {
 }
 
 model StandardActionTemplate {
-  template_id       BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
-  action_type       String   @db.VarChar(30)
-  version           String   @db.VarChar(20)
-  description       String?  @db.Text
-  reference_stats   Json?
-  threshold_config  Json?
-  status            Int      @default(1)
-  created_by        String?  @db.VarChar(50)
-  created_at        DateTime @default(now())
+  template_id        BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  action_type        String   @db.VarChar(30)
+  version            String   @db.VarChar(64)
+  description        String?  @db.Text
+  reference_stats    Json?
+  threshold_config   Json?
+  status             Int      @default(1) // 0: 停用，1: 启用，2: 已归档
+  version_type       String   @default("gold_template") @db.VarChar(30)
+  parent_template_id BigInt?  @db.UnsignedBigInt
+  change_summary     String?  @db.VarChar(500)
+  change_diff        Json?
+  ever_activated     Boolean  @default(false)
+  created_by         String?  @db.VarChar(50)
+  created_at         DateTime @default(now())
 
+  @@index([action_type, status], map: "idx_action_template_action_status")
+  @@index([parent_template_id], map: "idx_action_template_parent")
   @@unique([action_type, version], map: "uk_action_template_type_version")
   @@map("standard_action_template")
 }

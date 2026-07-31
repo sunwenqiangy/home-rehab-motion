@@ -36,6 +36,14 @@
       <view class="v4-empty-title">正在加载徽章数据...</view>
     </view>
 
+    <!-- 请求失败态：不能与“暂无徽章数据”混用。 -->
+    <view wx:elif="{{loadFailed}}" class="v4-empty-state">
+      <view class="v4-empty-icon">⚠️</view>
+      <view class="v4-empty-title">徽章数据暂时无法加载</view>
+      <view class="v4-empty-desc">请检查网络后重新加载。</view>
+      <view class="v4-empty-action" bindtap="onRetryLoad">重新加载</view>
+    </view>
+
     <!-- 空态 -->
     <view wx:elif="{{!unlockedItems.length && !lockedItems.length}}" class="v4-empty-state">
       <view class="v4-empty-icon">🏅</view>
@@ -66,7 +74,7 @@
       <view wx:if="{{filterMode !== 'locked' && unlockedItems.length}}" class="v4-panel">
         <view class="v4-panel-title v4-panel-title--green">✅ 已获得</view>
         <view class="v4-badge-grid">
-          <view class="v4-badge-item" wx:for="{{unlockedItems}}" wx:key="badgeCode">
+          <view class="v4-badge-item {{item.highlighted ? 'v4-badge-item--highlighted' : ''}}" wx:for="{{unlockedItems}}" wx:key="badgeCode">
             <view class="v4-badge-bubble v4-badge-bubble--{{item.bubbleColor}}">{{item.emoji}}</view>
             <view class="v4-badge-name">{{item.title}}</view>
             <view class="v4-badge-hint">{{item.description}}</view>
