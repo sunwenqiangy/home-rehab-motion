@@ -160,7 +160,7 @@ export function getAdminDashboardOverview(days: 7 | 30): Promise<AdminDashboardO
 }
 
 /** 获取视频列表（管理端） */
-export function getAdminVideoList(params: { page?: number; limit?: number } = {}): Promise<AdminVideoPage> {
+export function getAdminVideoList(params: { page?: number; limit?: number; status?: string; keyword?: string } = {}): Promise<AdminVideoPage> {
   return request<AdminVideoPage>({
     url: '/videos/admin/list',
     method: 'GET',
@@ -168,7 +168,7 @@ export function getAdminVideoList(params: { page?: number; limit?: number } = {}
   });
 }
 
-export function getAdminAnalysisTasks(params: { page?: number; limit?: number; status?: string } = {}): Promise<AdminAnalysisTaskPage> {
+export function getAdminAnalysisTasks(params: { page?: number; limit?: number; status?: string; keyword?: string } = {}): Promise<AdminAnalysisTaskPage> {
   return request<AdminAnalysisTaskPage>({ url: '/videos/admin/tasks', method: 'GET', params });
 }
 

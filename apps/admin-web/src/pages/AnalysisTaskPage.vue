@@ -25,9 +25,18 @@
             <div class="section-header__subtitle">失败、质量不足和待复核任务可由管理员重新加入队列；处理中任务不允许重复投递。</div>
           </div>
           <div class="toolbar-group">
+            <el-input
+              v-model="keyword"
+              clearable
+              placeholder="搜索视频 ID、患者或动作"
+              style="width: 240px"
+              @keyup.enter="reload"
+              @clear="reload"
+            />
             <el-select v-model="status" clearable placeholder="全部状态" style="width: 160px" @change="reload">
               <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
+            <el-button type="primary" plain :loading="loading" @click="reload">搜索</el-button>
             <el-button :loading="loading" @click="reload">刷新</el-button>
           </div>
         </div>
@@ -96,6 +105,7 @@ const route = useRoute();
 const loading = ref(false);
 const loadError = ref('');
 const status = ref(typeof route.query.status === 'string' ? route.query.status : '');
+const keyword = ref(typeof route.query.keyword === 'string' ? route.query.keyword : '');
 const retryingId = ref<number | null>(null);
 const selectedReanalyzeTask = ref<AdminAnalysisTaskItem | null>(null);
 const reanalyzeDialogVisible = ref(false);
@@ -117,7 +127,12 @@ async function load(page = taskPage.value.page) {
   loading.value = true;
   loadError.value = '';
   try {
-    taskPage.value = await getAdminAnalysisTasks({ page, limit: taskPage.value.limit, status: status.value || undefined });
+    taskPage.value = await getAdminAnalysisTasks({
+      page,
+      limit: taskPage.value.limit,
+      status: status.value || undefined,
+      keyword: keyword.value.trim() || undefined,
+    });
   } catch (error: any) {
     loadError.value = error?.message || '请检查网络或权限后重试。';
   } finally { loading.value = false; }

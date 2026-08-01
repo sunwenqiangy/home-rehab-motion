@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
   AdminGuidanceListItemDto,
@@ -233,16 +233,11 @@ export class GuidanceService {
   async getGuidanceDetailByAction(actionTypeInput: string): Promise<GuidanceContentDto> {
     const actionType = asText(actionTypeInput, 30) as TrainingActionType;
     if (!ACTION_TYPES.includes(actionType)) throw new BadRequestException('不支持的动作类型');
-    const contents = await this.prisma.guidanceContent.findMany({
+    const content = await this.prisma.guidanceContent.findFirst({
       where: { action_type: actionType, status: 1, published_version: { not: null } },
       orderBy: { updated_at: 'desc' },
-      take: 2,
     });
-    const content = contents[0];
     if (!content) throw new NotFoundException('当前动作暂未上架指导内容');
-    if (contents.length > 1) {
-      await this.prisma.guidanceContent.updateMany({ where: { content_id: { in: contents.slice(1).map((item) => item.content_id) } }, data: { status: 0 } });
-    }
     return this.getGuidanceDetail(Number(content.content_id));
   }
 
@@ -272,20 +267,11 @@ export class GuidanceService {
 
   async listAdminGuidance(): Promise<AdminGuidanceListItemDto[]> {
     const list = await this.prisma.guidanceContent.findMany({ orderBy: { updated_at: 'desc' }, take: 100 });
-    // 兼容历史数据：同一动作曾被错误地标记为多条启用时，仅保留最新一条为启用态。
-    const activeIdByAction = new Map<string, bigint>();
-    list.filter((item) => item.status === 1).forEach((item) => {
-      if (!activeIdByAction.has(item.action_type)) activeIdByAction.set(item.action_type, item.content_id);
-    });
-    const invalidActiveIds = list.filter((item) => item.status === 1 && activeIdByAction.get(item.action_type) !== item.content_id).map((item) => item.content_id);
-    if (invalidActiveIds.length) {
-      await this.prisma.guidanceContent.updateMany({ where: { content_id: { in: invalidActiveIds } }, data: { status: 0 } });
-    }
     return list.map((item) => ({
       contentId: Number(item.content_id),
       actionType: item.action_type as TrainingActionType,
       title: item.title,
-      enabled: item.status === 1 && activeIdByAction.get(item.action_type) === item.content_id,
+      enabled: item.status === 1,
       updatedAt: item.updated_at.toISOString(),
     }));
   }
@@ -416,10 +402,18 @@ export class GuidanceService {
       return { contentId: id, enabled: false };
     }
     if (!content.published_version) throw new BadRequestException('内容不完整，无法启用');
-    await this.prisma.$transaction([
-      this.prisma.guidanceContent.updateMany({ where: { action_type: content.action_type, status: 1 }, data: { status: 0 } }),
-      this.prisma.guidanceContent.update({ where: { content_id: BigInt(id) }, data: { status: 1 } }),
-    ]);
+    try {
+      await this.prisma.$transaction([
+        this.prisma.guidanceContent.updateMany({ where: { action_type: content.action_type, status: 1 }, data: { status: 0 } }),
+        this.prisma.guidanceContent.update({ where: { content_id: BigInt(id) }, data: { status: 1 } }),
+      ]);
+    } catch (error: any) {
+      // 数据库唯一约束会拒绝两个管理员同时启用同一动作的不同内容。
+      if (error?.code === 'P2002') {
+        throw new ConflictException('该动作的启用状态刚刚被其他管理员更新，请刷新列表后重试');
+      }
+      throw error;
+    }
     return { contentId: id, enabled: true };
   }
 

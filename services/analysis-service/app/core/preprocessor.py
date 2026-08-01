@@ -11,6 +11,8 @@ logger = logging.getLogger(__name__)
 
 CONFIDENCE_THRESHOLD = 0.5
 MAX_INTERPOLATE_GAP = 10  # 连续缺失帧超过此值标记为不可用段
+MIN_VALID_FRAME_RATIO = 0.70
+REQUIRED_KEYPOINTS = ('LEFT_SHOULDER', 'RIGHT_SHOULDER', 'LEFT_HIP', 'RIGHT_HIP')
 
 
 class DataPreprocessor:
@@ -28,25 +30,27 @@ class DataPreprocessor:
         return frames
 
     def interpolate_missing(self, frames: List[Frame]) -> List[Frame]:
-        """线性插值填补 NaN 关键点"""
+        """仅在线性插值不会跨越长缺失段时填补 NaN 关键点。"""
         kp_names = list(frames[0].keypoints.keys()) if frames else []
 
         for name in kp_names:
-            # 收集该关键点在各帧的值
-            xs, ys, zs = [], [], []
-            for f in frames:
-                kp = f.keypoints.get(name)
-                if kp and not np.isnan(kp.x):
-                    xs.append((f.frame_index, kp.x))
-                    ys.append((f.frame_index, kp.y))
-                    zs.append((f.frame_index, kp.z))
+            # 各坐标轴独立收集有效点，避免某一轴缺失时被错误视为完整关键点。
+            coordinates = {
+                'x': [],
+                'y': [],
+                'z': [],
+            }
+            for frame in frames:
+                kp = frame.keypoints.get(name)
+                if not kp:
+                    continue
+                for axis, points in coordinates.items():
+                    value = getattr(kp, axis)
+                    if not np.isnan(value):
+                        points.append((frame.frame_index, value))
 
-            if len(xs) < 2:
-                continue
-
-            # 检查连续缺失段长度
-            for coord_list in [xs, ys, zs]:
-                self._interpolate_coord(frames, name, coord_list, 'x' if coord_list is xs else 'y' if coord_list is ys else 'z')
+            for axis, known_points in coordinates.items():
+                self._interpolate_coord(frames, name, known_points, axis)
 
         # 重新计算派生点
         for f in frames:
@@ -84,9 +88,14 @@ class DataPreprocessor:
             right_idx = min(i for i in indices if i >= idx)
 
             if left_idx == right_idx:
+                # 边界外的值不会进入这里；保留该分支以防重复帧索引。
                 left_val = values[indices.index(left_idx)]
                 setattr(kp, axis, left_val)
             else:
+                missing_gap = right_idx - left_idx - 1
+                if missing_gap > MAX_INTERPOLATE_GAP:
+                    # 长时间遮挡或离镜不能被虚构为连续运动轨迹。
+                    continue
                 left_val = values[indices.index(left_idx)]
                 right_val = values[indices.index(right_idx)]
                 t = (idx - left_idx) / (right_idx - left_idx)
@@ -181,9 +190,32 @@ class DataPreprocessor:
             return ((kp1.x + kp2.x) / 2, (kp1.y + kp2.y) / 2, (kp1.z + kp2.z) / 2)
         return None
 
+    def validate_required_keypoints(self, frames: List[Frame]) -> None:
+        """关键躯干点长期缺失时拒绝评分，避免归一化与切分基于伪造轨迹。"""
+        if not frames:
+            raise ValueError('未提取到可用于分析的关键点帧')
+        required = [name for name in REQUIRED_KEYPOINTS if any(name in frame.keypoints for frame in frames)]
+        if not required:
+            raise ValueError('缺少动作分析所需的躯干关键点')
+        valid_frames = 0
+        for frame in frames:
+            if all(
+                (kp := frame.keypoints.get(name)) is not None
+                and kp.visibility >= CONFIDENCE_THRESHOLD
+                and all(np.isfinite(getattr(kp, axis)) for axis in ('x', 'y', 'z'))
+                for name in required
+            ):
+                valid_frames += 1
+        valid_ratio = valid_frames / len(frames)
+        if valid_ratio < MIN_VALID_FRAME_RATIO:
+            raise ValueError(
+                f'关键躯干点有效帧占比过低（{valid_ratio:.0%}，最低要求 {MIN_VALID_FRAME_RATIO:.0%}）'
+            )
+
     def run_full_pipeline(self, frames: List[Frame]) -> List[Frame]:
         """执行完整预处理流水线"""
         frames = self.filter_by_confidence(frames)
+        self.validate_required_keypoints(frames)
         frames = self.interpolate_missing(frames)
         frames = self.smooth_trajectory(frames)
         frames = self.normalize_by_body_scale(frames)

@@ -146,6 +146,7 @@ def check_video_quality(video_path: str, keypoint_avg_visibility: float = 1.0) -
         issues.append('duration_too_long')
 
     if not visual['available']:
+        # 无法抽样读取画面时，不能假设视频质量足以支持确定性动作判断。
         issues.append('visual_quality_unavailable')
         brightness_warning = True
     elif visual['brightness'] < 45:
@@ -154,16 +155,28 @@ def check_video_quality(video_path: str, keypoint_avg_visibility: float = 1.0) -
     elif visual['brightness'] > 235:
         issues.append('brightness_too_high')
         brightness_warning = True
-    if keypoint_avg_visibility < 0.40:
+    if not np.isfinite(keypoint_avg_visibility):
+        quality_status = 'insufficient'
+        issues.append('keypoint_visibility_unavailable')
+    elif keypoint_avg_visibility < 0.55:
         quality_status = 'insufficient'
         issues.append('keypoint_visibility_insufficient')
-    elif keypoint_avg_visibility < 0.65:
+    elif keypoint_avg_visibility < 0.70:
         quality_status = 'warning'
         issues.append('keypoint_visibility_warning')
     else:
         quality_status = 'passed'
 
-    if 'resolution_too_low' in issues or 'fps_too_low' in issues:
+    insufficient_issues = {
+        'resolution_too_low',
+        'fps_too_low',
+        'duration_too_short',
+        'duration_too_long',
+        'visual_quality_unavailable',
+        'keypoint_visibility_unavailable',
+        'keypoint_visibility_insufficient',
+    }
+    if any(issue in insufficient_issues for issue in issues):
         quality_status = 'insufficient'
     elif brightness_warning and quality_status == 'passed':
         quality_status = 'warning'

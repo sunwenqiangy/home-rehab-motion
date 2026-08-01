@@ -162,6 +162,7 @@ def analyze_video(
     action_type: str,
     video_key: Optional[str] = None,
     callback_url: Optional[str] = None,
+    analysis_run_id: str = '',
     sample_fps: Optional[int] = None,
     threshold_config: Optional[Dict] = None,
 ) -> Dict[str, Any]:
@@ -186,7 +187,16 @@ def analyze_video(
     try:
         with sync_session_scope() as session:
             repo = AnalysisRepository(session)
-            repo.create_analysis_task(video_id, str(task_id))
+            persisted_task = repo.create_analysis_task(video_id, str(task_id), analysis_run_id)
+            if persisted_task.analysis_run_id != analysis_run_id:
+                logger.warning(
+                    '[%s] Ignoring stale analysis worker: video_id=%d, worker_run_id=%s, current_run_id=%s',
+                    task_id,
+                    video_id,
+                    analysis_run_id,
+                    persisted_task.analysis_run_id,
+                )
+                return {'video_id': video_id, 'status': 'ignored', 'reason': 'stale_analysis_run'}
 
         if not video_key:
             with sync_session_scope() as session:
@@ -217,7 +227,7 @@ def analyze_video(
             with sync_session_scope() as session:
                 repo = AnalysisRepository(session)
                 repo.mark_task_failed(video_id, reason)
-            _notify_callback(callback_url, video_id, 'failed', fail_reason=reason)
+            _notify_callback(callback_url, video_id, analysis_run_id, task_id, 'failed', fail_reason=reason)
             return {'video_id': video_id, 'status': 'failed', 'reason': reason}
         if quality_result.quality_status == 'insufficient':
             with sync_session_scope() as session:
@@ -232,6 +242,8 @@ def analyze_video(
             _notify_callback(
                 callback_url,
                 video_id,
+                analysis_run_id,
+                task_id,
                 'quality_insufficient',
                 fail_reason='视频基础质量不足',
                 quality_status=quality_result.quality_status,
@@ -271,7 +283,7 @@ def analyze_video(
             with sync_session_scope() as session:
                 repo = AnalysisRepository(session)
                 repo.mark_task_failed(video_id, reason)
-            _notify_callback(callback_url, video_id, 'failed', fail_reason=reason)
+            _notify_callback(callback_url, video_id, analysis_run_id, task_id, 'failed', fail_reason=reason)
             return {'video_id': video_id, 'status': 'failed', 'reason': reason}
 
         visibility = estimator.compute_avg_visibility(frames)
@@ -290,6 +302,8 @@ def analyze_video(
             _notify_callback(
                 callback_url,
                 video_id,
+                analysis_run_id,
+                task_id,
                 'quality_insufficient',
                 fail_reason='关键点可见性不足',
                 quality_status=quality_result.quality_status,
@@ -299,7 +313,24 @@ def analyze_video(
         from app.core.preprocessor import DataPreprocessor
 
         preprocessor = DataPreprocessor()
-        frames = preprocessor.run_full_pipeline(frames)
+        try:
+            frames = preprocessor.run_full_pipeline(frames)
+        except ValueError as exc:
+            reason = str(exc)
+            logger.warning('[%s] Keypoint safety gate rejected video_id=%d: %s', task_id, video_id, reason)
+            with sync_session_scope() as session:
+                repo = AnalysisRepository(session)
+                repo.mark_task_quality_insufficient(video_id, reason)
+            _notify_callback(
+                callback_url,
+                video_id,
+                analysis_run_id,
+                task_id,
+                'quality_insufficient',
+                fail_reason=reason,
+                quality_status='insufficient',
+            )
+            return {'video_id': video_id, 'status': 'quality_insufficient', 'reason': reason}
 
         from app.core.phase_segmenter import PhaseSegmenter, SegmentationError
 
@@ -313,7 +344,7 @@ def analyze_video(
             with sync_session_scope() as session:
                 repo = AnalysisRepository(session)
                 repo.mark_task_failed(video_id, seg_reason)
-            _notify_callback(callback_url, video_id, 'failed', fail_reason=seg_reason)
+            _notify_callback(callback_url, video_id, analysis_run_id, task_id, 'failed', fail_reason=seg_reason)
             return {'video_id': video_id, 'status': 'failed', 'reason': seg_reason}
 
         # 只向原始画面坐标写入周期信息；评分使用的归一化坐标不能用于与视频画面对齐。
@@ -324,7 +355,7 @@ def analyze_video(
             with sync_session_scope() as session:
                 repo = AnalysisRepository(session)
                 repo.mark_task_failed(video_id, empty_reason)
-            _notify_callback(callback_url, video_id, 'failed', fail_reason=empty_reason)
+            _notify_callback(callback_url, video_id, analysis_run_id, task_id, 'failed', fail_reason=empty_reason)
             return {'video_id': video_id, 'status': 'failed', 'reason': empty_reason}
 
         # ── 动作合法性校验：rep 次数是否符合该动作类型的预期范围 ──────────────────
@@ -346,7 +377,7 @@ def analyze_video(
             with sync_session_scope() as session:
                 repo = AnalysisRepository(session)
                 repo.mark_task_failed(video_id, reason)
-            _notify_callback(callback_url, video_id, 'failed', fail_reason=reason)
+            _notify_callback(callback_url, video_id, analysis_run_id, task_id, 'failed', fail_reason=reason)
             return {'video_id': video_id, 'status': 'failed', 'reason': reason}
         # ──────────────────────────────────────────────────────────────────────────
 
@@ -468,6 +499,8 @@ def analyze_video(
         _notify_callback(
             callback_url,
             video_id,
+            analysis_run_id,
+            task_id,
             final_status,
             quality_status=quality_result.quality_status,
             quality_score=quality_score,
@@ -523,7 +556,7 @@ def analyze_video(
         except Exception as db_exc:
             logger.error('Failed to mark task as failed: %s', db_exc)
 
-        _notify_callback(callback_url, video_id, 'failed', fail_reason=failure_reason)
+        _notify_callback(callback_url, video_id, analysis_run_id, task_id, 'failed', fail_reason=failure_reason)
         logger.error('[%s] Analysis retries exhausted for video_id=%d', task_id, video_id)
         return {'video_id': video_id, 'status': 'failed', 'reason': failure_reason}
     finally:
@@ -605,7 +638,7 @@ def _save_keypoints_json(video_id: int, frames: list, reps: Optional[List[Rep]] 
         logger.warning('Failed to save keypoints JSON for video_id=%d: %s', video_id, exc)
 
 
-def _notify_callback(callback_url: Optional[str], video_id: int, analysis_status: str, **kwargs) -> bool:
+def _notify_callback(callback_url: Optional[str], video_id: int, analysis_run_id: str, provider_task_id: str, analysis_status: str, **kwargs) -> bool:
     """投递终态回调；短暂网络故障同步重试，最终状态写入 analysis_task 供补偿。"""
     from app.db.repository import AnalysisRepository
     from app.db.session import sync_session_scope
@@ -617,6 +650,8 @@ def _notify_callback(callback_url: Optional[str], video_id: int, analysis_status
 
     payload = {
         'video_id': video_id,
+        'analysis_run_id': analysis_run_id,
+        'provider_task_id': provider_task_id,
         'analysis_status': analysis_status,
         **kwargs,
     }
@@ -685,8 +720,10 @@ def retry_pending_callbacks() -> Dict[str, int]:
     for video_id, callback_url, payload in pending:
         scanned += 1
         status = str(payload.pop('analysis_status', 'failed'))
+        analysis_run_id = str(payload.pop('analysis_run_id', ''))
+        provider_task_id = str(payload.pop('provider_task_id', ''))
         payload.pop('video_id', None)
-        if callback_url and _notify_callback(callback_url, video_id, status, **payload):
+        if callback_url and analysis_run_id and provider_task_id and _notify_callback(callback_url, video_id, analysis_run_id, provider_task_id, status, **payload):
             delivered += 1
 
     return {'scanned': scanned, 'delivered': delivered}

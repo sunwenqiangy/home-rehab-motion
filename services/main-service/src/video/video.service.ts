@@ -26,6 +26,8 @@ function resolveGrade(score: number | null | undefined, rawGrade?: string | null
   }
   return rawGrade || '无效';
 }
+import { randomUUID } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { AnalysisService, type AnalysisEnqueueResult } from '../analysis/analysis.service';
 import { BadgeService } from '../badge/badge.service';
 import { ConfigService } from '../config/config.service';
@@ -203,6 +205,20 @@ export class VideoService {
     }
     this.ensureVideoOwnership(video.user_id, userId);
 
+    if (video.analysis_status !== 'uploading') {
+      if (video.confirmed_at) {
+        return {
+          videoId: payload.videoId,
+          status: video.analysis_status as ConfirmUploadResponseDto['status'],
+          estimatedWaitSeconds: 0,
+        };
+      }
+      throw new BadRequestException('当前视频状态不允许确认上传');
+    }
+    if (video.action_type !== payload.actionType) {
+      throw new BadRequestException('动作类型与上传任务不一致，请重新选择视频');
+    }
+
     const appConfig = await this.configService.getPatientAppConfig();
     if (!Number.isFinite(payload.duration) || payload.duration < appConfig.videoMinDurationSeconds) {
       throw new BadRequestException(`视频时长不能少于 ${appConfig.videoMinDurationSeconds} 秒`);
@@ -233,7 +249,7 @@ export class VideoService {
         duration: payload.duration,
         video_key: resolvedObjectKey,
         confirmed_at: video.confirmed_at || new Date(),
-        analysis_status: video.analysis_status === 'completed' ? 'completed' : 'queued',
+        analysis_status: 'queued',
         fail_reason: null,
       },
     });
@@ -242,16 +258,22 @@ export class VideoService {
       await this.motivationService.recordConfirmedTraining(userId, payload.videoId, video.confirmed_at || new Date());
     }
 
-    if (video.analysis_status === 'completed') {
-      this.logger.log(`Confirm upload skipped enqueue: videoId=${payload.videoId}, reason=already_completed`);
-      return { videoId: payload.videoId, status: 'completed', estimatedWaitSeconds: 0 };
-    }
+    const analysisRunId = randomUUID();
+    await this.prisma.analysisRun.create({
+      data: {
+        analysis_run_id: analysisRunId,
+        video_id: BigInt(payload.videoId),
+        status: 'queued',
+        request_snapshot: payload as object,
+      },
+    });
 
     try {
-      this.logger.log(`Enqueue requested from confirm upload: videoId=${payload.videoId}, actionType=${payload.actionType}`);
+      this.logger.log(`Enqueue requested from confirm upload: videoId=${payload.videoId}, runId=${analysisRunId}, actionType=${payload.actionType}`);
       const task = await this.analysisService.enqueueVideo({
         videoId: payload.videoId,
         actionType: payload.actionType,
+        analysisRunId,
         videoKey: resolvedObjectKey,
         sampleFps:
           typeof payload.sampleFps === 'number' && Number.isFinite(payload.sampleFps)
@@ -267,6 +289,7 @@ export class VideoService {
         where: { video_id: BigInt(payload.videoId) },
         update: {
           provider_task_id: task.task_id,
+          analysis_run_id: analysisRunId,
           // worker 可能已先一步把任务标记为 processing，不能再被确认接口降级回 queued。
           task_status: task.status === 'completed' ? 'completed' : undefined,
           fail_reason: null,
@@ -275,6 +298,7 @@ export class VideoService {
         create: {
           video_id: BigInt(payload.videoId),
           provider_task_id: task.task_id,
+          analysis_run_id: analysisRunId,
           task_status: task.status === 'completed' ? 'completed' : 'queued',
           finished_at: task.status === 'completed' ? new Date() : null,
         },
@@ -321,18 +345,20 @@ export class VideoService {
         this.prisma.analysisTask.upsert({
           where: { video_id: BigInt(payload.videoId) },
           update: {
+            analysis_run_id: analysisRunId,
             task_status: 'queued',
             fail_reason: failReason.slice(0, 255),
-            callback_status: 'enqueue_retry_pending',
+            callback_status: 'retry_pending',
             callback_last_error: failReason.slice(0, 255),
             callback_next_retry_at: retryAt,
             finished_at: null,
           },
           create: {
             video_id: BigInt(payload.videoId),
+            analysis_run_id: analysisRunId,
             task_status: 'queued',
             fail_reason: failReason.slice(0, 255),
-            callback_status: 'enqueue_retry_pending',
+            callback_status: 'retry_pending',
             callback_last_error: failReason.slice(0, 255),
             callback_next_retry_at: retryAt,
           },
@@ -533,10 +559,24 @@ export class VideoService {
     };
   }
 
-  async getAdminVideoList(options: { page?: number; limit?: number } = {}) {
+  async getAdminVideoList(options: { page?: number; limit?: number; status?: string; keyword?: string } = {}) {
     const page = Math.max(1, Math.floor(options.page || 1));
     const limit = Math.min(100, Math.max(1, Math.floor(options.limit || 10)));
-    const where = { source_type: 'miniapp' as const };
+    const allowedStatuses = new Set(['pending', 'uploading', 'queued', 'processing', 'completed', 'failed', 'quality_insufficient']);
+    const status = options.status && allowedStatuses.has(options.status) ? options.status : undefined;
+    const keyword = options.keyword?.trim().slice(0, 50);
+    const videoId = keyword && /^\d+$/.test(keyword) ? BigInt(keyword) : undefined;
+    const where: Prisma.TrainingVideoWhereInput = {
+      source_type: 'miniapp',
+      ...(status ? { analysis_status: status } : {}),
+      ...(keyword ? {
+        OR: [
+          ...(videoId ? [{ video_id: videoId }] : []),
+          { action_type: { contains: keyword } },
+          { user: { is: { name: { contains: keyword } } } },
+        ],
+      } : {}),
+    };
     const [total, videos] = await this.prisma.$transaction([
       this.prisma.trainingVideo.count({ where }),
       this.prisma.trainingVideo.findMany({
@@ -564,14 +604,23 @@ export class VideoService {
     };
   }
 
-  async getAdminAnalysisTasks(options: { page?: number; limit?: number; status?: string } = {}) {
+  async getAdminAnalysisTasks(options: { page?: number; limit?: number; status?: string; keyword?: string } = {}) {
     const page = Math.max(1, Math.floor(options.page || 1));
     const limit = Math.min(100, Math.max(1, Math.floor(options.limit || 10)));
     const allowedStatuses = new Set(['pending', 'uploading', 'queued', 'processing', 'completed', 'failed', 'quality_insufficient', 'review_required']);
     const status = options.status && allowedStatuses.has(options.status) ? options.status : undefined;
-    const where = {
-      source_type: { in: ['miniapp', 'admin_flow_verify', 'gold_template'] as any },
+    const keyword = options.keyword?.trim().slice(0, 50);
+    const videoId = keyword && /^\d+$/.test(keyword) ? BigInt(keyword) : undefined;
+    const where: Prisma.TrainingVideoWhereInput = {
+      source_type: { in: ['miniapp', 'admin_flow_verify', 'gold_template'] },
       ...(status ? { analysis_status: status } : {}),
+      ...(keyword ? {
+        OR: [
+          ...(videoId ? [{ video_id: videoId }] : []),
+          { action_type: { contains: keyword } },
+          { user: { is: { name: { contains: keyword } } } },
+        ],
+      } : {}),
     };
     const [total, videos] = await this.prisma.$transaction([
       this.prisma.trainingVideo.count({ where }),
@@ -617,6 +666,11 @@ export class VideoService {
       throw new BadRequestException('仅失败、质量不足或待复核任务可以重新分析');
     }
 
+    const analysisRunId = randomUUID();
+    await this.prisma.analysisRun.create({
+      data: { analysis_run_id: analysisRunId, video_id: BigInt(videoId), status: 'queued' },
+    });
+
     await this.prisma.$transaction([
       this.prisma.trainingVideo.update({
         where: { video_id: BigInt(videoId) },
@@ -626,10 +680,11 @@ export class VideoService {
         where: { video_id: BigInt(videoId) },
         update: {
           provider_task_id: null,
+          analysis_run_id: analysisRunId,
           task_status: 'queued',
           retry_count: 0,
           fail_reason: null,
-          callback_status: 'enqueue_retry_pending',
+          callback_status: 'retry_pending',
           callback_last_error: null,
           callback_next_retry_at: new Date(),
           started_at: null,
@@ -637,8 +692,9 @@ export class VideoService {
         },
         create: {
           video_id: BigInt(videoId),
+          analysis_run_id: analysisRunId,
           task_status: 'queued',
-          callback_status: 'enqueue_retry_pending',
+          callback_status: 'retry_pending',
           callback_next_retry_at: new Date(),
         },
       }),
@@ -648,12 +704,14 @@ export class VideoService {
       const task = await this.analysisService.enqueueVideo({
         videoId,
         actionType: video.action_type as TrainingActionType,
+        analysisRunId,
         videoKey: video.video_key,
       });
       await this.prisma.analysisTask.update({
         where: { video_id: BigInt(videoId) },
         data: {
           provider_task_id: task.task_id,
+          analysis_run_id: analysisRunId,
           task_status: task.status === 'completed' ? 'completed' : 'queued',
           callback_status: 'pending',
           callback_next_retry_at: null,
@@ -921,6 +979,8 @@ export class VideoService {
 
   async handleAnalysisCallback(payload: {
     video_id: number;
+    analysis_run_id: string;
+    provider_task_id: string;
     analysis_status: string;
     quality_status?: string;
     quality_score?: number;
@@ -951,12 +1011,26 @@ export class VideoService {
     }
 
     const videoId = BigInt(payload.video_id);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[4-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.analysis_run_id)) {
+      throw new BadRequestException('无效的分析运行 ID');
+    }
+    if (!payload.provider_task_id) {
+      throw new BadRequestException('回调缺少分析服务任务 ID');
+    }
     const video = await this.prisma.trainingVideo.findUnique({
       where: { video_id: videoId },
     });
 
     if (!video) {
       throw new NotFoundException(`视频不存在: ${payload.video_id}`);
+    }
+    const run = await this.prisma.analysisRun.findUnique({ where: { analysis_run_id: payload.analysis_run_id } });
+    if (!run || run.video_id !== videoId) {
+      throw new BadRequestException('分析运行不存在或不属于该视频');
+    }
+    const currentTask = await this.prisma.analysisTask.findUnique({ where: { video_id: videoId } });
+    if (!currentTask || currentTask.analysis_run_id !== payload.analysis_run_id || currentTask.provider_task_id !== payload.provider_task_id) {
+      throw new BadRequestException('回调任务与当前分析运行不匹配');
     }
 
     const finalStatuses = new Set(['completed', 'failed', 'quality_insufficient', 'review_required']);
@@ -998,10 +1072,22 @@ export class VideoService {
       });
     }
 
+    await this.prisma.analysisRun.update({
+      where: { analysis_run_id: payload.analysis_run_id },
+      data: {
+        provider_task_id: payload.provider_task_id,
+        status: payload.analysis_status,
+        fail_reason: payload.fail_reason,
+        finished_at: finalStatuses.has(payload.analysis_status) ? new Date() : undefined,
+      },
+    });
+
     await this.prisma.analysisTask.upsert({
       where: { video_id: videoId },
       update: {
         task_status: payload.analysis_status,
+        analysis_run_id: payload.analysis_run_id,
+        provider_task_id: payload.provider_task_id,
         fail_reason: payload.fail_reason,
         callback_status: 'received',
         callback_attempt_count: { increment: 1 },
@@ -1010,24 +1096,22 @@ export class VideoService {
         callback_payload: payload as object,
         callback_url: process.env.ANALYSIS_CALLBACK_URL || null,
         finished_at:
-          payload.analysis_status === 'completed'
-          || payload.analysis_status === 'failed'
-          || payload.analysis_status === 'quality_insufficient'
+          finalStatuses.has(payload.analysis_status)
             ? new Date()
             : undefined,
       },
       create: {
         video_id: videoId,
         task_status: payload.analysis_status,
+        analysis_run_id: payload.analysis_run_id,
+        provider_task_id: payload.provider_task_id,
         fail_reason: payload.fail_reason,
         callback_status: 'received',
         callback_attempt_count: 1,
         callback_payload: payload as object,
         callback_url: process.env.ANALYSIS_CALLBACK_URL || null,
         finished_at:
-          payload.analysis_status === 'completed'
-          || payload.analysis_status === 'failed'
-          || payload.analysis_status === 'quality_insufficient'
+          finalStatuses.has(payload.analysis_status)
             ? new Date()
             : null,
       },

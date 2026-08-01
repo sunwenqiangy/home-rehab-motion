@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models import (
+    AnalysisRun,
     AnalysisTask,
     MotionFeatureResult,
     RepEvaluationResult,
@@ -66,15 +67,19 @@ class AnalysisRepository:
 
     # ─── 任务状态更新 ─────────────────────────────────
 
-    def create_analysis_task(self, video_id: int, provider_task_id: str) -> AnalysisTask:
+    def create_analysis_task(self, video_id: int, provider_task_id: str, analysis_run_id: str) -> AnalysisTask:
         """将任务和视频同时标记为执行中，供患者端展示真实分析阶段。"""
         existing = self.get_analysis_task(video_id)
+        # 当前 task 已切换到另一 run 时，说明本 worker 是迟到任务；绝不能覆盖新任务状态。
+        if existing and existing.analysis_run_id and existing.analysis_run_id != analysis_run_id:
+            return existing
         if existing and existing.task_status in ('completed', 'failed', 'quality_insufficient', 'review_required'):
-            # 同一 video_id 的迟到/重复执行不能重置已收敛的任务终态。
+            # 同一 run 的迟到/重复执行不能重置已收敛的任务终态。
             return existing
         if existing:
             # 更新已有记录
             existing.provider_task_id = provider_task_id
+            existing.analysis_run_id = analysis_run_id
             existing.task_status = 'processing'
             existing.started_at = datetime.utcnow()
             existing.retry_count = (existing.retry_count or 0) + 1
@@ -84,6 +89,7 @@ class AnalysisRepository:
             task = AnalysisTask(
                 video_id=video_id,
                 provider_task_id=provider_task_id,
+                analysis_run_id=analysis_run_id,
                 task_status='processing',
                 started_at=datetime.utcnow(),
             )
@@ -98,11 +104,19 @@ class AnalysisRepository:
             if not existing:
                 raise
             existing.provider_task_id = provider_task_id
+            existing.analysis_run_id = analysis_run_id
             existing.task_status = 'processing'
             existing.started_at = datetime.utcnow()
             existing.retry_count = (existing.retry_count or 0) + 1
             existing.fail_reason = None
             task = existing
+
+        run = self.session.query(AnalysisRun).filter_by(analysis_run_id=analysis_run_id, video_id=video_id).first()
+        if run:
+            run.provider_task_id = provider_task_id
+            run.status = 'processing'
+            run.started_at = run.started_at or datetime.utcnow()
+            run.fail_reason = None
 
         video = self.get_video(video_id)
         if video and video.analysis_status not in ('completed', 'failed', 'quality_insufficient', 'review_required'):

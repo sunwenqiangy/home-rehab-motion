@@ -51,9 +51,9 @@
 
       <div class="result-summary-row">
         <div class="score-summary">
-          <span>本次评分</span>
+          <span>{{ hasHistoricalScore ? '历史评分' : '本次评分' }}</span>
           <strong>{{ displayScore }}</strong>
-          <small>{{ detail?.grade || analysisDetail?.summary?.grade || '-' }}</small>
+          <small>{{ hasHistoricalScore ? '分析失败前的结果' : (detail?.grade || analysisDetail?.summary?.grade || '-') }}</small>
         </div>
         <div class="result-facts">
           <div><span>主要问题</span><strong>{{ analysisSummary.issueText }}</strong></div>
@@ -194,6 +194,7 @@ const analysisSummary = computed(() => {
     topRepText: topRep ? `第 ${topRep.repId ?? '-'} 次动作（${Math.round(Number(topRep.totalScore))} 分）` : '-',
   };
 });
+const hasHistoricalScore = computed(() => Boolean(detail.value?.averageScore != null && ['failed', 'quality_insufficient', 'review_required'].includes(detail.value?.status || '')));
 const displayScore = computed(() => detail.value?.averageScore ?? analysisDetail.value?.summary?.averageScore ?? '-');
 const scoreValue = computed(() => Math.max(0, Math.min(100, Number(displayScore.value) || 0)));
 const concernCount = computed(() => analysisDetail.value?.featureRows.filter((item) => item.compareLabel === 'invalid' || item.compareLabel === 'warning').length || 0);

@@ -154,7 +154,14 @@ def submit_analysis(req: AnalyzeRequest) -> AnalyzeResponse:
         with sync_session_scope() as session:
             repo = AnalysisRepository(session)
             existing_task = repo.get_analysis_task(req.video_id)
-            if existing_task and existing_task.task_status in ('queued', 'processing'):
+            # 只有正在执行，或已获得 Celery task_id 的排队任务才能安全去重。
+            # main-service 发起重新分析时会先清空 provider_task_id 并置为 queued；
+            # 该状态代表“等待重新投递”，不能误判为已在队列中，否则任务会永久停在 queued。
+            is_active_task = existing_task and (
+                existing_task.task_status == 'processing'
+                or (existing_task.task_status == 'queued' and bool(existing_task.provider_task_id))
+            )
+            if is_active_task:
                 logger.info(
                     'Analysis submit deduplicated: video_id=%d, task_id=%s, existing_status=%s',
                     req.video_id,
@@ -185,6 +192,7 @@ def submit_analysis(req: AnalyzeRequest) -> AnalyzeResponse:
                 'video_id': req.video_id,
                 'action_type': req.action_type,
                 'video_key': req.video_key,
+                'analysis_run_id': req.analysis_run_id,
                 # 回调地址仅允许使用服务端配置，不能由请求方指定，避免 SSRF 和内部令牌泄露。
                 'callback_url': None,
                 'sample_fps': req.sample_fps,

@@ -12,6 +12,7 @@ class AnalyzeRequest(BaseModel):
     video_id: int = Field(..., description='训练视频 ID')
     action_type: str = Field(..., description='动作类型: abdominal_crunch / pelvic_tilt / knee_rotation')
     video_key: Optional[str] = Field(None, description='OSS 对象 Key')
+    analysis_run_id: str = Field(..., min_length=36, max_length=36, description='主服务生成的分析运行 ID')
     callback_url: Optional[str] = Field(None, description='分析完成后的回调 URL')
     sample_fps: Optional[int] = Field(None, description='采样帧率（5~30，默认使用服务配置）')
     priority: int = Field(default=0, description='任务优先级，0=普通，1=高优')
@@ -21,6 +22,8 @@ class AnalyzeRequest(BaseModel):
 class CallbackPayload(BaseModel):
     """分析完成后回调主服务的 payload"""
     video_id: int
+    analysis_run_id: str
+    provider_task_id: Optional[str] = None
     analysis_status: str = Field(..., description='completed / failed')
     quality_status: Optional[str] = None
     quality_score: Optional[float] = None

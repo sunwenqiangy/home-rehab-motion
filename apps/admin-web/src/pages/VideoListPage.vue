@@ -70,9 +70,18 @@
           <span class="filter-shell__hint">先按状态筛掉异常记录，再进入详情页排查质量与失败原因。</span>
         </div>
         <div class="toolbar-group">
-          <el-select v-model="statusFilter" placeholder="按状态筛选" clearable style="width: 180px">
+          <el-input
+            v-model="keyword"
+            clearable
+            placeholder="搜索视频 ID、患者或动作"
+            style="width: 240px"
+            @keyup.enter="loadData(1)"
+            @clear="loadData(1)"
+          />
+          <el-select v-model="statusFilter" placeholder="按状态筛选" clearable style="width: 180px" @change="loadData(1)">
             <el-option v-for="option in statusOptions" :key="option.value" :label="option.label" :value="option.value" />
           </el-select>
+          <el-button type="primary" plain :loading="loading" @click="loadData(1)">搜索</el-button>
         </div>
       </div>
 
@@ -130,6 +139,7 @@ const router = useRouter();
 const videos = ref<AdminVideoItem[]>([]);
 const loading = ref(false);
 const statusFilter = ref<AnalysisStatus | ''>('');
+const keyword = ref('');
 const total = ref(0);
 const page = ref(1);
 const limit = ref(10);
@@ -147,10 +157,7 @@ const statusOptions = [
   label: (ANALYSIS_STATUS_LABELS as any)[status] || status,
 }));
 
-const filteredVideos = computed(() => {
-  if (!statusFilter.value) return videos.value;
-  return videos.value.filter((item) => item.status === statusFilter.value);
-});
+const filteredVideos = computed(() => videos.value);
 
 const completedCount = computed(() => videos.value.filter((item) => item.status === 'completed').length);
 const failedCount = computed(() => videos.value.filter((item) => item.status === 'failed').length);
@@ -234,7 +241,12 @@ function handlePageSizeChange(nextLimit: number) {
 async function loadData(nextPage = page.value) {
   loading.value = true;
   try {
-    const response = await getAdminVideoList({ page: nextPage, limit: limit.value });
+    const response = await getAdminVideoList({
+      page: nextPage,
+      limit: limit.value,
+      keyword: keyword.value.trim() || undefined,
+      status: statusFilter.value || undefined,
+    });
     videos.value = response.items;
     total.value = response.total;
     page.value = response.page;

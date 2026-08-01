@@ -140,6 +140,7 @@ model TrainingVideo {
   updated_at             DateTime               @updatedAt
   user                   UserProfile            @relation(fields: [user_id], references: [user_id])
   analysis_task          AnalysisTask?
+  analysis_runs          AnalysisRun[]
   motion_feature_results MotionFeatureResult[]
   rep_evaluation_results RepEvaluationResult[]
   video_evaluation_result VideoEvaluationResult?
@@ -158,6 +159,7 @@ model AnalysisTask {
   task_id           BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
   video_id          BigInt        @unique @db.UnsignedBigInt
   provider_task_id  String?       @db.VarChar(64)
+  analysis_run_id   String?       @db.Char(36)
   task_status       String        @default("pending") @db.VarChar(30)
   retry_count       Int           @default(0)
   fail_reason       String?       @db.VarChar(255)
@@ -173,7 +175,29 @@ model AnalysisTask {
   updated_at        DateTime      @updatedAt
   video             TrainingVideo @relation(fields: [video_id], references: [video_id])
 
+  @@index([analysis_run_id], map: "idx_analysis_task_run")
   @@map("analysis_task")
+}
+
+model AnalysisRun {
+  analysis_run_id    String        @id @db.Char(36)
+  video_id           BigInt        @db.UnsignedBigInt
+  provider_task_id   String?       @db.VarChar(64)
+  status             String        @default("queued") @db.VarChar(30)
+  request_snapshot   Json?
+  algorithm_version  String?       @db.VarChar(64)
+  template_version   String?       @db.VarChar(64)
+  threshold_version  String?       @db.VarChar(64)
+  fail_reason        String?       @db.VarChar(255)
+  started_at         DateTime?
+  finished_at        DateTime?
+  created_at         DateTime      @default(now())
+  updated_at         DateTime      @updatedAt
+  video              TrainingVideo @relation(fields: [video_id], references: [video_id])
+
+  @@index([video_id, created_at], map: "idx_analysis_run_video_created")
+  @@index([status], map: "idx_analysis_run_status")
+  @@map("analysis_run")
 }
 
 model StandardActionTemplate {

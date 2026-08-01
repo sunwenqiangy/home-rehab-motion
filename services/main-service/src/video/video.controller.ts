@@ -118,9 +118,15 @@ export class VideoController {
   }
 
   @Get('admin/list')
-  getAdminVideoList(@Req() req: Request, @Query('page') page?: string, @Query('limit') limit?: string) {
+  getAdminVideoList(
+    @Req() req: Request,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('keyword') keyword?: string,
+  ) {
     this.authService.requireUser(req, ['admin', 'nurse']);
-    return this.videoService.getAdminVideoList({ page: Number(page) || 1, limit: Number(limit) || 10 });
+    return this.videoService.getAdminVideoList({ page: Number(page) || 1, limit: Number(limit) || 10, status, keyword });
   }
 
   @Get('admin/tasks')
@@ -129,9 +135,10 @@ export class VideoController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
+    @Query('keyword') keyword?: string,
   ) {
     this.authService.requireUser(req, ['admin', 'nurse']);
-    return this.videoService.getAdminAnalysisTasks({ page: Number(page) || 1, limit: Number(limit) || 10, status });
+    return this.videoService.getAdminAnalysisTasks({ page: Number(page) || 1, limit: Number(limit) || 10, status, keyword });
   }
 
   @Post('admin/:videoId/reanalyze')
@@ -190,6 +197,8 @@ export class VideoController {
     this.authService.requireInternalToken(req);
     return this.videoService.handleAnalysisCallback({
       video_id: Number(payload.video_id),
+      analysis_run_id: typeof payload.analysis_run_id === 'string' ? payload.analysis_run_id : '',
+      provider_task_id: typeof payload.provider_task_id === 'string' ? payload.provider_task_id : '',
       analysis_status: String(payload.analysis_status || ''),
       quality_status:
         typeof payload.quality_status === 'string' ? payload.quality_status : undefined,

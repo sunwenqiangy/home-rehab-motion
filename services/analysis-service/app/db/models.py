@@ -55,6 +55,7 @@ class TrainingVideo(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     analysis_task = relationship('AnalysisTask', back_populates='video', uselist=False)
+    analysis_runs = relationship('AnalysisRun', back_populates='video')
     motion_feature_results = relationship('MotionFeatureResult', back_populates='video')
     rep_evaluation_results = relationship('RepEvaluationResult', back_populates='video')
     video_evaluation_result = relationship(
@@ -64,12 +65,29 @@ class TrainingVideo(Base):
     )
 
 
+class AnalysisRun(Base):
+    __tablename__ = 'analysis_run'
+
+    analysis_run_id = Column(String(36), primary_key=True)
+    video_id = Column(BigInteger, ForeignKey('training_video.video_id'), nullable=False)
+    provider_task_id = Column(String(64))
+    status = Column(String(30), default='queued')
+    fail_reason = Column(String(255))
+    started_at = Column(DateTime)
+    finished_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    video = relationship('TrainingVideo', back_populates='analysis_runs')
+
+
 class AnalysisTask(Base):
     __tablename__ = 'analysis_task'
 
     task_id = Column(BigInteger, primary_key=True, autoincrement=True)
     video_id = Column(BigInteger, ForeignKey('training_video.video_id'), unique=True, nullable=False)
     provider_task_id = Column(String(64))
+    analysis_run_id = Column(String(36))
     task_status = Column(String(30), default='pending')
     retry_count = Column(Integer, default=0)
     fail_reason = Column(String(255))

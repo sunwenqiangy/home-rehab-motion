@@ -150,6 +150,7 @@ export class AnalysisService {
   async enqueueVideo(params: {
     videoId: number;
     actionType: TrainingActionType;
+    analysisRunId: string;
     videoKey?: string | null;
     sampleFps?: number;
     sigmaMultiplier?: number;
@@ -163,6 +164,7 @@ export class AnalysisService {
     const canonicalPayload = {
       video_id: params.videoId,
       action_type: params.actionType,
+      analysis_run_id: params.analysisRunId,
       video_key: params.videoKey || undefined,
       sample_fps:
         typeof params.sampleFps === 'number' && Number.isFinite(params.sampleFps)

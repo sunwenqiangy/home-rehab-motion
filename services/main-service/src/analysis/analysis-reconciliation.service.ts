@@ -54,7 +54,11 @@ export class AnalysisReconciliationService implements OnModuleInit, OnModuleDest
         const taskStatus = task.task_status;
         const videoStatus = video.analysis_status;
 
-        if (task.callback_status === 'enqueue_retry_pending') {
+        // 兼容历史缺陷：手动重新分析曾将任务置为 queued 并清空 provider_task_id，
+        // 但分析服务错误去重后没有真正投递 Celery。缺少 provider_task_id 的 queued 任务应自动补投。
+        const needsEnqueueRetry = ['retry_pending', 'enqueue_retry_pending'].includes(task.callback_status)
+          || (taskStatus === 'queued' && !task.provider_task_id && videoStatus === 'queued');
+        if (needsEnqueueRetry) {
           const retryAt = task.callback_next_retry_at?.getTime() || 0;
           if (retryAt > now) {
             continue;
@@ -71,7 +75,7 @@ export class AnalysisReconciliationService implements OnModuleInit, OnModuleDest
                 data: {
                   task_status: 'failed',
                   fail_reason: reason,
-                  callback_status: 'enqueue_retry_exhausted',
+                  callback_status: 'retry_exhausted',
                   callback_last_error: task.callback_last_error,
                   callback_next_retry_at: null,
                   finished_at: new Date(),
@@ -90,12 +94,14 @@ export class AnalysisReconciliationService implements OnModuleInit, OnModuleDest
             const result = await this.analysisService.enqueueVideo({
               videoId: Number(video.video_id),
               actionType: video.action_type as TrainingActionType,
+              analysisRunId: task.analysis_run_id || '',
               videoKey: video.video_key,
             });
             await this.prisma.analysisTask.update({
               where: { task_id: task.task_id },
               data: {
                 provider_task_id: result.task_id,
+                analysis_run_id: task.analysis_run_id,
                 task_status: result.status === 'completed' ? 'completed' : 'queued',
                 fail_reason: null,
                 callback_status: 'pending',
