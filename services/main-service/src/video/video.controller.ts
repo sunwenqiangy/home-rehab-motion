@@ -222,6 +222,9 @@ export class VideoController {
               advice_summary?: unknown;
               confidence_score?: number;
               analysis_version?: string;
+              template_id?: number;
+              template_version?: string;
+              threshold_snapshot?: unknown;
             })
           : undefined,
     });

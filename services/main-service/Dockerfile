@@ -12,12 +12,13 @@ COPY packages/shared-constants/package.json packages/shared-constants/package.js
 COPY packages/shared-types/package.json packages/shared-types/package.json
 COPY services/main-service/prisma ./services/main-service/prisma
 RUN npm ci
-RUN npx prisma generate --schema services/main-service/prisma/schema.prisma
 
 FROM dependencies AS build
 COPY tsconfig.base.json ./
 COPY packages ./packages
 COPY services/main-service ./services/main-service
+# 在完整源码（包含最终 Prisma schema）复制后生成 Client，避免新增字段时编译使用旧类型。
+RUN npx prisma generate --schema services/main-service/prisma/schema.prisma
 RUN npm run build -w @home-rehab-motion/main-service
 
 FROM node:20-bookworm-slim AS runtime

@@ -1006,6 +1006,9 @@ export class VideoService {
       advice_summary?: unknown;
       confidence_score?: number;
       analysis_version?: string;
+      template_id?: number;
+      template_version?: string;
+      threshold_snapshot?: unknown;
     };
   }) {
     if (!Number.isSafeInteger(payload.video_id) || payload.video_id <= 0) {
