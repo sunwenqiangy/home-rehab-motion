@@ -82,16 +82,27 @@ GRADES = [
 # 金标准默认模板（用于无数据库连接时的 fallback）
 DEFAULT_TEMPLATES = {
     'abdominal_crunch': {
-        'abdominal_displacement': {'mean': 15.0, 'std': 3.0, 'unit': 'mm'},
-        'displacement_velocity': {'mean': 8.0, 'std': 2.5, 'unit': 'mm/s'},
+        'abdominal_displacement': {'mean': 1.5, 'std': 1.0, 'unit': 'deg'},
+        'displacement_velocity': {'mean': 0.5, 'std': 0.5, 'unit': 'deg/s'},
         'hold_duration': {'mean': 5.0, 'std': 1.5, 'unit': 's'},
         'trunk_angle_change': {'mean': 2.0, 'std': 1.5, 'unit': 'deg'},
     },
     'pelvic_tilt': {
-        'pelvic_tilt_delta': {'mean': 10.0, 'std': 2.5, 'unit': 'deg'},
-        'pelvis_shift': {'mean': 3.0, 'std': 1.0, 'unit': '%'},
-        'hold_duration': {'mean': 4.0, 'std': 1.2, 'unit': 's'},
-        'trunk_angle_change': {'mean': 2.0, 'std': 1.5, 'unit': 'deg'},
+        # pelvic_tilt_delta: 画面平面内左右髋连线角度的极差（2D），单位：度。
+        # 实测标定（基于标准教学视频）：
+        #   缩腹视频误选骨盆模式：1.377°~2.18°（2D 髋线噪声摆动）
+        #   真实骨盆倾斜视频：4.787°~20.83°
+        # 分隔区间 2.18° < X < 4.787°，取 warning_min=2.5, normal_min=3.0
+        #   缩腹误选 → 全部 invalid（<2.5°）→ 触发 accuracy_invalid 限幅 ≤40 分
+        #   真实骨盆（≥4.787°）→ normal（>3.0°）→ 正常评分
+        #   幅度不足（2.5°~3.0°）→ warning → 低分但不被限幅
+        'pelvic_tilt_delta': {
+            'mean': 6.0, 'std': 2.5, 'unit': 'deg',
+            'scoring_mode': 'lower_bound', 'normal_min': 3.0, 'warning_min': 2.5,
+        },
+        'pelvis_shift': {'mean': 1.5, 'std': 1.0, 'unit': '%', 'scoring_mode': 'upper_bound', 'normal_max': 1.5, 'warning_max': 3.0},
+        'hold_duration': {'mean': 5.0, 'std': 2.0, 'unit': 's'},
+        'trunk_angle_change': {'mean': 2.0, 'std': 1.5, 'unit': 'deg', 'scoring_mode': 'upper_bound', 'normal_max': 3.0, 'warning_max': 5.0},
     },
     'knee_rotation': {
         # knee_rotation_angle 单位：归一化 ×100（双膝中点 X 轴相对休息位的单向最大偏移）
@@ -106,7 +117,7 @@ DEFAULT_TEMPLATES = {
         # trunk_angle_change：膝关节旋转含屈膝+双向转动，躯干有一定晃动属正常
         # 实测mean≈1.35，std≈0.77；设 mean=2.0 std=1.2，让3.5°只触发 warning（σ≈1.25）
         # invalid 阈值在 5.6°，warning 阈值在 3.8°，低于此均正常
-        'trunk_angle_change': {'mean': 2.0, 'std': 1.2, 'unit': 'deg'},
+        'trunk_angle_change': {'mean': 2.0, 'std': 1.2, 'unit': 'deg', 'scoring_mode': 'upper_bound', 'normal_max': 3.5, 'warning_max': 5.6},
     },
 }
 

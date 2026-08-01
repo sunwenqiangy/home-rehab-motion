@@ -51,7 +51,7 @@ class AnalysisRepository:
         return self.session.query(AnalysisTask).filter_by(provider_task_id=provider_task_id).first()
 
     def get_gold_template(self, action_type: str) -> Optional[Dict]:
-        """获取最新版本的金标准模板"""
+        """获取最新版本的金标准模板，同时返回 template_id 与 version 用于结果留痕。"""
         template = (
             self.session.query(StandardActionTemplate)
             .filter_by(action_type=action_type, status=1)
@@ -60,6 +60,8 @@ class AnalysisRepository:
         )
         if template:
             return {
+                'template_id': template.template_id,
+                'version': template.version,
                 'reference_stats': template.reference_stats or {},
                 'threshold_config': template.threshold_config or {},
             }
@@ -268,8 +270,15 @@ class AnalysisRepository:
         self.session.add(rep)
         self.session.flush()
 
-    def save_video_evaluation(self, video_id: int, video_score: VideoScore) -> None:
-        """保存视频级综合评分（upsert）"""
+    def save_video_evaluation(
+        self,
+        video_id: int,
+        video_score: VideoScore,
+        template_id: Optional[int] = None,
+        template_version: Optional[str] = None,
+        threshold_snapshot: Optional[Dict] = None,
+    ) -> None:
+        """保存视频级综合评分（upsert），同时记录实际使用的金标准模板版本与阈值快照。"""
         existing = (
             self.session.query(VideoEvaluationResult)
             .filter_by(video_id=video_id)
@@ -289,6 +298,12 @@ class AnalysisRepository:
             existing.advice_summary = video_score.advice_summary
             existing.confidence_score = video_score.confidence_score
             existing.analysis_version = video_score.analysis_version
+            if template_id is not None:
+                existing.template_id = template_id
+            if template_version is not None:
+                existing.template_version = template_version
+            if threshold_snapshot is not None:
+                existing.threshold_snapshot = threshold_snapshot
         else:
             result = VideoEvaluationResult(
                 video_id=video_id,
@@ -305,6 +320,9 @@ class AnalysisRepository:
                 advice_summary=video_score.advice_summary,
                 confidence_score=video_score.confidence_score,
                 analysis_version=video_score.analysis_version,
+                template_id=template_id,
+                template_version=template_version or 'legacy_unknown',
+                threshold_snapshot=threshold_snapshot,
             )
             self.session.add(result)
         self.session.flush()
@@ -323,6 +341,9 @@ class AnalysisRepository:
         quality_score: Optional[float] = None,
         quality_issues: Optional[List[Dict]] = None,
         review_required_reason: Optional[str] = None,
+        template_id: Optional[int] = None,
+        template_version: Optional[str] = None,
+        threshold_snapshot: Optional[Dict] = None,
     ) -> None:
         """一次性保存完整分析结果（事务内）。
         重新分析时先清除该视频的旧特征和 rep 评分记录，避免重复写入导致评分混乱。
@@ -345,8 +366,13 @@ class AnalysisRepository:
             for rep_score in rep_scores:
                 self.save_rep_evaluation(video_id, rep_score)
 
-            # 4. 保存视频级评分
-            self.save_video_evaluation(video_id, video_score)
+            # 4. 保存视频级评分（含模板版本留痕）
+            self.save_video_evaluation(
+                video_id, video_score,
+                template_id=template_id,
+                template_version=template_version,
+                threshold_snapshot=threshold_snapshot,
+            )
 
             # 5. 仅在质量、置信度和模板均满足条件时对患者发布确定性结论。
             if review_required_reason:

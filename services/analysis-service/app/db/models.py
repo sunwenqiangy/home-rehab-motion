@@ -177,6 +177,9 @@ class VideoEvaluationResult(Base):
     advice_summary = Column(JSON)
     confidence_score = Column(Float)
     analysis_version = Column(String(20))
+    template_id = Column(BigInteger)
+    template_version = Column(String(64))
+    threshold_snapshot = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     video = relationship('TrainingVideo', back_populates='video_evaluation_result')

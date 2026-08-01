@@ -133,12 +133,12 @@ const FEATURE_META: Record<TrainingActionType, Record<string, GoldFeatureMeta>> 
   abdominal_crunch: {
     abdominal_displacement: {
       direction: 'larger_better',
-      unit: '%',
-      description: '腹部收缩位移（越大说明收缩幅度越充分）',
+      unit: 'deg',
+      description: '腹部收缩屈曲幅度（越大说明收缩幅度越充分）',
     },
     displacement_velocity: {
       direction: 'moderate',
-      unit: '%/s',
+      unit: 'deg/s',
       description: '收缩速度（过快或过慢都可能影响质量）',
     },
     hold_duration: {
@@ -347,7 +347,7 @@ export class ConfigService {
       _meta: {
         action_type: actionType,
         sigma_multiplier: safeSigma,
-        note: `基于 ±${safeSigma}σ 自动生成，建议先在流程验证页抽样复核`,
+        note: `基于 ${safeSigma}σ 自动生成单向/双向门限，建议先在流程验证页抽样复核`,
       },
       confidence_min: 0.6,
       sigma_multiplier: safeSigma,
@@ -367,21 +367,67 @@ export class ConfigService {
 
       let validRange: [number, number];
       let warningRange: [number, number];
+      const safeStd = Math.max(std, Math.max(Math.abs(mean) * 0.05, 0.05));
 
       if (meta.direction === 'larger_better') {
-        validRange = [Math.max(0, round4(mean - safeSigma * std)), round4(mean + safeSigma * 2 * std)];
-        warningRange = [Math.max(0, round4(mean - safeSigma * 1.5 * std)), round4(mean + safeSigma * 3 * std)];
-      } else if (meta.direction === 'smaller_better') {
-        validRange = [0, round4(mean + safeSigma * std)];
-        warningRange = [0, round4(mean + safeSigma * 2 * std)];
-      } else {
-        validRange = [round4(mean - safeSigma * std), round4(mean + safeSigma * std)];
-        warningRange = [round4(mean - safeSigma * 1.5 * std), round4(mean + safeSigma * 1.5 * std)];
+        // 幅度、保持时间等“越大越好”的特征只限制下限；超过金标准不应被当作异常。
+        let normalMin = Math.max(0, round4(mean - safeSigma * safeStd));
+        let warningMin = Math.max(0, round4(mean - safeSigma * 1.5 * safeStd));
+
+        // 骨盆倾斜使用画面平面内髋线角度极差。缩腹误选该模式时会产生约
+        // 1.38°~2.18° 的关键点噪声；自动统计模板不得把下限降入此噪声区间。
+        // 此处是经过动作类型标定的业务下限，而非通用 σ 门限，避免下次重生成
+        // 金标准后覆盖已验证的误选动作保护。
+        if (actionType === 'pelvic_tilt' && featureCode === 'pelvic_tilt_delta') {
+          normalMin = Math.max(normalMin, 3.0);
+          warningMin = Math.max(warningMin, 2.5);
+        }
+
+        // 配置会被 JSON 持久化，Infinity 会被序列化为 null；使用足够大的有限值仅用于管理端展示。
+        validRange = [normalMin, Number.MAX_SAFE_INTEGER];
+        warningRange = [warningMin, Number.MAX_SAFE_INTEGER];
+        thresholdConfig[featureCode] = {
+          valid_range: validRange,
+          warning_range: warningRange,
+          scoring_mode: 'lower_bound',
+          normal_min: normalMin,
+          warning_min: warningMin,
+          gold_mean: mean,
+          gold_std: std,
+          unit: meta.unit,
+          description: meta.description,
+          direction: meta.direction,
+        };
+        return;
       }
 
+      if (meta.direction === 'smaller_better') {
+        // 代偿、晃动等“越小越好”的特征只限制上限；更小代表更稳定，不能扣分。
+        const normalMax = Math.max(0, round4(mean + safeSigma * safeStd));
+        const warningMax = Math.max(0, round4(mean + safeSigma * 1.5 * safeStd));
+        validRange = [0, normalMax];
+        warningRange = [0, warningMax];
+        thresholdConfig[featureCode] = {
+          valid_range: validRange,
+          warning_range: warningRange,
+          scoring_mode: 'upper_bound',
+          normal_max: normalMax,
+          warning_max: warningMax,
+          gold_mean: mean,
+          gold_std: std,
+          unit: meta.unit,
+          description: meta.description,
+          direction: meta.direction,
+        };
+        return;
+      }
+
+      validRange = [round4(mean - safeSigma * safeStd), round4(mean + safeSigma * safeStd)];
+      warningRange = [round4(mean - safeSigma * 1.5 * safeStd), round4(mean + safeSigma * 1.5 * safeStd)];
       thresholdConfig[featureCode] = {
         valid_range: validRange,
         warning_range: warningRange,
+        scoring_mode: 'two_sided',
         gold_mean: mean,
         gold_std: std,
         unit: meta.unit,

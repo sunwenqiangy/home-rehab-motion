@@ -6,7 +6,7 @@
           <div class="page-hero__eyebrow">Template Thresholds</div>
           <h1 class="page-hero__title">阈值参数管理</h1>
           <p class="page-hero__subtitle">
-通过 σ 倍数统一控制评分门限，再按每个动作特征配置“有效区间”和“警告区间”，用于识别动作偏差与风险提示。
+以金标准统计为起点生成评分门限：动作幅度和保持时间看下限，代偿和晃动看上限，速度等指标使用合理区间。
           </p>
           <div class="page-hero__meta">
             <span class="page-pill">共 {{ thresholds.length }} 条配置</span>
@@ -36,7 +36,7 @@
 
       <div class="threshold-guide" role="note">
         <span class="threshold-guide__mark">i</span>
-        <div><strong>如何理解这些参数？</strong><span> σ 倍数越小，判定越严格；有效区间代表动作表现正常的范围，警告区间代表需要关注但不一定判定异常的范围。</span></div>
+        <div><strong>如何理解这些参数？</strong><span>σ 倍数只用于生成建议门限：幅度/保持不足看下限，代偿/晃动超标看上限，速度使用双向区间。正常之外、预警之内为「警告」；超出预警门限才是「无效」。</span></div>
       </div>
 
       <div class="table-shell" v-loading="loading">
@@ -94,11 +94,28 @@
         </div>
       </div>
 
+      <div class="motion-guide" v-if="tuningActionGuide">
+        <div class="motion-guide__title">{{ tuningActionGuide.title }}</div>
+        <div class="motion-guide__summary">{{ tuningActionGuide.summary }}</div>
+        <div class="motion-guide__checks">
+          <span><b>主要看：</b>{{ tuningActionGuide.primary }}</span>
+          <span><b>同时控制：</b>{{ tuningActionGuide.control }}</span>
+          <span><b>操作建议：</b>{{ tuningActionGuide.tip }}</span>
+        </div>
+      </div>
+
+      <div class="traffic-light-guide" role="note">
+        <span class="traffic-light-guide__title">门限就像动作质量的红绿灯</span>
+        <span><b class="traffic-light-guide__normal">正常</b>：符合金标准表现</span>
+        <span><b class="traffic-light-guide__warning">预警</b>：存在轻微偏差，建议关注</span>
+        <span><b class="traffic-light-guide__invalid">无效</b>：偏差较大，本周期不计入有效动作</span>
+      </div>
+
       <!-- 宽松度选择（合并 σ + 档位） -->
       <div class="preset-bar">
         <div class="preset-bar__top">
-          <span class="preset-bar__title">评分门限（允许偶差多少倍特征标准差）</span>
-          <span class="preset-bar__sigma">当前门限倍数 = <b>{{ tuneSigma }}</b></span>
+          <span class="preset-bar__title">建议门限宽松度</span>
+          <span class="preset-bar__sigma">本次生成倍数 = <b>{{ tuneSigma }}σ</b></span>
         </div>
         <div class="preset-cards">
           <button
@@ -109,32 +126,14 @@
             @click="handlePresetChange(p.key)"
           >
             <span class="preset-card__name">{{ p.name }}</span>
-            <span class="preset-card__sigma">门限倍数 ×{{ p.sigma }}</span>
+            <span class="preset-card__sigma">建议值 {{ p.sigma }}σ</span>
             <span class="preset-card__desc">{{ p.desc }}</span>
           </button>
         </div>
         <div class="preset-bar__range-row">
-          <span class="preset-bar__range-label">区间宽度：</span>
-          <div class="preset-bar__range-inputs">
-            <span class="preset-bar__range-tag">有效</span>
-            <span class="preset-bar__range-eq">均值 ±</span>
-            <div class="range-mult-input">
-              <button class="range-mult-btn" @click="rangeValidMult = Math.max(0.5, +((rangeValidMult - 0.5).toFixed(1)))">-</button>
-              <span class="range-mult-val">{{ rangeValidMult }}</span>
-              <button class="range-mult-btn" @click="rangeValidMult = Math.min(5, +((rangeValidMult + 0.5).toFixed(1)))">+</button>
-            </div>
-            <span class="preset-bar__range-tag">×标准差</span>
-            <span class="range-mult-sep">|</span>
-            <span class="preset-bar__range-tag">警告</span>
-            <span class="preset-bar__range-eq">均值 ±</span>
-            <div class="range-mult-input">
-              <button class="range-mult-btn" @click="rangeWarnMult = Math.max(0.5, +((rangeWarnMult - 0.5).toFixed(1)))">-</button>
-              <span class="range-mult-val">{{ rangeWarnMult }}</span>
-              <button class="range-mult-btn" @click="rangeWarnMult = Math.min(6, +((rangeWarnMult + 0.5).toFixed(1)))">+</button>
-            </div>
-            <span class="preset-bar__range-tag">×标准差</span>
-            <el-button size="small" type="primary" plain @click="recomputeRanges">重算区间</el-button>
-          </div>
+          <span class="preset-bar__range-label">应用建议：</span>
+          <span class="preset-bar__range-eq">按 {{ tuneSigma }}σ 生成正常门限，预警门限自动放宽为 {{ warningSigma }}σ；可在下方逐项微调。</span>
+          <el-button size="small" type="primary" plain @click="recomputeRanges">按建议重算门限</el-button>
         </div>
         <div v-if="actionStatus" class="preset-bar__status">{{ actionStatus }}</div>
       </div>
@@ -166,34 +165,53 @@
               <el-tag v-if="feat.direction" size="small" :type="dirTagType(feat.direction)">
                 {{ dirLabel(feat.direction) }}
               </el-tag>
+              <el-tag v-if="feat.scoringMode" size="small" :type="scoringModeTagType(feat.scoringMode)">
+                {{ scoringModeTagLabel(feat.scoringMode) }}
+              </el-tag>
             </div>
             <div class="feat-code">{{ feat.code }}</div>
             <div class="feat-desc" v-if="featureDesc(feat.code)">{{ featureDesc(feat.code) }}</div>
             <div class="feat-ref" v-if="feat.goldMean != null">
-              均值 {{ feat.goldMean }} / 标准差 {{ feat.goldStd }}
-              <span v-if="feat.goldStd" class="feat-ref-calc">
-                → 2×标准差上限 ≈ {{ calcUpperBound(feat, 2) }}
-              </span>
+              金标准均值 {{ feat.goldMean }} / 标准差 {{ feat.goldStd }}
+              <span class="feat-ref-calc">→ {{ scoringRuleLabel(feat.scoringMode) }}</span>
             </div>
           </div>
-          <!-- 右：有效 / 警告区间（标题+输入对齐） -->
+          <!-- 右：按评分语义展示真正会生效的门限，避免将单向指标误解成双向区间。 -->
           <div class="feat-ranges">
-            <div class="range-row">
-              <span class="range-label range-label--valid">有效</span>
-              <div class="range-pair">
-                <el-input-number v-model="feat.validLo" :precision="4" :step="featureStep(feat)" :controls="false" size="small" class="range-input" />
-                <span class="range-sep">~</span>
-                <el-input-number v-model="feat.validHi" :precision="4" :step="featureStep(feat)" :controls="false" size="small" class="range-input" />
+            <template v-if="feat.scoringMode === 'lower_bound'">
+              <div class="range-row">
+                <span class="range-label range-label--valid">正常下限</span>
+                <el-input-number v-model="feat.normalMin" :min="0" :precision="4" :step="featureStep(feat)" :controls="false" size="small" class="range-input range-input--single" />
+                <span class="range-hint">达到或超过此值为正常</span>
               </div>
-            </div>
-            <div class="range-row">
-              <span class="range-label range-label--warn">警告</span>
-              <div class="range-pair">
-                <el-input-number v-model="feat.warnLo" :precision="4" :step="featureStep(feat)" :controls="false" size="small" class="range-input" />
-                <span class="range-sep">~</span>
-                <el-input-number v-model="feat.warnHi" :precision="4" :step="featureStep(feat)" :controls="false" size="small" class="range-input" />
+              <div class="range-row">
+                <span class="range-label range-label--warn">预警下限</span>
+                <el-input-number v-model="feat.warningMin" :min="0" :precision="4" :step="featureStep(feat)" :controls="false" size="small" class="range-input range-input--single" />
+                <span class="range-hint">低于此值判无效</span>
               </div>
-            </div>
+            </template>
+            <template v-else-if="feat.scoringMode === 'upper_bound'">
+              <div class="range-row">
+                <span class="range-label range-label--valid">正常上限</span>
+                <el-input-number v-model="feat.normalMax" :min="0" :precision="4" :step="featureStep(feat)" :controls="false" size="small" class="range-input range-input--single" />
+                <span class="range-hint">不超过此值为正常</span>
+              </div>
+              <div class="range-row">
+                <span class="range-label range-label--warn">预警上限</span>
+                <el-input-number v-model="feat.warningMax" :min="0" :precision="4" :step="featureStep(feat)" :controls="false" size="small" class="range-input range-input--single" />
+                <span class="range-hint">超过此值判无效</span>
+              </div>
+            </template>
+            <template v-else>
+              <div class="range-row">
+                <span class="range-label range-label--valid">正常区间</span>
+                <div class="range-pair"><el-input-number v-model="feat.validLo" :precision="4" :step="featureStep(feat)" :controls="false" size="small" class="range-input" /><span class="range-sep">~</span><el-input-number v-model="feat.validHi" :precision="4" :step="featureStep(feat)" :controls="false" size="small" class="range-input" /></div>
+              </div>
+              <div class="range-row">
+                <span class="range-label range-label--warn">预警区间</span>
+                <div class="range-pair"><el-input-number v-model="feat.warnLo" :precision="4" :step="featureStep(feat)" :controls="false" size="small" class="range-input" /><span class="range-sep">~</span><el-input-number v-model="feat.warnHi" :precision="4" :step="featureStep(feat)" :controls="false" size="small" class="range-input" /></div>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -274,15 +292,15 @@ function actionTypeLabel(type?: TrainingActionType): string {
 const FEATURE_META: Record<string, { label: string; desc: string }> = {
   trunk_angle_change:      { label: '躯干角度变化', desc: '运动过程中躯干的角度偏转幅度，反映核心稳定性' },
   abdominal_displacement:  { label: '腹部位移',     desc: '腹部在运动中的相对位移量，核心收缩指标' },
-  pelvis_shift:            { label: '骨盆偏移',     desc: '骨盆在水平方向的偏移幅度，偏移越小越稳定' },
-  pelvic_tilt_delta:       { label: '骨盆倾斜幅度', desc: '骨盆前倾/后倾的角度变化量，核心动作主指标' },
+  pelvis_shift:            { label: '骨盆平移代偿', desc: '动作时骨盆横向滑动的幅度；越小表示越稳定、代偿越少' },
+  pelvic_tilt_delta:       { label: '骨盆前后倾斜幅度', desc: '骨盆前倾/后倾的角度变化量；幅度不足说明动作没有做到位' },
   pelvic_tilt_velocity:    { label: '骨盆倾斜速度', desc: '骨盆倾斜动作的执行速度，反映动作节奏控制' },
   hold_duration:           { label: '保持时长',     desc: '在目标姿态上维持的时间，反映肌肉耐力' },
   knee_rotation_range:     { label: '膝关节旋转幅度', desc: '膝关节旋转的角度范围，核心动作主指标' },
   knee_rotation_velocity:  { label: '膝关节旋转速度', desc: '旋转动作的执行速度，反映动作节奏控制' },
-  knee_rotation_angle:     { label: '膝关节旋转角',  desc: '膝关节当前旋转角度绝对值' },
-  knee_symmetry:           { label: '膝关节对称性',  desc: '左右膝关节旋转幅度的对称程度，值越高越对称' },
-  rotation_velocity:       { label: '旋转速度',      desc: '关节旋转的瞬时速度' },
+  knee_rotation_angle:     { label: '膝关节旋转幅度', desc: '单次倒膝的最大旋转幅度；幅度不足说明活动范围不够' },
+  knee_symmetry:           { label: '左右旋转对称性', desc: '左右两侧旋转幅度的均衡程度；偏离参考范围提示控制不均衡' },
+  rotation_velocity:       { label: '旋转节奏',       desc: '完成倒膝旋转的速度；过快或过慢都可能影响动作控制' },
   displacement_velocity:   { label: '位移速度',      desc: '身体部位位移的执行速度，反映动作节奏' },
 };
 
@@ -299,7 +317,7 @@ function featureShortLabel(code: string): string {
   return featureLabel(code);
 }
 
-const NON_FEATURE_KEYS = new Set(['_meta', 'confidence_min', 'sigma_multiplier']);
+const NON_FEATURE_KEYS = new Set(['_meta', 'confidence_min', 'sigma_multiplier', 'confidenceMin', 'sigmaMultiplier']);
 
 function featureKeys(row: ThresholdConfigDto): string[] {
   const cfg = row.thresholdConfig || {};
@@ -333,15 +351,27 @@ function isFeatureOverTight(row: ThresholdConfigDto, code: string): boolean {
 }
 
 function dirTagType(direction: string): string {
-  if (direction === 'larger_better') return 'success';
-  if (direction === 'smaller_better') return 'danger';
-  return 'warning';
+if (direction === 'larger_better') return 'success';
+if (direction === 'smaller_better') return 'danger';
+return 'warning';
 }
 
 function dirLabel(direction: string): string {
-  if (direction === 'larger_better') return '越大越好';
-  if (direction === 'smaller_better') return '越小越好';
-  return '适度';
+if (direction === 'larger_better') return '越大越好';
+if (direction === 'smaller_better') return '越小越好';
+return '适度';
+}
+
+function scoringModeTagType(mode: TuneFeature['scoringMode']): string {
+  if (mode === 'lower_bound') return 'success';
+  if (mode === 'upper_bound') return 'danger';
+  return 'warning';
+}
+
+function scoringModeTagLabel(mode: TuneFeature['scoringMode']): string {
+  if (mode === 'lower_bound') return '看下限';
+  if (mode === 'upper_bound') return '看上限';
+  return '双向区间';
 }
 
 /* ============================================================ */
@@ -352,8 +382,13 @@ interface TuneFeature {
   code: string;
   unit: string;
   direction: string;
+  scoringMode: 'lower_bound' | 'upper_bound' | 'two_sided';
   goldMean: number | null;
   goldStd: number | null;
+  normalMin: number;
+  warningMin: number;
+  normalMax: number;
+  warningMax: number;
   validLo: number;
   validHi: number;
   warnLo: number;
@@ -375,43 +410,65 @@ const SIGMA_PRESETS = [
 ] as const;
 
 // 卡片式档位配置：只控制门限倍数，区间独立重算
+const ACTION_TUNING_GUIDES: Record<TrainingActionType, { title: string; summary: string; primary: string; control: string; tip: string }> = {
+  abdominal_crunch: {
+    title: '缩腹运动：先保证收腹做到位，再减少借力晃动',
+    summary: '幅度与保持时长不足会影响有效次数；躯干晃动过大提示存在代偿。',
+    primary: '腹部收缩幅度、顶峰保持时长（看下限）',
+    control: '躯干代偿、收缩节奏（看上限或合理区间）',
+    tip: '优先核对有效次数，再微调单项门限。',
+  },
+  pelvic_tilt: {
+    title: '骨盆倾斜：先保证前后倾斜充分，再避免骨盆横向滑动',
+    summary: '核心是骨盆前后倾斜幅度；横向平移和躯干晃动过大属于代偿。',
+    primary: '骨盆前后倾斜幅度、顶峰保持时长（看下限）',
+    control: '骨盆平移代偿、躯干代偿（看上限）',
+    tip: '若次数偏少，先确认幅度下限是否过高，再检查代偿上限。',
+  },
+  knee_rotation: {
+    title: '膝关节旋转：保证倒膝幅度充分、左右均衡，并保持平稳节奏',
+    summary: '幅度不足会漏记动作；左右不均或节奏过快/过慢会提示控制质量下降。',
+    primary: '膝关节旋转幅度（看下限）',
+    control: '左右旋转对称性、旋转节奏（双向区间）及躯干代偿（看上限）',
+    tip: '先看幅度是否达标；再根据流程验证中的左右差异和节奏结果微调。',
+  },
+};
+
+const tuningActionGuide = computed(() => tuningItem.value ? ACTION_TUNING_GUIDES[tuningItem.value.actionType] : null);
+
 const PRESET_CONFIGS = [
   {
     key: 'strict' as const,
     name: '严格',
     sigma: 1.5,
-    desc: '实测偏差 < 1.5 × 标准差 才判正常',
+    desc: '更容易识别轻微动作偏差，适合已充分验证的模板',
   },
   {
     key: 'balanced' as const,
     name: '平衡',
     sigma: 1.8,
-    desc: '实测偏差 < 1.8 × 标准差 才判正常（推荐）',
+    desc: '兼顾动作区分度和拍摄波动，适合日常验证',
   },
   {
     key: 'loose' as const,
     name: '宽松',
     sigma: 2.0,
-    desc: '实测偏差 < 2.0 × 标准差 才判正常',
+    desc: '更能包容个体差异，建议作为新模板首轮验证值',
   },
 ];
 
-// 区间宽度倍数（独立于门限倍数）
-const rangeValidMult = ref(2);
-const rangeWarnMult = ref(3);
+const warningSigma = computed(() => round4(tuneSigma.value * 1.5));
 
 function recomputeRanges() {
-  const { touched, changed } = applySigmaRangeTemplate(rangeValidMult.value, rangeWarnMult.value);
+  const { touched, changed } = applySigmaRangeTemplate(tuneSigma.value, warningSigma.value);
   if (!touched) {
-    actionStatus.value = '特征缺少金标准数据，无法重算区间';
+    actionStatus.value = '特征缺少金标准数据，无法按建议重算门限';
     return;
   }
-  if (changed === 0) {
-    actionStatus.value = `区间已是目标值（有效 ±${rangeValidMult.value}σ，警告 ±${rangeWarnMult.value}σ），无需变更`;
-  } else {
-    actionStatus.value = `已重算区间：${changed}/${touched} 个特征已更新（有效 ±${rangeValidMult.value}σ，警告 ±${rangeWarnMult.value}σ）`;
-    ElMessage.success(`区间已重算 ${changed}/${touched} 个特征`);
-  }
+  actionStatus.value = changed === 0
+    ? `所有特征已符合当前建议（正常 ${tuneSigma.value}σ，预警 ${warningSigma.value}σ）`
+    : `已按当前建议更新 ${changed}/${touched} 个特征（正常 ${tuneSigma.value}σ，预警 ${warningSigma.value}σ）`;
+  if (changed > 0) ElMessage.success(`已更新 ${changed}/${touched} 个特征门限`);
 }
 
 const tuneSigmaTagType = computed(() => {
@@ -452,11 +509,10 @@ const displayedTuneFeatures = computed(() => {
   return filtered.length ? filtered : tuneFeatures;
 });
 
-// 计算当前有效上限对应几倍特征标准差
-function calcUpperBound(feat: TuneFeature, sigmaMult: number): string {
-  if (feat.goldMean == null || feat.goldStd == null || feat.goldStd <= 0) return '-';
-  const upper = feat.goldMean + sigmaMult * feat.goldStd;
-  return round4(upper).toString();
+function scoringRuleLabel(mode: TuneFeature['scoringMode']): string {
+  if (mode === 'lower_bound') return '数值越高越充分：不足时先预警，明显不足则无效';
+  if (mode === 'upper_bound') return '数值越低越稳定：超标时先预警，明显超标则无效';
+  return '位于正常区间为正常；轻微偏离预警，明显偏离则无效';
 }
 
 function featureStep(feat: TuneFeature): number {
@@ -474,25 +530,34 @@ function round4(value: number): number {
   return Math.round(value * 10000) / 10000;
 }
 
-function rangeByDirection(mean: number, std: number, direction: string, sigma: number): [number, number] {
-  const safeStd = Math.max(0, std);
-  if (safeStd <= 0) return [round4(mean), round4(mean)];
-  if (direction === 'smaller_better') return [0, round4(mean + sigma * safeStd)];
-  if (direction === 'larger_better') return [round4(Math.max(0, mean - sigma * safeStd)), round4(mean + sigma * safeStd)];
-  return [round4(mean - sigma * safeStd), round4(mean + sigma * safeStd)];
+function effectiveStd(mean: number, std: number): number {
+  return Math.max(std, Math.max(Math.abs(mean) * 0.05, 0.05));
 }
 
-function applySigmaRangeTemplate(validSigma: number, warningSigma: number) {
+function applySigmaRangeTemplate(normalSigma: number, warnSigma: number) {
   let touched = 0; let changed = 0;
   for (const feat of tuneFeatures) {
     if (feat.goldMean == null || feat.goldStd == null) continue;
     touched++;
-    const prev = [feat.validLo, feat.validHi, feat.warnLo, feat.warnHi];
-    const vr = rangeByDirection(feat.goldMean, feat.goldStd, feat.direction, validSigma);
-    const wr = rangeByDirection(feat.goldMean, feat.goldStd, feat.direction, warningSigma);
-    feat.validLo = vr[0]; feat.validHi = vr[1];
-    feat.warnLo = Math.min(wr[0], vr[0]); feat.warnHi = Math.max(wr[1], vr[1]);
-    if (prev[0] !== feat.validLo || prev[1] !== feat.validHi || prev[2] !== feat.warnLo || prev[3] !== feat.warnHi) changed++;
+    const safeStd = effectiveStd(feat.goldMean, feat.goldStd);
+    const prev = JSON.stringify(feat);
+    if (feat.scoringMode === 'lower_bound') {
+      feat.normalMin = Math.max(0, round4(feat.goldMean - normalSigma * safeStd));
+      feat.warningMin = Math.max(0, round4(feat.goldMean - warnSigma * safeStd));
+      feat.validLo = feat.normalMin; feat.validHi = Number.MAX_SAFE_INTEGER;
+      feat.warnLo = feat.warningMin; feat.warnHi = Number.MAX_SAFE_INTEGER;
+    } else if (feat.scoringMode === 'upper_bound') {
+      feat.normalMax = Math.max(0, round4(feat.goldMean + normalSigma * safeStd));
+      feat.warningMax = Math.max(0, round4(feat.goldMean + warnSigma * safeStd));
+      feat.validLo = 0; feat.validHi = feat.normalMax;
+      feat.warnLo = 0; feat.warnHi = feat.warningMax;
+    } else {
+      feat.validLo = round4(feat.goldMean - normalSigma * safeStd);
+      feat.validHi = round4(feat.goldMean + normalSigma * safeStd);
+      feat.warnLo = round4(feat.goldMean - warnSigma * safeStd);
+      feat.warnHi = round4(feat.goldMean + warnSigma * safeStd);
+    }
+    if (prev !== JSON.stringify(feat)) changed++;
   }
   return { touched, changed };
 }
@@ -501,9 +566,8 @@ function handlePresetChange(mode: 'strict' | 'balanced' | 'loose') {
   presetMode.value = mode;
   const sigmaMap = { strict: 1.5, balanced: 1.8, loose: 2.0 };
   tuneSigma.value = sigmaMap[mode];
-  // 只更新门限倍数，不自动重算区间（区间由用户手动点「重算区间」触发）
   const label = mode === 'strict' ? '严格' : mode === 'loose' ? '宽松' : '平衡';
-  actionStatus.value = `门限已切换为「${label}」（倍数 ×${tuneSigma.value}）——区间未变。如需同步重算区间，点「重算区间」按鈕。`;
+  actionStatus.value = `已选择「${label}」建议（${tuneSigma.value}σ）；点击「按建议重算门限」后才会更新各项数值。`; 
 }
 
 function openTune(item: ThresholdConfigDto) {
@@ -520,37 +584,78 @@ function openTune(item: ThresholdConfigDto) {
     const feat = val as Record<string, any>;
     const vr = Array.isArray(feat.valid_range) ? feat.valid_range : [null, null];
     const wr = Array.isArray(feat.warning_range) ? feat.warning_range : [null, null];
+    const direction = typeof feat.direction === 'string' ? feat.direction : '';
+    const scoringMode = feat.scoring_mode === 'lower_bound' || feat.scoring_mode === 'upper_bound'
+      ? feat.scoring_mode
+      : direction === 'larger_better' ? 'lower_bound'
+        : direction === 'smaller_better' ? 'upper_bound'
+          : 'two_sided';
+    const validLo = typeof vr[0] === 'number' ? vr[0] : 0;
+    const validHi = typeof vr[1] === 'number' ? vr[1] : 0;
+    const warnLo = typeof wr[0] === 'number' ? wr[0] : 0;
+    const warnHi = typeof wr[1] === 'number' ? wr[1] : 0;
     tuneFeatures.push({
       code: key,
       unit: typeof feat.unit === 'string' ? feat.unit : '',
-      direction: typeof feat.direction === 'string' ? feat.direction : '',
+      direction,
+      scoringMode,
       goldMean: typeof feat.gold_mean === 'number' ? feat.gold_mean : null,
       goldStd: typeof feat.gold_std === 'number' ? feat.gold_std : null,
-      validLo: typeof vr[0] === 'number' ? vr[0] : 0,
-      validHi: typeof vr[1] === 'number' ? vr[1] : 0,
-      warnLo: typeof wr[0] === 'number' ? wr[0] : 0,
-      warnHi: typeof wr[1] === 'number' ? wr[1] : 0,
+      normalMin: typeof feat.normal_min === 'number' ? feat.normal_min : validLo,
+      warningMin: typeof feat.warning_min === 'number' ? feat.warning_min : warnLo,
+      normalMax: typeof feat.normal_max === 'number' ? feat.normal_max : validHi,
+      warningMax: typeof feat.warning_max === 'number' ? feat.warning_max : warnHi,
+      validLo,
+      validHi,
+      warnLo,
+      warnHi,
     });
   }
 
   showAllFeatures.value = false;
   presetMode.value = tuneSigma.value <= 1.6 ? 'strict' : tuneSigma.value >= 1.95 ? 'loose' : 'balanced';
   actionStatus.value = '';
-  rangeValidMult.value = 2;
-  rangeWarnMult.value = 3;
-  tuneDialogVisible.value = true;
+tuneDialogVisible.value = true;
 }
 
 function handleTuneSave() {
   if (!tuningItem.value) return;
+  for (const feat of tuneFeatures) {
+    if (feat.scoringMode === 'lower_bound' && feat.warningMin > feat.normalMin) {
+      ElMessage.error(`${featureLabel(feat.code)}：预警下限不能高于正常下限`);
+      return;
+    }
+    if (feat.scoringMode === 'upper_bound' && feat.warningMax < feat.normalMax) {
+      ElMessage.error(`${featureLabel(feat.code)}：预警上限不能低于正常上限`);
+      return;
+    }
+    if (feat.scoringMode === 'two_sided' && (feat.validLo > feat.validHi || feat.warnLo > feat.warnHi || feat.warnLo > feat.validLo || feat.warnHi < feat.validHi)) {
+      ElMessage.error(`${featureLabel(feat.code)}：预警区间必须完整包含正常区间`);
+      return;
+    }
+  }
+
   const cfg = JSON.parse(JSON.stringify(tuningItem.value.thresholdConfig || {})) as Record<string, any>;
   if (!cfg._meta) cfg._meta = {};
   cfg._meta.sigma_multiplier = tuneSigma.value;
   cfg.sigma_multiplier = tuneSigma.value;
   for (const feat of tuneFeatures) {
     if (!cfg[feat.code] || typeof cfg[feat.code] !== 'object') continue;
-    cfg[feat.code].valid_range = [feat.validLo, feat.validHi];
-    cfg[feat.code].warning_range = [feat.warnLo, feat.warnHi];
+    cfg[feat.code].scoring_mode = feat.scoringMode;
+    if (feat.scoringMode === 'lower_bound') {
+      cfg[feat.code].normal_min = feat.normalMin;
+      cfg[feat.code].warning_min = feat.warningMin;
+      cfg[feat.code].valid_range = [feat.normalMin, Number.MAX_SAFE_INTEGER];
+      cfg[feat.code].warning_range = [feat.warningMin, Number.MAX_SAFE_INTEGER];
+    } else if (feat.scoringMode === 'upper_bound') {
+      cfg[feat.code].normal_max = feat.normalMax;
+      cfg[feat.code].warning_max = feat.warningMax;
+      cfg[feat.code].valid_range = [0, feat.normalMax];
+      cfg[feat.code].warning_range = [0, feat.warningMax];
+    } else {
+      cfg[feat.code].valid_range = [feat.validLo, feat.validHi];
+      cfg[feat.code].warning_range = [feat.warnLo, feat.warnHi];
+    }
   }
   saveConfig(tuningItem.value.actionType, cfg);
 }
@@ -606,6 +711,9 @@ onMounted(loadData);
 <style scoped>
 .threshold-guide { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; margin: 0 0 16px; border: 1px solid #d6e8f3; border-radius: 12px; color: #5a7286; background: #f5faff; font-size: 12px; line-height: 1.65; }
 .threshold-guide strong { margin-right: 8px; color: #285f80; }.threshold-guide__mark { display: grid; flex: 0 0 auto; width: 17px; height: 17px; place-items: center; border-radius: 50%; color: #fff; background: #56a8ce; font-family: Georgia, serif; font-size: 11px; font-weight: 700; }
+.motion-guide { padding: 13px 15px; margin: 0 0 10px; border: 1px solid rgba(64,158,255,.28); border-radius: 10px; background: rgba(64,158,255,.055); }
+.motion-guide__title { color: var(--el-text-color-primary); font-size: 14px; font-weight: 700; }.motion-guide__summary { margin-top: 4px; color: var(--el-text-color-secondary); font-size: 12px; line-height: 1.6; }.motion-guide__checks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; color: var(--el-text-color-regular); font-size: 12px; line-height: 1.5; }.motion-guide__checks span { padding: 7px 8px; border-radius: 6px; background: rgba(255,255,255,.72); }.motion-guide__checks b { color: var(--el-color-primary); }
+.traffic-light-guide { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 9px 12px; margin: 0 0 10px; border-radius: 8px; background: rgba(15,23,42,.035); color: var(--el-text-color-secondary); font-size: 12px; }.traffic-light-guide__title { color: var(--el-text-color-primary); font-weight: 700; }.traffic-light-guide b { padding: 1px 5px; border-radius: 4px; font-size: 11px; }.traffic-light-guide__normal { color: #287a4f; background: rgba(64,158,113,.13); }.traffic-light-guide__warning { color: #a66b00; background: rgba(230,162,60,.16); }.traffic-light-guide__invalid { color: #b53a3a; background: rgba(245,108,108,.13); }
 /* ── 特征标签 ─────────────────────────────── */
 .feature-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
@@ -749,26 +857,25 @@ onMounted(loadData);
   color: var(--el-text-color-secondary);
   white-space: nowrap;
 }
-.range-mult-sep {
-  color: rgba(0,0,0,0.12);
-  font-size: 16px;
-  margin: 0 2px;
+.range-hint {
+font-size: 11px;
+color: var(--el-text-color-secondary);
+white-space: nowrap;
+margin-left: 6px;
 }
-.range-mult-input {
-  display: inline-flex;
-  align-items: center;
-  background: #fff;
-  border: 1px solid rgba(99,102,241,0.3);
-  border-radius: 20px;
-  padding: 0 2px;
-  gap: 0;
+.range-input--single { width: 110px; }
+/* unused: kept for backwards compat of existing CSS rules below */
+.range-mult-sep {
+color: rgba(0,0,0,0.12);
+font-size: 16px;
+margin: 0 2px;
 }
 .range-mult-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
+width: 24px;
+height: 24px;
+border: none;
+background: transparent;
+cursor: pointer;
   font-size: 14px;
   font-weight: 600;
   color: var(--el-color-primary);
@@ -965,7 +1072,8 @@ onMounted(loadData);
 
 /* ── 响应式 ─────────────────────────────────── */
 @media (max-width: 768px) {
-  .preset-cards { grid-template-columns: 1fr; }
+.motion-guide__checks { grid-template-columns: 1fr; }
+.preset-cards { grid-template-columns: 1fr; }
   .feat-row { grid-template-columns: 1fr; align-items: flex-start; }
   .feat-info { flex: none; }
   .range-row { flex-wrap: wrap; }

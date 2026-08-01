@@ -650,7 +650,9 @@ export class VideoService {
         createdAt: video.created_at.toISOString(),
         startedAt: video.analysis_task?.started_at?.toISOString() || null,
         finishedAt: video.analysis_task?.finished_at?.toISOString() || null,
-        canReanalyze: ['failed', 'quality_insufficient', 'review_required'].includes(video.analysis_status),
+        // 模板、阈值或算法版本发布后，管理员需要能对已完成视频做回归复测；
+        // 进行中任务仍不可重复投递，避免并发写入同一视频结果。
+        canReanalyze: ['completed', 'failed', 'quality_insufficient', 'review_required'].includes(video.analysis_status),
       })),
       total,
       page,
@@ -662,8 +664,8 @@ export class VideoService {
     const video = await this.prisma.trainingVideo.findUnique({ where: { video_id: BigInt(videoId) } });
     if (!video) throw new NotFoundException(`视频不存在: ${videoId}`);
     if (!video.video_key) throw new BadRequestException('原视频不存在，无法重新分析');
-    if (!['failed', 'quality_insufficient', 'review_required'].includes(video.analysis_status)) {
-      throw new BadRequestException('仅失败、质量不足或待复核任务可以重新分析');
+    if (!['completed', 'failed', 'quality_insufficient', 'review_required'].includes(video.analysis_status)) {
+      throw new BadRequestException('仅已完成、失败、质量不足或待复核任务可以重新分析');
     }
 
     const analysisRunId = randomUUID();
@@ -752,6 +754,10 @@ export class VideoService {
         video.video_evaluation_result?.average_score ?? null,
         video.video_evaluation_result?.grade ?? null,
       ),
+      templateId: video.video_evaluation_result?.template_id
+        ? Number(video.video_evaluation_result.template_id)
+        : null,
+      templateVersion: video.video_evaluation_result?.template_version ?? null,
       patientId: Number(video.user_id),
       patientName: video.user?.name || '未命名患者',
       uploadedAt: video.created_at.toISOString(),
@@ -1135,6 +1141,11 @@ export class VideoService {
             (payload.video_evaluation.advice_summary as object | undefined) ?? undefined,
           confidence_score: payload.video_evaluation.confidence_score,
           analysis_version: payload.video_evaluation.analysis_version,
+          template_id: payload.video_evaluation.template_id != null
+            ? BigInt(payload.video_evaluation.template_id)
+            : undefined,
+          template_version: payload.video_evaluation.template_version ?? undefined,
+          threshold_snapshot: (payload.video_evaluation.threshold_snapshot as object | undefined) ?? undefined,
         },
         create: {
           video_id: videoId,
@@ -1152,6 +1163,11 @@ export class VideoService {
             (payload.video_evaluation.advice_summary as object | undefined) ?? undefined,
           confidence_score: payload.video_evaluation.confidence_score,
           analysis_version: payload.video_evaluation.analysis_version,
+          template_id: payload.video_evaluation.template_id != null
+            ? BigInt(payload.video_evaluation.template_id)
+            : null,
+          template_version: payload.video_evaluation.template_version ?? 'legacy_unknown',
+          threshold_snapshot: (payload.video_evaluation.threshold_snapshot as object | undefined) ?? undefined,
         },
       });
     }

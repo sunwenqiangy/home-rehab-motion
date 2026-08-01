@@ -39,28 +39,35 @@ class AbdominalCrunchCalculator(BaseCalculator):
             rep_frames = frames[rep.start_frame:rep.end_frame + 1]
             params = {}
 
-            # abdominal_displacement: 肩-髋中点在矢状面方向的相对后移量
-            displacements = []
-            for f in rep_frames:
-                if f.shoulder_mid and f.hip_mid:
-                    # Y轴方向位移（归一化后）
-                    dy = f.shoulder_mid[1] - f.hip_mid[1]
-                    displacements.append(abs(dy))
-            if displacements:
-                params['abdominal_displacement'] = float(np.mean(displacements)) * 100  # 转为 mm proxy
+            # 正侧面缩腹以三维肩髋向量的屈曲幅度为主，既覆盖前屈也覆盖深度方向收缩。
+            flexion_signal = self._compute_flexion_signal(rep_frames)
+            if len(flexion_signal) >= 3:
+                baseline = float(np.percentile(flexion_signal, 10))
+                peak = float(np.percentile(flexion_signal, 90))
+                amplitude = max(0.0, peak - baseline)
+                params['abdominal_displacement'] = amplitude  # 单位：deg
 
-            # displacement_velocity
-            if len(displacements) > 1:
-                velocities = np.abs(np.diff(displacements)) * sample_fps
-                params['displacement_velocity'] = float(np.mean(velocities)) * 100
+                peak_index = int(np.argmax(flexion_signal))
+                execute = np.asarray(flexion_signal[:peak_index + 1], dtype=float)
+                velocities = np.abs(np.diff(execute)) * sample_fps
+                velocities = velocities[np.isfinite(velocities)]
+                if len(velocities):
+                    # 用中位数抑制单帧关键点跳变，单位 deg/s。
+                    params['displacement_velocity'] = float(np.median(velocities))
+                params['hold_duration'] = self._compute_peak_hold_duration(
+                    flexion_signal,
+                    peak_index,
+                    baseline,
+                    peak,
+                    sample_fps,
+                )
+            else:
+                params['hold_duration'] = 0.0
 
             # trunk_angle_change: 躯干向量与初始帧夹角
             trunk_changes = self._compute_trunk_changes(rep_frames)
             if trunk_changes:
                 params['trunk_angle_change'] = float(np.max(np.abs(trunk_changes)))
-
-            # hold_duration
-            params['hold_duration'] = self._compute_hold_duration(rep_frames, sample_fps)
 
             results[f'rep_{rep.id}'] = params
 
@@ -92,12 +99,39 @@ class AbdominalCrunchCalculator(BaseCalculator):
         return changes
 
     @staticmethod
-    def _compute_hold_duration(frames: List[Frame], sample_fps: int) -> float:
-        """计算保持时间：位移超过阈值后连续帧数 × 帧间隔"""
-        if len(frames) < 2:
+    def _compute_flexion_signal(frames: List[Frame]) -> List[float]:
+        values = []
+        for frame in frames:
+            if frame.shoulder_mid is None or frame.hip_mid is None:
+                continue
+            dx = frame.shoulder_mid[0] - frame.hip_mid[0]
+            dy = frame.shoulder_mid[1] - frame.hip_mid[1]
+            dz = frame.shoulder_mid[2] - frame.hip_mid[2]
+            value = np.degrees(np.arctan2(np.hypot(dx, dz), abs(dy) + 1e-8))
+            if np.isfinite(value):
+                values.append(float(value))
+        return values
+
+    @staticmethod
+    def _compute_peak_hold_duration(
+        signal: List[float],
+        peak_index: int,
+        baseline: float,
+        peak: float,
+        sample_fps: int,
+    ) -> float:
+        """围绕真实收缩峰计算连续平台时长，而非用周期时长比例估算。"""
+        amplitude = peak - baseline
+        if amplitude <= 1e-6 or sample_fps <= 0:
             return 0.0
-        # 简化：rep 时长 * 0.4 作为保持时间估计
-        return len(frames) / sample_fps * 0.4
+        threshold = baseline + amplitude * 0.85
+        left = peak_index
+        right = peak_index
+        while left > 0 and signal[left - 1] >= threshold:
+            left -= 1
+        while right + 1 < len(signal) and signal[right + 1] >= threshold:
+            right += 1
+        return (right - left + 1) / sample_fps
 
     @staticmethod
     def _average_params(results: Dict) -> Dict:
@@ -110,6 +144,8 @@ class AbdominalCrunchCalculator(BaseCalculator):
             if key == 'video_avg':
                 continue
             for pname, pval in params.items():
+                if not isinstance(pval, (int, float)) or not np.isfinite(pval):
+                    continue
                 param_sums[pname] = param_sums.get(pname, 0.0) + pval
                 param_counts[pname] = param_counts.get(pname, 0) + 1
 
@@ -129,8 +165,9 @@ class PelvicTiltCalculator(BaseCalculator):
             rep_frames = frames[rep.start_frame:rep.end_frame + 1]
             params = {}
 
-            # pelvic_tilt_delta: 骨盆倾斜幅度 = 周期内角度极差（max - min）
-            # 与可视化文档一致：完整摆幅而非相对初始帧的偏离
+            # 评分幅度必须与已发布金标准模板使用同一口径：左右髋在画面平面中的
+            # 连线角度全周期极差。此前切换为三维稳健极差后，特征量纲与现有模板
+            # 不一致，导致真实骨盆动作被系统性低估。
             tilt_angles = self._compute_pelvic_tilt_deltas(rep_frames)
             if tilt_angles:
                 params['pelvic_tilt_delta'] = float(np.max(tilt_angles) - np.min(tilt_angles))
@@ -141,14 +178,14 @@ class PelvicTiltCalculator(BaseCalculator):
             if shift_x:
                 params['pelvis_shift'] = float(np.max(np.abs(shift_x))) * 100
 
-            # trunk_angle_change: 躯干角度极差（max - min）
-            # 与可视化文档一致：反映整个周期的躯干晃动幅度
-            trunk_angles = self._compute_trunk_angles(rep_frames)
-            if trunk_angles:
-                params['trunk_angle_change'] = float(np.max(trunk_angles) - np.min(trunk_angles))
+            # 与周期信号一致：主要后倾不再作为"躯干代偿"。该指标仅保留
+            # 顶点附近的额外晃动，避免首周期的完整动作幅度被判成躯干不稳定。
+            sagittal_angles = self._compute_pelvic_sagittal_angles(rep_frames)
+            if sagittal_angles:
+                params['trunk_angle_change'] = self._compute_peak_residual_motion(sagittal_angles)
 
-            # hold_duration: 速度方差法（顶峰保持时长）
-            params['hold_duration'] = self._compute_hold_duration_velocity(rep_frames, sample_fps)
+            # 顶点保持时长使用同一矢状面信号，避免左右髋线噪声造成首周期虚长。
+            params['hold_duration'] = self._compute_hold_duration_velocity(sagittal_angles, sample_fps)
 
             results[f'rep_{rep.id}'] = params
 
@@ -157,21 +194,77 @@ class PelvicTiltCalculator(BaseCalculator):
 
     @staticmethod
     def _compute_pelvic_tilt_deltas(frames: List[Frame]) -> List[float]:
-        """骨盆倾斜角度序列（用于计算极差 = 骨盆活动度）
-        公式：arctan2(rh.y - lh.y, rh.x - lh.x)，单位：度。
-        返回各帧的绝对角度序列，由 calculate() 计算 max-min 极差。
-        """
-        if not frames:
-            return []
-
+        """返回画面平面内左右髋连线的绝对角度序列，单位为度。"""
         angles = []
-        for f in frames:
-            lh = f.keypoints.get('LEFT_HIP')
-            rh = f.keypoints.get('RIGHT_HIP')
-            if lh and rh:
-                angle = np.degrees(np.arctan2(rh.y - lh.y, rh.x - lh.x))
-                angles.append(angle)
+        for frame in frames:
+            left_hip = frame.keypoints.get('LEFT_HIP')
+            right_hip = frame.keypoints.get('RIGHT_HIP')
+            if left_hip is None or right_hip is None:
+                continue
+            value = float(np.degrees(np.arctan2(
+                right_hip.y - left_hip.y,
+                right_hip.x - left_hip.x,
+            )))
+            if np.isfinite(value):
+                angles.append(value)
         return angles
+
+    @staticmethod
+    def _compute_pelvic_sagittal_angles(frames: List[Frame]) -> List[float]:
+        """正侧方画面下躯干—骨盆的有符号矢状面倾角，单位为度。"""
+        angles = []
+        for frame in frames:
+            if frame.shoulder_mid is None or frame.hip_mid is None:
+                continue
+            dx = frame.shoulder_mid[0] - frame.hip_mid[0]
+            dy = frame.hip_mid[1] - frame.shoulder_mid[1]
+            value = float(np.degrees(np.arctan2(dx, dy)))
+            if np.isfinite(value):
+                angles.append(value)
+        return angles
+
+    @staticmethod
+    def _compute_pelvic_rotation_angles(frames: List[Frame]) -> List[float]:
+        """以左右髋的三维相对高度表示骨盆本体在矢状面内的旋转。
+
+        该信号与躯干倾角互补：骨盆倾斜时应能观察到髋部姿态变化；缩腹主要是
+        肩部向前/向深度方向移动，髋部旋转不足，不能仅靠躯干变化取得高分。
+        """
+        angles = []
+        for frame in frames:
+            left_hip = frame.keypoints.get('LEFT_HIP')
+            right_hip = frame.keypoints.get('RIGHT_HIP')
+            if left_hip is None or right_hip is None:
+                continue
+            dx = right_hip.x - left_hip.x
+            dy = right_hip.y - left_hip.y
+            dz = right_hip.z - left_hip.z
+            value = float(np.degrees(np.arctan2(dy, np.hypot(dx, dz) + 1e-8)))
+            if np.isfinite(value):
+                angles.append(value)
+        return angles
+
+    @staticmethod
+    def _compute_effective_sagittal_amplitude(angles: List[float]) -> float:
+        """计算后倾有效摆幅，抑制首尾入镜与关键点跳变对极差的放大。"""
+        values = np.asarray(angles, dtype=float)
+        if len(values) < 3:
+            return 0.0
+        # 使用 10%~90% 分位数作为完整动作的稳健摆幅，避免单帧姿态估计跳变。
+        return max(0.0, float(np.percentile(values, 90) - np.percentile(values, 10)))
+
+    @staticmethod
+    def _compute_peak_residual_motion(angles: List[float]) -> float:
+        """顶点附近的额外摆动，用于识别后倾完成后是否仍有明显晃动。"""
+        values = np.asarray(angles, dtype=float)
+        if len(values) < 4:
+            return 0.0
+        peak_idx = int(np.argmax(np.abs(values - np.median(values))))
+        radius = max(1, len(values) // 8)
+        window = values[max(0, peak_idx - radius):min(len(values), peak_idx + radius + 1)]
+        if len(window) < 2:
+            return 0.0
+        return max(0.0, float(np.percentile(window, 90) - np.percentile(window, 10)))
 
     @staticmethod
     def _compute_pelvis_shift(frames: List[Frame]) -> List[float]:
@@ -214,31 +307,27 @@ class PelvicTiltCalculator(BaseCalculator):
         return angles
 
     @staticmethod
-    def _compute_hold_duration_velocity(frames: List[Frame], sample_fps: int) -> float:
-        """速度方差法计算顶峰保持时长（与可视化文档一致）：
-        1. 计算骨盆角度的逐帧速度（帧间差）
-        2. 速度低于 std(vel) × 0.5 视为保持状态
-        3. 统计满足条件的帧数 / fps = 保持时长（秒）
-        """
-        if len(frames) < 3:
+    def _compute_hold_duration_velocity(angles: List[float], sample_fps: int) -> float:
+        """围绕矢状面后倾顶点计算连续保持时长，而不是累计所有低速帧。"""
+        values = np.asarray(angles, dtype=float)
+        if len(values) < 3 or sample_fps <= 0:
             return 0.0
 
-        # 提取骨盆角度序列
-        angles = []
-        for f in frames:
-            lh = f.keypoints.get('LEFT_HIP')
-            rh = f.keypoints.get('RIGHT_HIP')
-            if lh and rh:
-                angle = np.degrees(np.arctan2(rh.y - lh.y, rh.x - lh.x))
-                angles.append(angle)
-
-        if len(angles) < 3:
+        baseline = float(np.median(values))
+        peak_idx = int(np.argmax(np.abs(values - baseline)))
+        peak_deviation = abs(float(values[peak_idx]) - baseline)
+        if peak_deviation <= 1e-6:
             return 0.0
 
-        vel = np.abs(np.diff(angles))
-        thr = float(np.std(vel)) * 0.5
-        hold_frames = int(np.sum(vel <= thr))
-        return hold_frames / sample_fps
+        # 顶点附近仍保持至少 85% 后倾幅度的连续区间，才是本次动作的保持。
+        threshold = peak_deviation * 0.85
+        left = peak_idx
+        right = peak_idx
+        while left > 0 and abs(float(values[left - 1]) - baseline) >= threshold:
+            left -= 1
+        while right + 1 < len(values) and abs(float(values[right + 1]) - baseline) >= threshold:
+            right += 1
+        return (right - left + 1) / sample_fps
 
 
 class KneeRotationCalculator(BaseCalculator):
@@ -267,7 +356,9 @@ class KneeRotationCalculator(BaseCalculator):
             rotations = self._compute_knee_rotations(rep_frames)
             if len(rotations) > 1:
                 velocities = np.abs(np.diff(rotations)) * sample_fps
-                params['rotation_velocity'] = float(np.mean(velocities)) * 100
+                velocities = velocities[np.isfinite(velocities)]
+                if len(velocities):
+                    params['rotation_velocity'] = float(np.mean(velocities)) * 100
 
             # trunk_angle_change: 躯干代偿角（旋转时上身不应随之转动）
             trunk_changes = AbdominalCrunchCalculator._compute_trunk_changes(rep_frames)

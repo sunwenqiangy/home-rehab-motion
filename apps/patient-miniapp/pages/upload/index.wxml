@@ -42,6 +42,12 @@
         <view class="upload-hero-card__desc">确认动作无误后，再检查视频中动作完整入镜、画面清晰稳定。</view>
       </view>
 
+      <!-- 骨盆倾斜需要使用正侧面机位，才能识别中立—后倾—回正的完整闭环。 -->
+      <view wx:if="{{actionType === 'pelvic_tilt'}}" class="pelvic-capture-tip">
+        <view class="pelvic-capture-tip__title">骨盆倾斜请保持正侧面拍摄</view>
+        <view class="pelvic-capture-tip__desc">手机放在身体正侧方，肩、髋、膝和双脚完整入镜并固定。开始前和最后回正后各停 2 秒；系统只计“中立位 → 收紧下腹、腰背贴近垫面 → 回到中立位”的完整动作。</view>
+      </view>
+
       <!-- 视频预览区 -->
       <view class="info-panel">
         <view class="info-title">{{actionLabel}}视频预览</view>

@@ -143,6 +143,7 @@
 
       <div class="skeleton-overlay__analysis-note">
         分析过程：1) 每帧提取人体关键点；2) 通过骨架连线跟踪动作轨迹；3) 结合稳定性、控制度与持续度输出质量分和评分。
+        <template v-if="actionType === 'pelvic_tilt'">骨盆倾斜仅在正侧面机位下按“稳定中立位 → 收紧下腹、腰背贴近垫面的后倾顶点 → 回到稳定中立位”确认一次完整周期；未回正、准备动作和短暂抖动不计入。</template>
       </div>
     </div>
 
@@ -163,6 +164,7 @@ const props = defineProps<{
   keypointsData: KeypointsData | null;
   summaryTotalReps?: number | null;
   summaryValidReps?: number | null;
+  actionType?: string | null;
 }>();
 
 const videoRef = ref<HTMLVideoElement | null>(null);

@@ -397,10 +397,14 @@ def analyze_video(
         merged_template = DEFAULT_TEMPLATES.get(action_type, {}).copy()
         if db_template and db_template.get('reference_stats'):
             for code, stats in db_template['reference_stats'].items():
+                # 金标准版本的统计量与计算器输出必须同口径；当前激活模板是
+                # 按画面平面髋线角度生成的，因此应完整采用其参考统计值。
                 merged_template[code] = {**merged_template.get(code, {}), **stats}
 
         merged_thresholds = DEFAULT_THRESHOLDS.copy()
         if db_template and db_template.get('threshold_config'):
+            # 激活模板的特征级方向性阈值（lower/upper bound）是该版本的一部分，
+            # 不能在运行时被默认模板覆盖。
             merged_thresholds.update(db_template['threshold_config'])
         if threshold_config:
             merged_thresholds.update(threshold_config)
@@ -470,6 +474,11 @@ def analyze_video(
                 'patient_text': '本次训练记录已收到，系统正在复核拍摄和动作信息，请稍后查看结果。',
             }]
 
+        # 捕获本次分析实际使用的模板溯源信息，写入 video_evaluation_result 留痕。
+        provenance_template_id = db_template.get('template_id') if db_template else None
+        provenance_template_version = db_template.get('version') if db_template else None
+        provenance_threshold_snapshot = db_template.get('threshold_config') if db_template else None
+
         with sync_session_scope() as session:
             repo = AnalysisRepository(session)
             repo.save_full_analysis(
@@ -483,6 +492,9 @@ def analyze_video(
                 quality_score=quality_score,
                 quality_issues=quality_issues,
                 review_required_reason=review_required_reason,
+                template_id=provenance_template_id,
+                template_version=provenance_template_version,
+                threshold_snapshot=provenance_threshold_snapshot,
             )
 
         final_status = 'review_required' if review_required_reason else 'completed'
@@ -496,6 +508,10 @@ def analyze_video(
             video_score.valid_reps,
             confidence.overall,
         )
+        evaluation_dict = _video_score_to_dict(video_score)
+        evaluation_dict['template_id'] = provenance_template_id
+        evaluation_dict['template_version'] = provenance_template_version
+        evaluation_dict['threshold_snapshot'] = provenance_threshold_snapshot
         _notify_callback(
             callback_url,
             video_id,
@@ -505,7 +521,7 @@ def analyze_video(
             quality_status=quality_result.quality_status,
             quality_score=quality_score,
             quality_issues=quality_issues,
-            video_evaluation=_video_score_to_dict(video_score),
+            video_evaluation=evaluation_dict,
             rep_evaluations=[_rep_score_to_dict(rs) for rs in rep_scores],
             analysis_version=video_score.analysis_version,
         )

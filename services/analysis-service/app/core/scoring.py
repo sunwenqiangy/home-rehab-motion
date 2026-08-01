@@ -79,6 +79,18 @@ class ScoringEngine:
         # 判定等级
         grade = resolve_grade(total_score)
 
+        # 核心幅度无效时限幅：当 accuracy 维度的特征被判 invalid 时，
+        # 说明动作幅度严重不足（如缩腹视频跑骨盆分析），此时即使其他维度
+        # 全部正常也不应给出高分，硬限幅到 40 分。
+        accuracy_features = [fc for fc, dim in feature_dimensions.items() if dim == 'accuracy']
+        accuracy_invalid = any(
+            cr.feature_code in accuracy_features and cr.label == 'invalid'
+            for cr in compare_results
+        )
+        if accuracy_invalid and total_score > 40:
+            total_score = 40.0
+            grade = resolve_grade(total_score)
+
         # valid_flag: 所有参数不为 invalid
         valid_flag = all(cr.label != 'invalid' for cr in compare_results)
 

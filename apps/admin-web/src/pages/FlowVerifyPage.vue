@@ -122,6 +122,7 @@
           :keypointsData="keypointsData"
           :summaryTotalReps="analysisDetail?.summary?.totalReps ?? 0"
           :summaryValidReps="analysisDetail?.summary?.validReps ?? 0"
+          :actionType="actionType"
         />
 
         <el-alert
@@ -264,6 +265,7 @@
           </div>
 
           <div class="analysis-note">
+            <template v-if="actionType === 'pelvic_tilt'">骨盆倾斜按“稳定中立位 → 后倾顶点 → 回到稳定中立位”确认完整周期；短暂调整、准备动作及未回正动作不计入次数。</template>
             建议判断准确性时重点看：
             1）compareLabel 中 invalid/warning 占比；
             2）deviationSigma 是否普遍大于 1.5；
@@ -751,7 +753,7 @@ async function startVerification() {
 try {
 appendLog('步骤1：创建流程验证内部样本');
 const presignResponse = await api.get<ApiEnvelope<PresignData>>('/videos/admin/internal-samples/admin_flow_verify/presign-upload', {
-params: { actionType: form.actionType },
+params: { actionType: actionType.value },
 headers: adminAuthHeaders(),
 });
     const presign = unwrap(presignResponse.data);

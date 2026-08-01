@@ -274,9 +274,13 @@ model VideoEvaluationResult {
   advice_summary     Json?
   confidence_score   Float?
   analysis_version   String?       @db.VarChar(20)
+  template_id        BigInt?       @db.UnsignedBigInt
+  template_version   String?       @db.VarChar(64)
+  threshold_snapshot Json?
   created_at         DateTime      @default(now())
   video              TrainingVideo @relation(fields: [video_id], references: [video_id])
 
+  @@index([template_id], map: "idx_video_evaluation_template_id")
   @@map("video_evaluation_result")
 }
 

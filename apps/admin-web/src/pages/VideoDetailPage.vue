@@ -93,7 +93,7 @@
       </div>
       <el-card v-if="showReview" class="surface-card skeleton-card" shadow="never" v-loading="keypointsLoading">
         <template v-if="keypointsData?.frames?.length">
-          <SkeletonOverlay :videoUrl="videoPreviewUrl" :keypointsData="keypointsData" :summaryTotalReps="analysisDetail?.summary?.totalReps ?? 0" :summaryValidReps="analysisDetail?.summary?.validReps ?? 0" />
+          <SkeletonOverlay :videoUrl="videoPreviewUrl" :keypointsData="keypointsData" :summaryTotalReps="analysisDetail?.summary?.totalReps ?? 0" :summaryValidReps="analysisDetail?.summary?.validReps ?? 0" :actionType="detail?.actionType" />
         </template>
         <div v-else class="skeleton-unavailable">
           <div class="skeleton-unavailable__icon">骨</div>

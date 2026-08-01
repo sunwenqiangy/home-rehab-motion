@@ -197,6 +197,28 @@ page {
   color: #718096;
 }
 
+/* ========== 骨盆倾斜正侧面拍摄提示 ========== */
+.pelvic-capture-tip {
+  padding: 26rpx 28rpx;
+  border: 1rpx solid #9fd9cf;
+  border-radius: 28rpx;
+  background: linear-gradient(145deg, #effaf7 0%, #e6f8f3 100%);
+  box-shadow: 0 10rpx 24rpx rgba(36, 107, 80, 0.08);
+}
+
+.pelvic-capture-tip__title {
+  color: #1f6b52;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.pelvic-capture-tip__desc {
+  margin-top: 10rpx;
+  color: #3f6b5a;
+  font-size: 25rpx;
+  line-height: 1.7;
+}
+
 /* ========== info-panel 通用面板 ========== */
 .info-panel {
   padding: 28rpx;
