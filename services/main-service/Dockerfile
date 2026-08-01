@@ -29,7 +29,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system home_rehab_motion \
     && useradd --system --gid home_rehab_motion --home-dir /app home_rehab_motion
-COPY --from=dependencies /app/node_modules ./node_modules
+# Prisma Client 在 build 阶段按最终 schema 生成；运行镜像必须携带该阶段的 node_modules，
+# 否则会落回未生成的占位 Client，启动时抛出“@prisma/client did not initialize yet”。
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/services/main-service/dist ./services/main-service/dist
 COPY --from=build /app/services/main-service/prisma ./services/main-service/prisma
 COPY --from=build /app/services/main-service/package.json ./services/main-service/package.json
