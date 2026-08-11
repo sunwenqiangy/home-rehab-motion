@@ -55,7 +55,10 @@ export class HistoryService {
 
   private resolvePatientFailReason(status: string, failReason: string | null): string | undefined {
     if (status === 'quality_insufficient') {
-      return '视频质量不足，请按拍摄要求重新上传。';
+      const trunkKeypointsUnstable = (failReason || '').includes('关键躯干点') || (failReason || '').includes('肩髋');
+      return trunkKeypointsUnstable
+        ? '部分画面未能稳定识别到肩部或髋部，请调整取景范围并避免遮挡后重新上传。'
+        : '视频质量不足，请按拍摄要求重新上传。';
     }
 
     if (status === 'failed') {

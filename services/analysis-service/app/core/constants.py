@@ -188,5 +188,24 @@ SKELETON_CONNECTIONS = [
     ('RIGHT_KNEE', 'RIGHT_ANKLE'),
 ]
 
+# 缩腹闭环切分配置。时间值必须由实际 effective_sample_fps 换算为帧数。
+ABDOMINAL_SEGMENTATION_VERSION_LEGACY = 'abdominal_peak_v1'
+ABDOMINAL_SEGMENTATION_VERSION_CYCLE = 'abdominal_cycle_v2'
+ABDOMINAL_SEGMENT_CONFIG = {
+    'min_stable_seconds': 0.6,
+    'min_contraction_seconds': 0.8,
+    'min_return_seconds': 0.8,
+    # 真实患者连续缩腹可在约 2.8 秒完成一个“收缩→回落”往返；3.5 秒会
+    # 系统性漏掉此类已闭环的有效动作，仍保留 2.5 秒抑制呼吸/单帧抖动。
+    'min_cycle_seconds': 2.5,
+    'max_cycle_seconds': 18.0,
+    'noise_floor_deg': 0.20,
+    # 患者弱收缩的完整局部周期可低至全程稳健极差的约 15%；完整回落、时长
+    # 与稳定证据仍是必选条件，不能仅由小幅峰独立计数。
+    'candidate_relative_amplitude_ratio': 0.15,
+    'rebound_relative_amplitude_ratio': 0.20,
+    'tail_min_return_ratio': 0.45,
+}
+
 # 分析服务版本号
 ANALYSIS_VERSION = 'as-v1.0.0'

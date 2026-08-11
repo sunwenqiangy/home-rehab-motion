@@ -57,11 +57,12 @@
         <el-table-column label="状态" width="125">
           <template #default="{ row }"><el-tag :type="tagType(row.analysisStatus)">{{ statusLabel(row.analysisStatus) }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="队列 / 补偿" min-width="170">
+        <el-table-column label="队列 / 补偿" min-width="220">
           <template #default="{ row }">
-            <div>{{ row.taskStatus || '未创建任务' }}</div>
-            <small v-if="row.retryAt" class="muted">下次重试：{{ formatTime(row.retryAt) }}</small>
-            <small v-else-if="row.retryCount" class="muted">已重试 {{ row.retryCount }} 次</small>
+            <div>{{ queueStatusLabel(row) }}</div>
+            <small v-if="row.retryAt" class="muted">自动补偿下次执行：{{ formatTime(row.retryAt) }}</small>
+            <small v-else-if="row.retryCount" class="muted">自动补偿入队失败 {{ row.retryCount }} 次</small>
+            <small v-if="row.manualRetryCount" class="muted">管理员重新分析 {{ row.manualRetryCount }} 次</small>
           </template>
         </el-table-column>
         <el-table-column label="失败或质量原因" min-width="240" show-overflow-tooltip>
@@ -121,7 +122,22 @@ function actionLabel(value: string) { return ({ abdominal_crunch: '缩腹运动'
 function sourceLabel(value: string) { return value === 'miniapp' ? '患者上传' : value === 'gold_template' ? '金标准样本' : '内部验证样本'; }
 function qualityLabel(value?: string | null) { return value === 'insufficient' ? '视频质量不足，请查看详情' : value === 'pass' ? '质量通过' : '—'; }
 function tagType(value: string) { return value === 'completed' ? 'success' : ['failed', 'quality_insufficient'].includes(value) ? 'danger' : value === 'review_required' ? 'warning' : 'info'; }
-function formatTime(value?: string | null) { return value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '—'; }
+function queueStatusLabel(row: AdminAnalysisTaskItem) {
+  if (row.callbackStatus === 'retry_pending' || row.callbackStatus === 'enqueue_retry_pending') return '等待自动补偿入队';
+  if (row.callbackStatus === 'retry_exhausted') return '自动补偿已用尽';
+  if (row.taskStatus === 'queued') return '已入队，等待分析服务接单';
+  return row.taskStatus || '未创建任务';
+}
+function formatTime(value?: string | null) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(date);
+  const output = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${output.year}年${output.month}月${output.day}日 ${output.hour}:${output.minute}`;
+}
 
 async function load(page = taskPage.value.page) {
   loading.value = true;

@@ -89,7 +89,9 @@ class AnalysisTask(Base):
     provider_task_id = Column(String(64))
     analysis_run_id = Column(String(36))
     task_status = Column(String(30), default='pending')
+    # 自动补偿入队失败的次数；管理员主动重试在 manual_retry_count 单独计数。
     retry_count = Column(Integer, default=0)
+    manual_retry_count = Column(Integer, default=0)
     fail_reason = Column(String(255))
     callback_status = Column(String(20), default='pending')
     callback_attempt_count = Column(Integer, default=0)
@@ -180,6 +182,8 @@ class VideoEvaluationResult(Base):
     template_id = Column(BigInteger)
     template_version = Column(String(64))
     threshold_snapshot = Column(JSON)
+    segmentation_version = Column(String(64))
+    segmentation_snapshot = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     video = relationship('TrainingVideo', back_populates='video_evaluation_result')

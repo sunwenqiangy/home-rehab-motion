@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     allow_sample_video_fallback: bool = Field(default=False, alias='ALLOW_SAMPLE_VIDEO_FALLBACK')
     # 是否允许无 mediapipe 时使用 mock 关键点
     allow_mock_keypoints_fallback: bool = Field(default=False, alias='ALLOW_MOCK_KEYPOINTS_FALLBACK')
+    # P0 默认保持旧切分正式生效；shadow 仅为缩腹额外生成轻量诊断。
+    abdominal_segmentation_mode: str = Field(default='legacy_peak', alias='ABDOMINAL_SEGMENTATION_MODE')
 
     @property
     def is_production(self) -> bool:
@@ -64,6 +66,8 @@ class Settings(BaseSettings):
             errors.append('ANALYSIS_INTERNAL_TOKEN 必须配置至少 32 位的非默认密钥')
         if self.allow_sample_video_fallback or self.allow_mock_keypoints_fallback:
             errors.append('生产环境禁止启用样例视频或 Mock 关键点回退')
+        if self.abdominal_segmentation_mode not in {'legacy_peak', 'shadow', 'cycle_state_machine'}:
+            errors.append('ABDOMINAL_SEGMENTATION_MODE 仅允许 legacy_peak、shadow 或 cycle_state_machine')
         if not self.analysis_callback_url.startswith('https://'):
             errors.append('ANALYSIS_CALLBACK_URL 必须使用 HTTPS')
         if not self.oss_endpoint.startswith('https://'):

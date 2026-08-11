@@ -84,7 +84,8 @@ class AnalysisRepository:
             existing.analysis_run_id = analysis_run_id
             existing.task_status = 'processing'
             existing.started_at = datetime.utcnow()
-            existing.retry_count = (existing.retry_count or 0) + 1
+            # retry_count 仅表示主服务自动补偿“入队失败”的次数；Worker 首次
+            # 开始执行以及重复投递都不是自动补偿，不能在这里累加。
             existing.fail_reason = None
             task = existing
         else:
@@ -109,7 +110,8 @@ class AnalysisRepository:
             existing.analysis_run_id = analysis_run_id
             existing.task_status = 'processing'
             existing.started_at = datetime.utcnow()
-            existing.retry_count = (existing.retry_count or 0) + 1
+            # retry_count 仅表示主服务自动补偿“入队失败”的次数；Worker 首次
+            # 开始执行以及重复投递都不是自动补偿，不能在这里累加。
             existing.fail_reason = None
             task = existing
 
@@ -277,8 +279,10 @@ class AnalysisRepository:
         template_id: Optional[int] = None,
         template_version: Optional[str] = None,
         threshold_snapshot: Optional[Dict] = None,
+        segmentation_version: Optional[str] = None,
+        segmentation_snapshot: Optional[Dict] = None,
     ) -> None:
-        """保存视频级综合评分（upsert），同时记录实际使用的金标准模板版本与阈值快照。"""
+        """保存视频级综合评分（upsert），并记录切分版本与轻量诊断。"""
         existing = (
             self.session.query(VideoEvaluationResult)
             .filter_by(video_id=video_id)
@@ -304,6 +308,10 @@ class AnalysisRepository:
                 existing.template_version = template_version
             if threshold_snapshot is not None:
                 existing.threshold_snapshot = threshold_snapshot
+            if segmentation_version is not None:
+                existing.segmentation_version = segmentation_version
+            if segmentation_snapshot is not None:
+                existing.segmentation_snapshot = segmentation_snapshot
         else:
             result = VideoEvaluationResult(
                 video_id=video_id,
@@ -323,6 +331,8 @@ class AnalysisRepository:
                 template_id=template_id,
                 template_version=template_version or 'legacy_unknown',
                 threshold_snapshot=threshold_snapshot,
+                segmentation_version=segmentation_version,
+                segmentation_snapshot=segmentation_snapshot,
             )
             self.session.add(result)
         self.session.flush()
@@ -344,6 +354,8 @@ class AnalysisRepository:
         template_id: Optional[int] = None,
         template_version: Optional[str] = None,
         threshold_snapshot: Optional[Dict] = None,
+        segmentation_version: Optional[str] = None,
+        segmentation_snapshot: Optional[Dict] = None,
     ) -> None:
         """一次性保存完整分析结果（事务内）。
         重新分析时先清除该视频的旧特征和 rep 评分记录，避免重复写入导致评分混乱。
@@ -372,6 +384,8 @@ class AnalysisRepository:
                 template_id=template_id,
                 template_version=template_version,
                 threshold_snapshot=threshold_snapshot,
+                segmentation_version=segmentation_version,
+                segmentation_snapshot=segmentation_snapshot,
             )
 
             # 5. 仅在质量、置信度和模板均满足条件时对患者发布确定性结论。

@@ -15,6 +15,15 @@ MIN_VALID_FRAME_RATIO = 0.70
 REQUIRED_KEYPOINTS = ('LEFT_SHOULDER', 'RIGHT_SHOULDER', 'LEFT_HIP', 'RIGHT_HIP')
 
 
+class KeypointQualityError(ValueError):
+    """关键点质量门禁失败，同时携带仅供管理端排障的结构化诊断。"""
+
+    def __init__(self, message: str, quality_issues: List[dict], valid_ratio: float):
+        super().__init__(message)
+        self.quality_issues = quality_issues
+        self.valid_ratio = valid_ratio
+
+
 class DataPreprocessor:
     """数据预处理器"""
 
@@ -198,18 +207,37 @@ class DataPreprocessor:
         if not required:
             raise ValueError('缺少动作分析所需的躯干关键点')
         valid_frames = 0
+        unavailable_counts = {name: 0 for name in required}
         for frame in frames:
-            if all(
-                (kp := frame.keypoints.get(name)) is not None
-                and kp.visibility >= CONFIDENCE_THRESHOLD
-                and all(np.isfinite(getattr(kp, axis)) for axis in ('x', 'y', 'z'))
-                for name in required
-            ):
+            frame_is_valid = True
+            for name in required:
+                kp = frame.keypoints.get(name)
+                point_is_valid = (
+                    kp is not None
+                    and kp.visibility >= CONFIDENCE_THRESHOLD
+                    and all(np.isfinite(getattr(kp, axis)) for axis in ('x', 'y', 'z'))
+                )
+                if not point_is_valid:
+                    unavailable_counts[name] += 1
+                    frame_is_valid = False
+            if frame_is_valid:
                 valid_frames += 1
         valid_ratio = valid_frames / len(frames)
         if valid_ratio < MIN_VALID_FRAME_RATIO:
-            raise ValueError(
-                f'关键躯干点有效帧占比过低（{valid_ratio:.0%}，最低要求 {MIN_VALID_FRAME_RATIO:.0%}）'
+            affected_keypoints = [name for name, count in unavailable_counts.items() if count > 0]
+            quality_issues = [{
+                'code': 'TRUNK_KEYPOINTS_UNSTABLE',
+                'scope': 'trunk',
+                # 以下字段仅用于管理端排障；患者端不展示具体比例，避免将姿态
+                # 估计可用率误读为“画面缺失比例”。
+                'valid_frame_ratio': round(valid_ratio, 4),
+                'required_ratio': MIN_VALID_FRAME_RATIO,
+                'affected_keypoints': affected_keypoints,
+            }]
+            raise KeypointQualityError(
+                '关键躯干点未能稳定识别，请检查拍摄角度、入镜范围和遮挡后重试',
+                quality_issues=quality_issues,
+                valid_ratio=valid_ratio,
             )
 
     def run_full_pipeline(self, frames: List[Frame]) -> List[Frame]:

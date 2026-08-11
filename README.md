@@ -5,6 +5,7 @@
 - 想最快跑起来：看 `开发同学最短启动路径`
 - 想知道每个服务是干什么的：看 `各服务说明`
 - 想看完整启动/关闭命令：看 `启动方式` / `关闭项目`
+- 上传或分析失败、怀疑对象存储未启动：看 `本地对象存储（MinIO）` / `首次启动常见问题`
 - 第一次启动报错：看 `首次启动常见问题`
 - 想知道启动后怎么验证：看 `启动后验证`
 
@@ -89,10 +90,14 @@
 
 ### 方式 A：最省事（推荐）
 
-1. 启动依赖环境（MySQL / Redis，如本机未安装可用 Docker）：
+1. 启动依赖环境（MySQL / Redis / MinIO）。视频直传与分析均依赖对象存储，不能只启动 MySQL、Redis：
 
 ```bash
+# Docker Desktop 通常使用此命令
 docker compose -f infra/docker-compose.local.yml up -d
+
+# 若本机没有 docker compose 插件，则使用带连字符的命令
+docker-compose -f infra/docker-compose.local.yml up -d
 ```
 
 2. 在项目根目录启动后端 + 管理端：
@@ -325,24 +330,91 @@ tail -f .local-logs/admin-web.log
 
 ## Docker 辅助环境（可选）
 
-如果本机没有单独安装 MySQL / Redis / MinIO，也可以使用：
+如果本机没有单独安装 MySQL / Redis / MinIO，也可以使用本地 Compose。以下两条命令二选一：
 
 ```bash
+# Docker Desktop 通常使用此命令
 docker compose -f infra/docker-compose.local.yml up -d
+
+# 若本机没有 docker compose 插件，则使用带连字符的命令
+docker-compose -f infra/docker-compose.local.yml up -d
 ```
 
 关闭：
 
 ```bash
 docker compose -f infra/docker-compose.local.yml down
+# 或 docker-compose -f infra/docker-compose.local.yml down
 ```
 
-该 compose 会启动：
+该 Compose 会启动：
 
 - MySQL `3306`
 - Redis `6379`
-- MinIO `9000`
+- MinIO API `9000`
 - MinIO Console `9001`
+- `minio-guidance-init`：创建 `home-rehab-motion-assets` Bucket，并开放 `guidance/` 目录读取。
+
+## 本地对象存储（MinIO）
+
+本地默认启用前端直传模式：`STORAGE_UPLOAD_MODE=s3_post`。因此，上传确认与分析 Worker 都依赖 `.env` 中指定的 MinIO：
+
+```env
+OSS_ENDPOINT=http://127.0.0.1:9000
+OSS_BUCKET=home-rehab-motion-assets
+OSS_ACCESS_KEY_ID=minioadmin
+OSS_ACCESS_KEY_SECRET=minioadmin
+OSS_FORCE_PATH_STYLE=true
+```
+
+### MinIO 启动与验证
+
+先确保 Docker/Colima 已启动；macOS 使用 Colima 时可执行：
+
+```bash
+colima start
+```
+
+然后启动本地依赖环境：
+
+```bash
+docker-compose -f infra/docker-compose.local.yml up -d
+```
+
+验证 MinIO API：
+
+```bash
+curl -fsS http://127.0.0.1:9000/minio/health/live && echo 'MinIO health: OK'
+```
+
+成功时会输出 `MinIO health: OK`。控制台地址为 `http://127.0.0.1:9001`，默认账号密码均为 `minioadmin`。
+
+验证项目 Bucket：
+
+```bash
+docker run --rm --network host --entrypoint /bin/sh quay.io/minio/mc:latest -c \
+  'mc alias set local http://127.0.0.1:9000 minioadmin minioadmin >/dev/null && mc ls local/home-rehab-motion-assets'
+```
+
+正常情况下可看到 `videos/`、`guidance/`、`feedback/` 等目录。
+
+### 9000 / 9001 端口已被占用
+
+若启动时报 `Bind for 0.0.0.0:9000 failed: port is already allocated`，表示已有 MinIO 或其他服务占用了端口。
+
+1. 先执行健康检查；若返回成功，且现有 MinIO 的账号与 `.env` 一致，可直接复用它。
+2. 若 Bucket 不存在，使用以下命令创建：
+
+```bash
+docker run --rm --network host --entrypoint /bin/sh quay.io/minio/mc:latest -c \
+  'mc alias set local http://127.0.0.1:9000 minioadmin minioadmin >/dev/null && \
+   mc mb --ignore-existing local/home-rehab-motion-assets && \
+   mc anonymous set download local/home-rehab-motion-assets/guidance'
+```
+
+3. 若健康检查失败，则停止占用 9000/9001 的无关进程或容器，再重新执行 Compose 启动。
+
+> 生产环境不启动本地 MinIO。生产编排使用 `.env.production` 中配置的外部 HTTPS OSS；不要把本地 `127.0.0.1:9000` 配置用于生产。
 
 ## 常用命令
 
@@ -406,7 +478,30 @@ export ANALYSIS_DATABASE_URL="mysql+pymysql://root:你的密码@127.0.0.1:3306/h
 docker compose -f infra/docker-compose.local.yml up -d
 ```
 
-### 3. 分析服务虚拟环境创建很慢
+### 3. 上传或分析任务失败，且日志提示对象不存在/无法下载视频
+
+说明：本地默认采用 `s3_post` 直传。若 MinIO 未启动，或 `home-rehab-motion-assets` Bucket 不存在，前端可能无法完成上传确认，分析 Worker 也无法下载视频进行姿态分析。
+
+处理方式：
+
+1. 先执行 MinIO 健康检查：
+
+```bash
+curl -fsS http://127.0.0.1:9000/minio/health/live && echo 'MinIO health: OK'
+```
+
+2. 失败时启动 Docker/Colima 和本地依赖：
+
+```bash
+colima start
+docker-compose -f infra/docker-compose.local.yml up -d
+```
+
+3. 再次上传视频并重新发起分析。已在存储不可用期间失败的任务不会自动补偿，需要重新触发分析。
+
+更多 Bucket 初始化和端口冲突处理见 `本地对象存储（MinIO）`。
+
+### 4. 分析服务虚拟环境创建很慢
 
 说明：首次启动 `analysis-service` 时，脚本会自动创建 `.venv` 并安装依赖。
 
@@ -415,7 +510,7 @@ docker compose -f infra/docker-compose.local.yml up -d
 - 首次等待完成即可
 - 后续再次启动会直接复用，不会重复安装
 
-### 4. 小程序打不开
+### 5. 小程序打不开
 
 说明：患者端不是通过 `./start-local.sh` 打开的。
 

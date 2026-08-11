@@ -5,7 +5,7 @@
         <div>
           <div class="page-hero__eyebrow">Clinical Video Review</div>
           <h1 class="page-hero__title">训练视频 · #{{ detail?.videoId || '-' }}</h1>
-          <p class="page-hero__subtitle">{{ detail?.patientName || '未命名患者' }} · {{ actionTypeLabel(detail?.actionType) }} · {{ detail?.uploadedAt || '等待上传记录' }}</p>
+          <p class="page-hero__subtitle">{{ detail?.patientName || '未命名患者' }} · {{ actionTypeLabel(detail?.actionType) }} · {{ formatDateTime(detail?.uploadedAt) }}</p>
           <div class="page-hero__meta">
             <span class="page-pill">{{ statusLabel(detail?.status) }}</span>
             <span class="page-pill">{{ qualityLabel(detail?.qualityStatus) }}</span>
@@ -63,7 +63,7 @@
         </div>
       </div>
 
-      <div class="dimension-section">
+      <div v-if="analysisDetail?.summary" class="dimension-section">
         <div class="dimension-section__head"><strong>动作表现维度</strong><span>分数越高表示表现越稳定</span></div>
         <div v-for="item in dimensionScores" :key="item.label" class="dimension-row">
           <span>{{ item.label }}</span>
@@ -71,12 +71,35 @@
           <strong>{{ item.display }}</strong>
         </div>
       </div>
+      <div v-else class="no-score-hint">本次未生成动作评分；请优先查看下方原始视频和问题诊断，确认属于拍摄质量、关键点识别或分析任务问题。</div>
 
       <div class="recommendation-box">
         <div><strong>医护建议：</strong>{{ clinicalDecision.description }}</div>
         <div v-if="analysisSummary.topRepText !== '-'" class="recommendation-box__hint">建议复核片段：{{ analysisSummary.topRepText }}；可在下方骨架视图定位查看。</div>
       </div>
     </el-card>
+
+    <el-card class="surface-card video-playback-card" shadow="never">
+      <template #header>
+        <div class="section-header">
+          <div>
+            <div class="section-header__title">原始训练视频</div>
+            <div class="section-header__subtitle">无论是否生成评分，均保留原视频用于确认拍摄画面与排查问题。</div>
+          </div>
+        </div>
+      </template>
+      <video v-if="videoPreviewUrl" class="video-playback-card__video" :src="videoPreviewUrl" controls playsinline preload="metadata"></video>
+      <el-empty v-else description="视频文件暂不可用，请检查上传记录或对象存储。" :image-size="54" />
+    </el-card>
+
+    <el-alert
+      v-if="terminalAnalysisIssue"
+      class="terminal-analysis-alert"
+      :type="terminalAnalysisIssue.type"
+      :closable="false"
+      :title="terminalAnalysisIssue.title"
+      :description="terminalAnalysisIssue.description"
+    />
 
     <section class="review-section">
       <div class="review-section__bar">
@@ -130,7 +153,7 @@
         <div class="basic-info-grid">
           <div><span>动作类型</span><strong>{{ actionTypeLabel(detail?.actionType) }}</strong></div>
           <div><span>患者</span><strong>{{ detail?.patientName || '-' }}</strong></div>
-          <div><span>上传时间</span><strong>{{ detail?.uploadedAt || '-' }}</strong></div>
+          <div><span>上传时间</span><strong>{{ formatDateTime(detail?.uploadedAt) }}</strong></div>
           <div><span>分析状态</span><strong>{{ statusLabel(detail?.status) }}</strong></div>
           <div><span>任务状态</span><strong>{{ detail?.taskStatus || '-' }}</strong></div>
           <div><span>异常原因</span><strong>{{ detail?.failReason || '无' }}</strong></div>
@@ -206,8 +229,28 @@ const primaryAction = computed(() => {
   if (detail.value?.status !== 'completed') return '继续观察任务状态';
   return needsManualReview.value ? '人工复核并给予指导' : '归档结果并持续观察';
 });
+const terminalAnalysisIssue = computed(() => {
+  if (!detail.value || !['quality_insufficient', 'failed'].includes(detail.value.status)) return null;
+  const trunkIssue = detail.value.qualityIssues?.find((item) => item.code === 'TRUNK_KEYPOINTS_UNSTABLE');
+  if (trunkIssue) {
+    const pointLabels: Record<string, string> = { LEFT_SHOULDER: '左肩', RIGHT_SHOULDER: '右肩', LEFT_HIP: '左髋', RIGHT_HIP: '右髋' };
+    const points = (trunkIssue.affected_keypoints || []).map((item) => pointLabels[item] || item).join('、') || '关键躯干点';
+    const ratio = typeof trunkIssue.valid_frame_ratio === 'number' ? `${Math.round(trunkIssue.valid_frame_ratio * 100)}%` : '-';
+    const threshold = typeof trunkIssue.required_ratio === 'number' ? `${Math.round(trunkIssue.required_ratio * 100)}%` : '-';
+    return {
+      type: 'warning' as const,
+      title: '质量问题：关键躯干点未稳定识别，未生成评分',
+      description: `管理诊断：${points}在部分抽样帧中未稳定识别；关键点可用率 ${ratio}，门槛 ${threshold}。该比例表示姿态估计可用性，不等同于画面缺失比例。请结合原视频核查取景范围、遮挡和动作过程中是否移出镜头。`,
+    };
+  }
+  return {
+    type: detail.value.status === 'failed' ? 'error' as const : 'warning' as const,
+    title: detail.value.status === 'failed' ? '分析失败：未生成评分' : '质量不足：未生成评分',
+    description: detail.value.failReason || '未获取到具体问题，请结合原视频、任务状态和上传记录排查。',
+  };
+});
 const clinicalDecision = computed(() => {
-  if (detail.value?.status === 'quality_insufficient') return { type: 'warning' as const, title: '建议补录', description: detail.value?.failReason || '请提醒患者保证动作完整入镜、光线清晰且拍摄稳定。' };
+  if (detail.value?.status === 'quality_insufficient') return { type: 'warning' as const, title: '建议补录', description: terminalAnalysisIssue.value?.description || detail.value?.failReason || '请提醒患者保证动作完整入镜、光线清晰且拍摄稳定。' };
   if (detail.value?.status === 'failed') return { type: 'danger' as const, title: '分析失败', description: detail.value?.failReason || '请先排查任务失败原因。' };
   if (needsManualReview.value) return { type: 'warning' as const, title: '建议人工复核', description: `优先关注“${analysisSummary.value.issueText}”，结合骨架复核确认异常动作后给予训练提醒。` };
   return { type: 'success' as const, title: '结果可用', description: '本次表现可作为训练记录参考，后续持续关注训练稳定性。' };
@@ -231,6 +274,16 @@ function actionTypeLabel(type?: TrainingActionType) { return ({ abdominal_crunch
 function featureLabel(code: string) { return ({ pelvic_stability: '骨盆稳定性不足', hold_duration: '动作持续度不足', trunk_angle: '躯干角度偏差', knee_rotation_angle: '膝关节旋转幅度偏差' } as Record<string, string>)[code] || `动作特征异常（${code}）`; }
 function statusLabel(status?: AnalysisStatus) { return status ? (ANALYSIS_STATUS_LABELS as Record<string, string>)[status] || status : '-'; }
 function qualityLabel(status?: string | null) { return !status ? '待评估' : status === 'pass' ? '质量通过' : status === 'insufficient' ? '质量不足' : status; }
+function formatDateTime(value?: string | null) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(date);
+  const output = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${output.year}年${output.month}月${output.day}日 ${output.hour}:${output.minute}`;
+}
 function reviewJudgmentLabel(value: string) { return ({ accurate: '准确', partially_accurate: '部分准确', inaccurate: '不准确', unable_to_judge: '无法判断' } as Record<string, string>)[value] || value; }
 function reviewDispositionLabel(value: string) { return ({ archive: '确认归档', manual_correction: '采用人工修正', suggest_retake: '建议患者重录', send_guidance: '发送训练建议' } as Record<string, string>)[value] || value; }
 async function loadManualReview() { const id = Number(route.params.videoId); if (!id) return; try { manualReview.value = await getManualVideoReview(id); } catch { manualReview.value = null; } }
@@ -253,6 +306,8 @@ onMounted(loadPage);
 
 <style scoped>
 .video-detail-page { gap: 12px; }
+.video-playback-card__video { display: block; width: min(100%, 920px); max-height: 560px; margin: 0 auto; border-radius: 10px; background: #111; }
+.terminal-analysis-alert { margin: 0; }
 .review-section { border: 1px solid rgba(148,180,214,.22); border-radius: 12px; background: rgba(255,255,255,.62); overflow: hidden; }
 .review-section__bar { min-height: 66px; padding: 12px 16px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
 .review-section__title { color: var(--ink-900); font-size: 15px; font-weight: 700; }.review-section__subtitle { margin-top: 4px; color:var(--ink-500); font-size: 12px; }.review-section__actions { display:flex; gap:8px; flex-shrink:0; }
@@ -261,7 +316,7 @@ onMounted(loadPage);
 .compact-toolbar { justify-content: flex-end; margin-top: -6px; }.compact-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .compact-kpi-card { min-height: 88px; padding: 14px 16px; background: rgba(255,255,255,.92); border: 1px solid rgba(148,180,214,.24); border-radius: 12px; box-shadow: var(--shadow-soft); display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 12px; }.compact-kpi-card span { color: var(--ink-500); font-size: 12px; }.compact-kpi-card strong { color: var(--ink-950); font-size: 27px; letter-spacing: -.04em; }.compact-kpi-card strong.is-warning { color: var(--warning); }.compact-kpi-card small { grid-column: 1 / -1; color: var(--ink-500); font-size: 11px; }
 .result-card :deep(.el-card__header) { padding: 16px 18px 0 !important; }.result-card :deep(.el-card__body) { padding: 12px 18px 16px !important; }.result-summary-row { display: grid; grid-template-columns: 140px 1fr; gap: 12px; align-items: stretch; }.score-summary { padding: 12px; border-radius: 12px; background: linear-gradient(150deg, rgba(15,154,167,.14), rgba(89,195,239,.06)); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }.score-summary span,.result-facts span { color: var(--ink-500); font-size: 11px; }.score-summary strong { margin: 4px 0; color: var(--brand-700); font-size: 36px; line-height: 1; }.score-summary small { color: var(--ink-700); }.result-facts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); border: 1px solid rgba(148,180,214,.2); border-radius: 12px; overflow: hidden; }.result-facts div { padding: 9px 12px; border-bottom: 1px solid rgba(148,180,214,.16); }.result-facts div:nth-child(odd) { border-right: 1px solid rgba(148,180,214,.16); }.result-facts strong { display: block; margin-top: 5px; font-size: 13px; color: var(--ink-900); }
-.dimension-section { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(148,180,214,.18); }.dimension-section__head { display:flex; justify-content:space-between; margin-bottom:10px; font-size:12px; }.dimension-section__head span { color: var(--ink-500); }.dimension-row { display:grid; grid-template-columns:46px 1fr 30px; align-items:center; gap:9px; margin:6px 0; font-size:12px; }.dimension-row__bar { height:6px; background: rgba(148,180,214,.21); border-radius:999px; overflow:hidden; }.dimension-row__bar i { display:block; height:100%; border-radius:inherit; }.tone-teal { background:#17a77b; }.tone-cyan { background:#0e9aa7; }.tone-orange { background:#e59a35; }.tone-purple { background:#886bd8; }.dimension-row strong { text-align:right; color:var(--ink-700); }
+.dimension-section { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(148,180,214,.18); }.no-score-hint { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: rgba(229,154,53,.1); color: var(--ink-700); font-size: 12px; line-height: 1.6; }.dimension-section__head { display:flex; justify-content:space-between; margin-bottom:10px; font-size:12px; }.dimension-section__head span { color: var(--ink-500); }.dimension-row { display:grid; grid-template-columns:46px 1fr 30px; align-items:center; gap:9px; margin:6px 0; font-size:12px; }.dimension-row__bar { height:6px; background: rgba(148,180,214,.21); border-radius:999px; overflow:hidden; }.dimension-row__bar i { display:block; height:100%; border-radius:inherit; }.tone-teal { background:#17a77b; }.tone-cyan { background:#0e9aa7; }.tone-orange { background:#e59a35; }.tone-purple { background:#886bd8; }.dimension-row strong { text-align:right; color:var(--ink-700); }
 .recommendation-box { margin-top:10px; padding:8px 10px; background: rgba(15,154,167,.07); border-left:3px solid var(--brand-500); border-radius:6px; color:var(--ink-700); font-size:12px; line-height:1.6; }.recommendation-box__hint { color:var(--ink-500); margin-top:3px; }.skeleton-card { margin-top: 0; }.skeleton-unavailable { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:14px; min-height:128px; padding:18px; background:rgba(247,251,254,.78); }.skeleton-unavailable__icon { display:grid; width:38px; height:38px; place-items:center; border-radius:12px; color:var(--brand-700); background:rgba(79,195,247,.14); font-size:14px; font-weight:800; }.skeleton-unavailable > div:nth-child(2) { display:grid; gap:4px; }.skeleton-unavailable strong { color:var(--ink-900); font-size:13px; }.skeleton-unavailable span { color:var(--ink-500); font-size:12px; line-height:1.6; }
 .manual-review-card { border-color: rgba(15,154,167,.22) !important; }.manual-review-card :deep(.el-card__header) { padding: 14px 18px 12px; }.manual-review-card :deep(.el-card__body) { padding: 14px 18px 18px; }.manual-review-simple { display:grid; gap:14px; }.manual-review-simple__intro { display:grid; gap:5px; }.manual-review-simple__intro strong { color:var(--ink-900); font-size:14px; }.manual-review-simple__intro span,.manual-review-form__head span { color:var(--ink-500); font-size:12px; }.manual-review-simple__actions,.manual-review-form__footer { display:flex; gap:10px; align-items:center; }.manual-review-form--correction { padding:14px; border:1px solid rgba(15,154,167,.2); border-radius:10px; background:rgba(15,154,167,.035); }.manual-review-form__head { display:grid; gap:4px; margin-bottom:12px; }.manual-review-form__head strong { color:var(--ink-900); font-size:14px; }.manual-review-correction { display:grid; grid-template-columns:180px 1fr; gap:12px; }.manual-review-form :deep(.el-form-item) { margin-bottom:12px; }.manual-review-form__advanced { display:grid; gap:8px; margin:4px 0 14px; }.review-saved { display:grid; gap:8px; color:var(--ink-700); font-size:13px; }.detail-cards { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; }.detail-card :deep(.el-card__header) { padding: 14px 16px 10px; border-bottom: 1px solid rgba(148,180,214,.18); }.detail-card :deep(.el-card__body) { padding: 12px 16px 16px; }.collapse-title { color:var(--ink-900); font-weight:700; }.collapse-title small { margin-left:7px; color:var(--ink-500); font-weight:400; }.basic-info-grid,.analysis-detail-grid { display:grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap:8px; }.basic-info-grid div,.analysis-detail-grid div { padding:8px 10px; border-radius:8px; background:rgba(244,248,251,.72); }.basic-info-grid span,.analysis-detail-grid span { display:block; color:var(--ink-500); font-size:11px; margin-bottom:4px; }.basic-info-grid strong,.analysis-detail-grid strong { color:var(--ink-800); font-size:12px; line-height:1.5; }
 @media (max-width: 900px) { .compact-kpi-grid,.basic-info-grid,.analysis-detail-grid,.detail-cards,.manual-review-correction { grid-template-columns:1fr; }.result-summary-row { grid-template-columns:1fr; }.result-facts { grid-template-columns:1fr; }.result-facts div:nth-child(odd) { border-right:0; }.compact-toolbar { justify-content:flex-start; }.skeleton-unavailable { grid-template-columns:1fr; } }

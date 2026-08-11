@@ -47,7 +47,7 @@ def _sanitize_json_values(value: Any) -> Any:
 
 
 def _backfill_rep_segments(video_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
-    """兼容旧版 keypoints JSON: 若缺少 rep_segments，则基于 frames 重新切分一次。"""
+    """兼容旧版 keypoints JSON：缺少分段时，按原分析运行的同一预处理和实际抽帧率回填。"""
     if data.get('rep_segments'):
         return data
 
@@ -59,6 +59,7 @@ def _backfill_rep_segments(video_id: int, data: Dict[str, Any]) -> Dict[str, Any
         from app.core.config import settings
         from app.core.models import Frame, Keypoint
         from app.core.phase_segmenter import PhaseSegmenter
+        from app.core.preprocessor import DataPreprocessor
         from app.db.models import TrainingVideo
         from app.db.session import sync_session_scope
 
@@ -100,8 +101,29 @@ def _backfill_rep_segments(video_id: int, data: Dict[str, Any]) -> Dict[str, Any
                 )
             )
 
-        segmenter = PhaseSegmenter(sample_fps=settings.sample_fps)
-        reps = segmenter.segment(frames, action_type)
+        # 新版文件会保存实际抽帧率；旧文件根据连续帧时间戳推算。不能使用配置
+        # SAMPLE_FPS，因为长视频受帧预算限制后常已被降采样。
+        effective_sample_fps = data.get('effective_sample_fps')
+        if not isinstance(effective_sample_fps, (int, float)) or effective_sample_fps <= 0:
+            timestamps = [frame.timestamp for frame in frames]
+            intervals = [
+                timestamps[index] - timestamps[index - 1]
+                for index in range(1, len(timestamps))
+                if timestamps[index] > timestamps[index - 1]
+            ]
+            if intervals:
+                median_interval = sorted(intervals)[len(intervals) // 2]
+                effective_sample_fps = 1.0 / median_interval if median_interval > 0 else settings.sample_fps
+            else:
+                effective_sample_fps = settings.sample_fps
+
+        frames = DataPreprocessor().run_full_pipeline(frames)
+        segmenter = PhaseSegmenter(sample_fps=float(effective_sample_fps))
+        # 回填必须使用本次正式分析已记录的切分版本，而非读取当前环境开关；
+        # 否则切换配置后历史预览会生成不同周期。
+        segmentation_version = str(data.get('segmentation_version') or '')
+        mode = 'cycle_state_machine' if segmentation_version == 'abdominal_cycle_v2' else 'legacy_peak'
+        reps = segmenter.segment_with_diagnostics(frames, action_type, mode=mode).reps
         if not reps:
             return data
 

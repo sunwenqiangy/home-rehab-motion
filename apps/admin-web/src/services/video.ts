@@ -19,7 +19,10 @@ export interface AdminAnalysisTaskItem {
   analysisStatus: AnalysisStatus;
   taskStatus: string;
   providerTaskId: string | null;
+  /** 自动补偿分析服务入队失败的次数。 */
   retryCount: number;
+  /** 管理员显式点击“重新分析”的累计次数。 */
+  manualRetryCount: number;
   retryAt: string | null;
   callbackStatus: string | null;
   failReason: string | null;
@@ -46,6 +49,13 @@ export interface AdminVideoDetail {
   uploadedAt?: string;
   patientName?: string;
   qualityScore?: number | null;
+  qualityIssues?: Array<{
+    code?: string;
+    scope?: string;
+    valid_frame_ratio?: number;
+    required_ratio?: number;
+    affected_keypoints?: string[];
+  }>;
   failReason?: string | null;
   taskStatus?: string | null;
   averageScore?: number | null;

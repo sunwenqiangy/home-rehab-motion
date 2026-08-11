@@ -276,7 +276,11 @@ def analyze_video(
         )
 
         # 先保存原始关键点帧数据，供骨架可视化与失败排查使用
-        _save_keypoints_json(video_id, visualization_frames)
+        _save_keypoints_json(
+            video_id,
+            visualization_frames,
+            effective_sample_fps=effective_sample_fps,
+        )
 
         if len(frames) < 10:
             reason = '提取的关键点帧数不足'
@@ -310,11 +314,32 @@ def analyze_video(
             )
             return {'video_id': video_id, 'status': 'quality_insufficient', 'reason': '关键点可见性不足'}
 
-        from app.core.preprocessor import DataPreprocessor
+        from app.core.preprocessor import DataPreprocessor, KeypointQualityError
 
         preprocessor = DataPreprocessor()
         try:
             frames = preprocessor.run_full_pipeline(frames)
+        except KeypointQualityError as exc:
+            # 患者只接收可执行的拍摄建议；精确可用率仅随 quality_issues 回传，
+            # 供管理端核查，不应被误认为“多少画面未拍到”。
+            reason = str(exc)
+            quality_issues = exc.quality_issues
+            logger.warning('[%s] Keypoint safety gate rejected video_id=%d: %s', task_id, video_id, reason)
+            with sync_session_scope() as session:
+                repo = AnalysisRepository(session)
+                repo.update_video_quality(video_id, 'insufficient', quality_issues=quality_issues)
+                repo.mark_task_quality_insufficient(video_id, reason)
+            _notify_callback(
+                callback_url,
+                video_id,
+                analysis_run_id,
+                task_id,
+                'quality_insufficient',
+                fail_reason=reason,
+                quality_status='insufficient',
+                quality_issues=quality_issues,
+            )
+            return {'video_id': video_id, 'status': 'quality_insufficient', 'reason': reason}
         except ValueError as exc:
             reason = str(exc)
             logger.warning('[%s] Keypoint safety gate rejected video_id=%d: %s', task_id, video_id, reason)
@@ -335,9 +360,38 @@ def analyze_video(
         from app.core.phase_segmenter import PhaseSegmenter, SegmentationError
 
         segmenter = PhaseSegmenter(sample_fps=effective_sample_fps)
-        # 捕获切分异常（例如信号幅度不足），直接把具体原因透传给回调和数据库
+        segmentation_mode = settings.abdominal_segmentation_mode
+        if segmentation_mode not in {'legacy_peak', 'shadow', 'cycle_state_machine'}:
+            raise ValueError(f'Invalid ABDOMINAL_SEGMENTATION_MODE: {segmentation_mode}')
+        # 捕获切分异常（例如信号幅度不足），直接把具体原因透传给回调和数据库。
+        # Shadow 共享同一份预处理 frames，仅额外运行一次轻量切分，绝不重复姿态、预处理或评分。
         try:
-            reps: List[Rep] = segmenter.segment(frames, action_type)
+            legacy_segment_started = time.monotonic()
+            legacy_result = segmenter.segment_with_diagnostics(frames, action_type, mode='legacy_peak')
+            legacy_segment_ms = int((time.monotonic() - legacy_segment_started) * 1000)
+            cycle_result = None
+            cycle_segment_ms = 0
+            shadow_enabled = action_type == 'abdominal_crunch' and segmentation_mode == 'shadow'
+            cycle_enabled = action_type == 'abdominal_crunch' and segmentation_mode == 'cycle_state_machine'
+            if shadow_enabled or cycle_enabled:
+                cycle_segment_started = time.monotonic()
+                cycle_result = segmenter.segment_with_diagnostics(frames, action_type, mode='cycle_state_machine')
+                cycle_segment_ms = int((time.monotonic() - cycle_segment_started) * 1000)
+            formal_result = cycle_result if cycle_enabled and cycle_result is not None else legacy_result
+            reps: List[Rep] = formal_result.reps
+            # Candidate 的帧序号是抽样后序列下标；以同一序列的时间戳换算
+            # 视频位置，供管理端回看，不参与任何切分或评分判断。
+            frame_timestamps = {index: frame.timestamp for index, frame in enumerate(frames)}
+            segmentation_snapshot = _build_segmentation_snapshot(
+                action_type=action_type,
+                mode=segmentation_mode,
+                effective_sample_fps=effective_sample_fps,
+                legacy_result=legacy_result,
+                cycle_result=cycle_result,
+                legacy_segment_ms=legacy_segment_ms,
+                cycle_segment_ms=cycle_segment_ms,
+                frame_timestamps=frame_timestamps,
+            )
         except SegmentationError as seg_exc:
             seg_reason = str(seg_exc)
             logger.warning('[%s] Segmentation failed: %s', task_id, seg_reason)
@@ -348,7 +402,13 @@ def analyze_video(
             return {'video_id': video_id, 'status': 'failed', 'reason': seg_reason}
 
         # 只向原始画面坐标写入周期信息；评分使用的归一化坐标不能用于与视频画面对齐。
-        _save_keypoints_json(video_id, visualization_frames, reps=reps)
+        _save_keypoints_json(
+            video_id,
+            visualization_frames,
+            reps=reps,
+            effective_sample_fps=effective_sample_fps,
+            segmentation_version=formal_result.version,
+        )
         logger.info('[%s] Segmentation: %d reps detected', task_id, len(reps))
         if not reps:
             empty_reason = '未检测到有效动作，视频中可能没有完整的动作周期'
@@ -495,6 +555,8 @@ def analyze_video(
                 template_id=provenance_template_id,
                 template_version=provenance_template_version,
                 threshold_snapshot=provenance_threshold_snapshot,
+                segmentation_version=formal_result.version,
+                segmentation_snapshot=segmentation_snapshot,
             )
 
         final_status = 'review_required' if review_required_reason else 'completed'
@@ -583,8 +645,72 @@ def analyze_video(
                 pass
 
 
-def _save_keypoints_json(video_id: int, frames: list, reps: Optional[List[Rep]] = None) -> None:
-    """将关键点帧数据序列化为 JSON 并保存到本地存储目录"""
+def _candidate_to_dict(candidate: Any, frame_timestamps: Optional[Dict[int, float]] = None) -> Dict[str, Any]:
+    """截断后的候选诊断，避免写入逐帧关键点或无限长文本。"""
+    payload = {
+        'state': candidate.state,
+        'start_frame': int(candidate.start_frame),
+        'peak_frame': int(candidate.peak_frame),
+        'return_frame': int(candidate.return_frame) if candidate.return_frame is not None else None,
+        'stable_frame': int(candidate.stable_frame) if candidate.stable_frame is not None else None,
+        'amplitude': round(float(candidate.amplitude), 4),
+        'reason': str(candidate.reason)[:160],
+    }
+    if frame_timestamps:
+        payload['start_time'] = round(float(frame_timestamps.get(payload['start_frame'], 0.0)), 3)
+        payload['peak_time'] = round(float(frame_timestamps.get(payload['peak_frame'], 0.0)), 3)
+        if payload['return_frame'] is not None:
+            payload['return_time'] = round(float(frame_timestamps.get(payload['return_frame'], 0.0)), 3)
+        if payload['stable_frame'] is not None:
+            payload['stable_time'] = round(float(frame_timestamps.get(payload['stable_frame'], 0.0)), 3)
+    return payload
+
+
+def _build_segmentation_snapshot(
+    action_type: str,
+    mode: str,
+    effective_sample_fps: float,
+    legacy_result: Any,
+    cycle_result: Optional[Any],
+    legacy_segment_ms: int,
+    cycle_segment_ms: int,
+    frame_timestamps: Optional[Dict[int, float]] = None,
+) -> Dict[str, Any]:
+    """构建 P0 轻量诊断；Shadow 不包含第二套特征、评分或关键点。"""
+    snapshot: Dict[str, Any] = {
+        'mode': mode,
+        'formal_version': cycle_result.version if mode == 'cycle_state_machine' and cycle_result else legacy_result.version,
+        'effective_sample_fps': round(float(effective_sample_fps), 6),
+        'legacy_version': legacy_result.version,
+        'legacy_rep_count': len(legacy_result.reps),
+        'formal_rep_count': len(cycle_result.reps) if mode == 'cycle_state_machine' and cycle_result else len(legacy_result.reps),
+        'timings_ms': {
+            'legacy_segment_ms': legacy_segment_ms,
+            'cycle_segment_ms': cycle_segment_ms,
+            'shadow_overhead_ms': cycle_segment_ms if mode == 'shadow' else 0,
+        },
+    }
+    if action_type != 'abdominal_crunch' or cycle_result is None:
+        snapshot['shadow_skipped_reason'] = '非缩腹动作或未启用闭环切分'
+        return snapshot
+    snapshot.update({
+        'cycle_version': cycle_result.version,
+        'cycle_rep_count': len(cycle_result.reps),
+        'count_delta': len(cycle_result.reps) - len(legacy_result.reps),
+        'accepted_cycles': [_candidate_to_dict(item, frame_timestamps) for item in cycle_result.accepted_cycles[:50]],
+        'rejected_candidates': [_candidate_to_dict(item, frame_timestamps) for item in cycle_result.rejected_candidates[:50]],
+    })
+    return snapshot
+
+
+def _save_keypoints_json(
+    video_id: int,
+    frames: list,
+    reps: Optional[List[Rep]] = None,
+    effective_sample_fps: Optional[float] = None,
+    segmentation_version: Optional[str] = None,
+) -> None:
+    """将原始关键点、实际抽帧率及最终切分结果保存，保证预览可复现分析运行。"""
     import json
 
     from app.core.constants import KEYPOINT_MAP, SKELETON_CONNECTIONS
@@ -630,7 +756,13 @@ def _save_keypoints_json(video_id: int, frames: list, reps: Optional[List[Rep]] 
 
         payload = {
             'video_id': video_id,
+            # 长视频会受 MAX_ANALYSIS_FRAMES 限制而降低实际抽帧率；预览/回填必须
+            # 使用该值，而不能错误地使用配置中的 SAMPLE_FPS。
+            'effective_sample_fps': round(float(effective_sample_fps), 6)
+            if isinstance(effective_sample_fps, (int, float)) and effective_sample_fps > 0
+            else None,
             'total_frames': len(frames_data),
+            'segmentation_version': segmentation_version,
             'keypoint_names': keypoint_names,
             'skeleton_connections': SKELETON_CONNECTIONS,
             'frames': frames_data,

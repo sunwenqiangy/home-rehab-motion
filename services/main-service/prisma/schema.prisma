@@ -161,7 +161,10 @@ model AnalysisTask {
   provider_task_id  String?       @db.VarChar(64)
   analysis_run_id   String?       @db.Char(36)
   task_status       String        @default("pending") @db.VarChar(30)
+  // 自动补偿“入队失败”次数，不包含管理员主动重新分析次数。
   retry_count       Int           @default(0)
+  // 管理员显式点击“重新分析”的累计次数，跨 analysis run 保留。
+  manual_retry_count Int          @default(0)
   fail_reason       String?       @db.VarChar(255)
   callback_status   String        @default("pending") @db.VarChar(32)
   callback_attempt_count Int      @default(0)
@@ -277,6 +280,8 @@ model VideoEvaluationResult {
   template_id        BigInt?       @db.UnsignedBigInt
   template_version   String?       @db.VarChar(64)
   threshold_snapshot Json?
+  segmentation_version String?     @db.VarChar(64)
+  segmentation_snapshot Json?
   created_at         DateTime      @default(now())
   video              TrainingVideo @relation(fields: [video_id], references: [video_id])
 

@@ -183,7 +183,14 @@
         </template>
 
         <div v-if="analysisDetail" class="analysis-panel">
-          <div class="analysis-explain">
+          <el-alert
+            v-if="analysisTerminalIssue"
+            :type="analysisTerminalIssue.type"
+            :closable="false"
+            :title="analysisTerminalIssue.title"
+            :description="analysisTerminalIssue.description"
+          />
+          <div v-if="analysisDetail.summary" class="analysis-explain">
             <div class="analysis-explain__title">评分规则（当前服务配置）</div>
             <div class="analysis-explain__line">
               四维权重：准确度 {{ analysisDetail.scoringExplain.weights.accuracy }}，稳定性 {{ analysisDetail.scoringExplain.weights.stability }}，
@@ -202,6 +209,82 @@
         </div>
 
 
+          <div v-if="!analysisDetail.summary" class="analysis-note">
+            本次未生成评分。请优先查看上方服务端视频和问题提示：质量不足通常与拍摄取景、遮挡或关键点识别有关；分析失败则需结合流程日志和任务状态排查。
+          </div>
+
+          <section v-if="segmentationDiagnostics" class="segmentation-panel">
+            <div class="segmentation-panel__header">
+              <div>
+                <div class="analysis-section-title">缩腹双切分诊断</div>
+                <div class="segmentation-panel__subtitle">正式评分仅使用“正式版本”；闭环状态机结果用于 Shadow 对比与误拆/漏拆排查。表内“视频时间”仅用于回看定位，不影响切分、次数或评分。</div>
+              </div>
+              <el-tag :type="segmentationModeTagType">{{ segmentationModeLabel }}</el-tag>
+            </div>
+
+            <div class="segmentation-metrics">
+              <div class="segmentation-metric"><span>正式切分</span><strong>{{ segmentationDiagnostics.formalVersion || '-' }}</strong></div>
+              <div class="segmentation-metric"><span>峰值切分次数</span><strong>{{ segmentationDiagnostics.legacyRepCount ?? '-' }}</strong></div>
+              <div class="segmentation-metric"><span>闭环切分次数</span><strong>{{ segmentationDiagnostics.cycleRepCount ?? '-' }}</strong></div>
+              <div class="segmentation-metric"><span>次数差（闭环 - 峰值）</span><strong :class="segmentationCountDeltaClass">{{ signedNumber(segmentationDiagnostics.countDelta) }}</strong></div>
+              <div class="segmentation-metric"><span>实际抽帧率</span><strong>{{ formatFps(segmentationDiagnostics.effectiveSampleFps) }}</strong></div>
+              <div class="segmentation-metric"><span>Shadow 额外耗时</span><strong>{{ formatMilliseconds(segmentationDiagnostics.shadowOverheadMs) }}</strong></div>
+            </div>
+
+            <el-alert
+              v-if="segmentationDiagnostics.mode === 'shadow'"
+              type="info"
+              :closable="false"
+              title="Shadow 模式：患者侧次数、预览分段与评分仍使用峰值切分；下方仅展示闭环算法诊断。"
+            />
+
+            <div class="segmentation-state-guide">
+              <strong>状态说明：</strong>
+              <span><b>完整闭环（COMPLETE）</b>：已完成收缩、顶点、回落和稳定，计入闭环次数。</span>
+              <span><b>尾部截断（INCOMPLETE_TAIL）</b>：视频结束截断了稳定窗口，但已满足尾部规则，计入闭环次数。</span>
+              <span><b>回落反弹（REBOUND）</b>：回落过程中的局部反弹，未形成独立完整动作，不计入次数。</span>
+            </div>
+
+            <div class="segmentation-candidates">
+              <div class="segmentation-candidate-group">
+                <div class="segmentation-candidate-group__title">闭环接受周期（{{ segmentationDiagnostics.acceptedCycles.length }}）</div>
+                <div v-if="segmentationDiagnostics.acceptedCycles.length" class="analysis-table-wrap">
+                  <table class="analysis-table">
+                    <thead><tr><th>状态</th><th>起始（帧 / 视频时间）</th><th>顶点（帧 / 视频时间）</th><th>回落（帧 / 视频时间）</th><th>稳定（帧 / 视频时间）</th><th>幅度</th><th>判定</th></tr></thead>
+                    <tbody>
+                      <tr v-for="(item, index) in segmentationDiagnostics.acceptedCycles" :key="`accepted-${index}`">
+                        <td><span class="analysis-tag analysis-tag--normal" :title="item.state">{{ segmentationStateLabel(item.state) }}</span></td>
+                        <td>{{ formatFrameTime(item.startFrame, item.startTime) }}</td><td>{{ formatFrameTime(item.peakFrame, item.peakTime) }}</td><td>{{ formatFrameTime(item.returnFrame, item.returnTime) }}</td><td>{{ formatFrameTime(item.stableFrame, item.stableTime) }}</td><td>{{ formatAmplitude(item.amplitude) }}</td><td class="segmentation-reason">{{ item.reason }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div v-else class="empty-state">未记录闭环接受周期（可能处于 legacy 模式，或诊断快照尚不可用）。</div>
+              </div>
+
+              <div class="segmentation-candidate-group">
+                <div class="segmentation-candidate-group__title">闭环拒绝候选（{{ segmentationDiagnostics.rejectedCandidates.length }}）</div>
+                <div v-if="segmentationDiagnostics.rejectedCandidates.length" class="analysis-table-wrap">
+                  <table class="analysis-table">
+                    <thead><tr><th>状态</th><th>起始（帧 / 视频时间）</th><th>顶点（帧 / 视频时间）</th><th>幅度</th><th>拒绝原因</th></tr></thead>
+                    <tbody>
+                      <tr v-for="(item, index) in segmentationDiagnostics.rejectedCandidates" :key="`rejected-${index}`">
+                        <td><span :class="['analysis-tag', item.state === 'REBOUND' ? 'analysis-tag--warning' : 'analysis-tag--invalid']" :title="item.state">{{ segmentationStateLabel(item.state) }}</span></td>
+                        <td>{{ formatFrameTime(item.startFrame, item.startTime) }}</td><td>{{ formatFrameTime(item.peakFrame, item.peakTime) }}</td><td>{{ formatAmplitude(item.amplitude) }}</td><td class="segmentation-reason">{{ item.reason }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div v-else class="empty-state">未发现被状态机拒绝的候选。</div>
+              </div>
+            </div>
+          </section>
+
+          <div v-else-if="actionType === 'abdominal_crunch'" class="analysis-note">
+            当前结果尚无双切分诊断。请确认分析服务已使用支持 P0 的版本，并将 <code>ABDOMINAL_SEGMENTATION_MODE</code> 设为 <code>shadow</code> 或 <code>cycle_state_machine</code> 后重新验证。
+          </div>
+
+          <template v-if="analysisDetail.summary">
           <div class="analysis-section-title">分次动作评分（rep）</div>
           <div class="analysis-table-wrap">
             <table class="analysis-table">
@@ -272,6 +355,7 @@
             3）validReps / totalReps；
             4）confidenceScore 与 qualityScore 是否偏低。
           </div>
+          </template>
         </div>
         <div v-else class="empty-state">暂无评分明细，请先完成一次分析或手动点击“刷新状态”。</div>
       </el-card>
@@ -325,6 +409,40 @@ type VideoStatusData = {
   reportReady: boolean;
 };
 
+type SegmentationCandidate = {
+  state: string;
+  startFrame: number;
+  peakFrame: number;
+  returnFrame: number | null;
+  stableFrame: number | null;
+  startTime: number | null;
+  peakTime: number | null;
+  returnTime: number | null;
+  stableTime: number | null;
+  amplitude: number;
+  reason: string;
+};
+
+type SegmentationSnapshot = {
+  mode?: string;
+  formal_version?: string;
+  effective_sample_fps?: number;
+  legacy_rep_count?: number;
+  cycle_rep_count?: number;
+  count_delta?: number;
+  timings_ms?: { shadow_overhead_ms?: number };
+  accepted_cycles?: Array<{
+    state?: string; start_frame?: number; peak_frame?: number; return_frame?: number | null;
+    stable_frame?: number | null; start_time?: number | null; peak_time?: number | null;
+    return_time?: number | null; stable_time?: number | null; amplitude?: number; reason?: string;
+  }>;
+  rejected_candidates?: Array<{
+    state?: string; start_frame?: number; peak_frame?: number; return_frame?: number | null;
+    stable_frame?: number | null; start_time?: number | null; peak_time?: number | null;
+    return_time?: number | null; stable_time?: number | null; amplitude?: number; reason?: string;
+  }>;
+};
+
 type AnalysisDetailData = {
   videoId: number;
   actionType: TrainingActionType;
@@ -332,10 +450,21 @@ type AnalysisDetailData = {
   taskStatus: string;
   qualityStatus: string | null;
   qualityScore: number | null;
+  qualityIssues: Array<{
+    code?: string;
+    scope?: string;
+    valid_frame_ratio?: number;
+    required_ratio?: number;
+    affected_keypoints?: string[];
+  }>;
   failReason: string | null;
   videoKey: string | null;
   videoPreviewUrl: string | null;
   reportReady: boolean;
+  segmentation: {
+    version: string | null;
+    snapshot: SegmentationSnapshot | null;
+  } | null;
   summary: {
     averageScore: number | null;
     grade: string | null;
@@ -469,6 +598,88 @@ const uploadedVideoPreviewUrl = computed(() => {
   return value.startsWith('http') ? value : `${window.location.origin}${value}`;
 });
 
+const trunkKeypointQualityIssue = computed(() => analysisDetail.value?.qualityIssues.find(
+  (item) => item.code === 'TRUNK_KEYPOINTS_UNSTABLE',
+) || null);
+
+const analysisTerminalIssue = computed(() => {
+  const detail = analysisDetail.value;
+  if (!detail || !['quality_insufficient', 'failed'].includes(detail.analysisStatus)) return null;
+
+  const issue = trunkKeypointQualityIssue.value;
+  if (issue) {
+    const pointLabels: Record<string, string> = {
+      LEFT_SHOULDER: '左肩', RIGHT_SHOULDER: '右肩', LEFT_HIP: '左髋', RIGHT_HIP: '右髋',
+    };
+    const points = (issue.affected_keypoints || []).map((point) => pointLabels[point] || point).join('、') || '关键躯干点';
+    const validRatio = typeof issue.valid_frame_ratio === 'number' ? `${Math.round(issue.valid_frame_ratio * 100)}%` : '-';
+    const requiredRatio = typeof issue.required_ratio === 'number' ? `${Math.round(issue.required_ratio * 100)}%` : '-';
+    return {
+      type: 'warning' as const,
+      title: '质量不足：关键躯干点未稳定识别，未生成评分',
+      description: `管理诊断：${points}在部分抽样帧中未稳定识别；关键点可用率 ${validRatio}，门槛 ${requiredRatio}。该比例是姿态估计可用性指标，不等同于画面缺失比例。请结合上方服务端视频回看取景范围、遮挡和动作过程中是否移出镜头。`,
+    };
+  }
+
+  return {
+    type: detail.analysisStatus === 'failed' ? 'error' as const : 'warning' as const,
+    title: detail.analysisStatus === 'failed' ? '分析失败：未生成评分' : '质量不足：未生成评分',
+    description: detail.failReason || '未获取到具体原因。请结合上方服务端视频和流程日志排查上传、分析任务或拍摄质量问题。',
+  };
+});
+
+const segmentationDiagnostics = computed(() => {
+  const detail = analysisDetail.value;
+  const snapshot = detail?.segmentation?.snapshot;
+  if (detail?.actionType !== 'abdominal_crunch' || !snapshot) return null;
+
+  const toCandidate = (item: NonNullable<SegmentationSnapshot['accepted_cycles']>[number]): SegmentationCandidate => ({
+    state: item.state || 'UNKNOWN',
+    startFrame: Number(item.start_frame ?? 0),
+    peakFrame: Number(item.peak_frame ?? 0),
+    returnFrame: item.return_frame == null ? null : Number(item.return_frame),
+    stableFrame: item.stable_frame == null ? null : Number(item.stable_frame),
+    startTime: item.start_time == null ? null : Number(item.start_time),
+    peakTime: item.peak_time == null ? null : Number(item.peak_time),
+    returnTime: item.return_time == null ? null : Number(item.return_time),
+    stableTime: item.stable_time == null ? null : Number(item.stable_time),
+    amplitude: Number(item.amplitude ?? 0),
+    reason: item.reason || '-',
+  });
+
+  return {
+    mode: snapshot.mode || 'legacy_peak',
+    formalVersion: detail.segmentation?.version || snapshot.formal_version || null,
+    effectiveSampleFps: snapshot.effective_sample_fps ?? null,
+    legacyRepCount: snapshot.legacy_rep_count ?? null,
+    cycleRepCount: snapshot.cycle_rep_count ?? null,
+    countDelta: snapshot.count_delta ?? null,
+    shadowOverheadMs: snapshot.timings_ms?.shadow_overhead_ms ?? null,
+    acceptedCycles: (snapshot.accepted_cycles || []).map(toCandidate),
+    rejectedCandidates: (snapshot.rejected_candidates || []).map(toCandidate),
+  };
+});
+
+const segmentationModeLabel = computed(() => {
+  const mode = segmentationDiagnostics.value?.mode;
+  if (mode === 'shadow') return 'Shadow 对比中';
+  if (mode === 'cycle_state_machine') return '闭环状态机正式生效';
+  return '峰值切分正式生效';
+});
+
+const segmentationModeTagType = computed(() => {
+  const mode = segmentationDiagnostics.value?.mode;
+  if (mode === 'shadow') return 'warning';
+  if (mode === 'cycle_state_machine') return 'success';
+  return 'info';
+});
+
+const segmentationCountDeltaClass = computed(() => {
+  const delta = segmentationDiagnostics.value?.countDelta;
+  if (typeof delta !== 'number' || delta === 0) return '';
+  return delta > 0 ? 'segmentation-value--positive' : 'segmentation-value--negative';
+});
+
 const accuracyHint = computed(() => {
   const detail = analysisDetail.value;
   if (!detail || !detail.summary) return '-';
@@ -507,6 +718,44 @@ function actionLabel(type: TrainingActionType) {
 
 function statusLabel(status: AnalysisStatus | string) {
   return (ANALYSIS_STATUS_LABELS as Record<string, string>)[status] || status;
+}
+
+function signedNumber(value: number | null | undefined): string {
+  if (typeof value !== 'number') return '-';
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function formatFps(value: number | null | undefined): string {
+  return typeof value === 'number' ? `${value.toFixed(2)} fps` : '-';
+}
+
+function formatMilliseconds(value: number | null | undefined): string {
+  return typeof value === 'number' ? `${value} ms` : '-';
+}
+
+function formatAmplitude(value: number | null | undefined): string {
+  return typeof value === 'number' ? value.toFixed(4) : '-';
+}
+
+function segmentationStateLabel(state: string): string {
+  const labels: Record<string, string> = {
+    COMPLETE: '完整闭环',
+    INCOMPLETE_TAIL: '尾部截断（计入）',
+    REBOUND: '回落反弹（不计入）',
+  };
+  return labels[state] ? `${labels[state]}（${state}）` : state || '未知';
+}
+
+function formatVideoTime(value: number | null | undefined): string {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return '-';
+  const minutes = Math.floor(value / 60);
+  const seconds = value - minutes * 60;
+  return `${minutes}:${seconds.toFixed(1).padStart(4, '0')}`;
+}
+
+function formatFrameTime(frame: number | null | undefined, time: number | null | undefined): string {
+  if (typeof frame !== 'number') return '-';
+  return `${frame} / ${formatVideoTime(time)}`;
 }
 
 function featureTagClass(label?: string | null) {
@@ -660,15 +909,17 @@ async function pollUntilFinish(videoId: number) {
     appendLog(`轮询#${pollCount.value}：status=${statusData.status}, reportReady=${statusData.reportReady}`);
 
 if (statusData.status === 'completed' && statusData.reportReady) {
-polling.value = false;
-await Promise.all([fetchAnalysisDetail(videoId), fetchKeypoints(videoId)]);
-ElMessage.success('流程验证完成，评分明细和骨架数据已获取');
-return;
+  polling.value = false;
+  await Promise.all([fetchAnalysisDetail(videoId), fetchKeypoints(videoId)]);
+  ElMessage.success('流程验证完成，评分明细和骨架数据已获取');
+  return;
 }
 
     if (statusData.status === 'failed' || statusData.status === 'quality_insufficient') {
       polling.value = false;
-      ElMessage.warning(`流程结束：${statusLabel(statusData.status)}`);
+      // 即使没有评分，也必须加载视频与终态诊断，供流程验证直接确认问题。
+      await fetchAnalysisDetail(videoId);
+      ElMessage.warning(`流程结束：${statusLabel(statusData.status)}，已加载问题详情`);
       return;
     }
 
@@ -709,6 +960,8 @@ async function refreshStatus() {
         fetchAnalysisDetail(currentVideoId.value),
         fetchKeypoints(currentVideoId.value),
       ]);
+    } else if (statusData.status === 'failed' || statusData.status === 'quality_insufficient') {
+      await fetchAnalysisDetail(currentVideoId.value);
     }
   } catch (error) {
     const msg = normalizeErrorMessage(error, '刷新状态失败');
@@ -1021,6 +1274,105 @@ onUnmounted(() => {
   font-weight: 700;
 }
 
+.segmentation-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(76, 140, 255, 0.28);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(237, 246, 255, 0.82), rgba(248, 251, 255, 0.72));
+}
+
+.segmentation-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.segmentation-panel__subtitle {
+  margin-top: 6px;
+  color: var(--ink-500);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.segmentation-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.segmentation-metric {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(148, 180, 214, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.segmentation-metric span {
+  color: var(--ink-500);
+  font-size: 12px;
+}
+
+.segmentation-metric strong {
+  overflow: hidden;
+  color: var(--ink-950);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.segmentation-value--positive {
+  color: #1f8b5a !important;
+}
+
+.segmentation-value--negative {
+  color: #bf3434 !important;
+}
+
+.segmentation-candidates {
+  display: grid;
+  gap: 12px;
+}
+
+.segmentation-state-guide {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border-left: 3px solid rgba(76, 140, 255, 0.55);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--ink-600);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.segmentation-state-guide strong,
+.segmentation-state-guide b {
+  color: var(--ink-800);
+}
+
+.segmentation-candidate-group {
+  display: grid;
+  gap: 8px;
+}
+
+.segmentation-candidate-group__title {
+  color: var(--ink-700);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.segmentation-reason {
+  min-width: 220px;
+  max-width: 420px;
+  white-space: normal !important;
+}
+
 .analysis-table-wrap {
   overflow: auto;
   border: 1px solid rgba(148, 180, 214, 0.22);
@@ -1111,8 +1463,14 @@ onUnmounted(() => {
 
 @media (max-width: 900px) {
   .verify-form-grid,
-  .preview-grid {
+  .preview-grid,
+  .segmentation-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .segmentation-panel__header {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>

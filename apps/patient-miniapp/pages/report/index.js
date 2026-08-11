@@ -210,12 +210,17 @@ Page({
                 const status = await (0, video_1.getVideoStatus)(videoId);
                 const isAnalysisFailed = status.status === 'failed' || status.status === 'quality_insufficient';
                 if (isAnalysisFailed) {
+                    const trunkKeypointsUnstable = `${status.failReason || ''}`.includes('关键躯干点') || `${status.failReason || ''}`.includes('肩髋');
                     this.setData({
                         loadFailed: false,
                         isAnalysisFailed: true,
-                        failureTitle: status.status === 'quality_insufficient' ? '视频质量不足，暂未生成报告' : '本次训练暂未生成结果',
+                        failureTitle: status.status === 'quality_insufficient'
+                            ? (trunkKeypointsUnstable ? '拍摄画面暂不适合评估' : '视频质量不足，暂未生成报告')
+                            : '本次训练暂未生成结果',
                         failureReason: status.status === 'quality_insufficient'
-                            ? (status.failReason || '请确保动作完整入镜、画面清晰稳定后再重新上传。')
+                            ? (trunkKeypointsUnstable
+                                ? '部分画面未能稳定识别到肩部或髋部。请将肩膀到髋部完整拍入画面，避免动作中移出镜头或被遮挡后重新上传。'
+                                : (status.failReason || '请确保动作完整入镜、画面清晰稳定后再重新上传。'))
                             : '系统暂时无法完成本次视频分析。请重新上传一段完整、清晰的训练视频后再试。',
                     });
                 }

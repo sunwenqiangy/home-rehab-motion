@@ -154,6 +154,8 @@ class KeypointsResponse(BaseModel):
     skeleton_connections: List[List[str]]
     frames: List[KeypointFrame]
     rep_segments: List[KeypointRepSegment] = Field(default_factory=list)
+    effective_sample_fps: Optional[float] = None
+    segmentation_version: Optional[str] = None
 
 
 class AnalysisResultResponse(BaseModel):

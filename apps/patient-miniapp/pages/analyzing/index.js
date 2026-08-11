@@ -35,11 +35,18 @@ function getStatusLabel(status, failed, timeoutReached) {
 function failurePresentation(status, failReason) {
     const reason = `${failReason || ''}`.toLowerCase();
     if (status === 'quality_insufficient') {
-        return {
-            title: '视频质量不足',
-            tip: '请确保动作完整入镜、光线清晰后重新上传。',
-            action: '请回到指导页确认拍摄角度、入镜范围和光线，再重新上传。',
-        };
+        const trunkKeypointsUnstable = reason.includes('关键躯干点') || reason.includes('肩髋');
+        return trunkKeypointsUnstable
+            ? {
+                title: '拍摄画面暂不适合评估',
+                tip: '部分画面未能稳定识别到肩部或髋部，暂时无法可靠分析本次动作。',
+                action: '请将肩膀到髋部完整拍入画面，动作过程中保持身体不移出镜头，并避免遮挡后重新上传。',
+            }
+            : {
+                title: '视频质量不足',
+                tip: '请确保动作完整入镜、光线清晰后重新上传。',
+                action: '请回到指导页确认拍摄角度、入镜范围和光线，再重新上传。',
+            };
     }
     if (reason.includes('analysis_queue_unavailable') || reason.includes('分析服务')) {
         return {

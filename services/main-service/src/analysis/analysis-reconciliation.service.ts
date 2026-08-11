@@ -56,7 +56,9 @@ export class AnalysisReconciliationService implements OnModuleInit, OnModuleDest
 
         // 兼容历史缺陷：手动重新分析曾将任务置为 queued 并清空 provider_task_id，
         // 但分析服务错误去重后没有真正投递 Celery。缺少 provider_task_id 的 queued 任务应自动补投。
-        const needsEnqueueRetry = ['retry_pending', 'enqueue_retry_pending'].includes(task.callback_status)
+        // retry_pending 由分析服务用于“终态回调投递”补偿，不能再次触发整段视频分析；
+        // 只有明确的 enqueue_retry_pending 或尚未分配 provider task 的 queued 任务才补投。
+        const needsEnqueueRetry = task.callback_status === 'enqueue_retry_pending'
           || (taskStatus === 'queued' && !task.provider_task_id && videoStatus === 'queued');
         if (needsEnqueueRetry) {
           const retryAt = task.callback_next_retry_at?.getTime() || 0;

@@ -5,7 +5,12 @@ from typing import List, Optional
 
 import numpy as np
 
-from app.core.models import Frame, Rep
+from app.core.constants import (
+    ABDOMINAL_SEGMENTATION_VERSION_CYCLE,
+    ABDOMINAL_SEGMENTATION_VERSION_LEGACY,
+    ABDOMINAL_SEGMENT_CONFIG,
+)
+from app.core.models import Frame, Rep, SegmentationCandidate, SegmentationResult
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +47,25 @@ class PhaseSegmenter:
     }
 
     def segment(self, frames: List[Frame], action_type: str) -> List[Rep]:
-        """按动作类型分发切分逻辑"""
+        """兼容入口：始终保持历史正式切分行为。"""
+        return self.segment_with_diagnostics(frames, action_type, mode='legacy_peak').reps
+
+    def segment_with_diagnostics(
+        self,
+        frames: List[Frame],
+        action_type: str,
+        mode: str = 'legacy_peak',
+    ) -> SegmentationResult:
+        """按动作类型分发切分；只有缩腹可显式启用闭环状态机。"""
+        if mode not in {'legacy_peak', 'cycle_state_machine'}:
+            raise ValueError(f'Unsupported segmentation mode: {mode}')
         if not frames:
-            return []
+            return SegmentationResult(version=ABDOMINAL_SEGMENTATION_VERSION_LEGACY, reps=[])
 
         signal = self._extract_signal(frames, action_type)
         if signal is None or len(signal) < 5:
             logger.warning('Signal too short for segmentation: %d frames', len(signal) if signal is not None else 0)
-            return []
+            return SegmentationResult(version=ABDOMINAL_SEGMENTATION_VERSION_LEGACY, reps=[])
 
         # ── 信号幅度合法性校验 ──────────────────────────────────────────────────
         # 使用稳健极差（5%~95%分位数）评估信号摆幅，排除单帧异常影响
@@ -76,6 +92,8 @@ class PhaseSegmenter:
         smoothed = self._moving_average(signal)
 
         if action_type == 'abdominal_crunch':
+            if mode == 'cycle_state_machine':
+                return self._segment_abdominal_cycle_state_machine(smoothed)
             reps = self._segment_abdominal_reps(smoothed)
             if not reps:
                 # 严格完整周期切分失败时，回退到峰值切分，避免直接失败为“未检测到有效动作”。
@@ -109,14 +127,17 @@ class PhaseSegmenter:
                 )
 
             logger.info('Segmented %d reps for %s', len(reps), action_type)
-            return reps
+            return SegmentationResult(
+                version=ABDOMINAL_SEGMENTATION_VERSION_LEGACY,
+                reps=reps,
+            )
 
         if action_type == 'pelvic_tilt':
             # 状态机要求“稳定中立 → 后倾峰值 → 回到稳定中立”闭环；不回退到
             # 普通按峰计数，避免只完成半程或准备姿势也被展示为一次训练。
             reps = self._segment_pelvic_reps(smoothed)
             logger.info('Segmented %d reps for %s', len(reps), action_type)
-            return reps
+            return SegmentationResult(version='pelvic_tilt_legacy', reps=reps)
 
         if action_type == 'knee_rotation':
             reps = self._segment_knee_reps(smoothed)
@@ -138,18 +159,18 @@ class PhaseSegmenter:
                     len(reps),
                 )
             logger.info('Segmented %d reps for %s', len(reps), action_type)
-            return reps
+            return SegmentationResult(version='knee_rotation_legacy', reps=reps)
 
         # 其他动作保持原有峰值切分逻辑
         peaks = self._find_peaks(smoothed, action_type)
 
         if not peaks:
             logger.info('No peaks found for %s', action_type)
-            return []
+            return SegmentationResult(version=f'{action_type}_legacy', reps=[])
 
         reps = self._build_reps(peaks, smoothed, action_type)
         logger.info('Segmented %d reps for %s', len(reps), action_type)
-        return reps
+        return SegmentationResult(version=f'{action_type}_legacy', reps=reps)
 
     def _extract_signal(self, frames: List[Frame], action_type: str) -> Optional[np.ndarray]:
         """提取驱动信号"""
@@ -749,6 +770,158 @@ class PhaseSegmenter:
             rep_id += 1
 
         return reps
+
+    def _segment_abdominal_cycle_state_machine(self, signal: np.ndarray) -> SegmentationResult:
+        """用"稳定→收缩→顶点→回落→稳定"闭环识别缩腹周期。
+
+        该实现只依赖当前已预处理的同一条信号，所有窗口均按 effective_sample_fps
+        换算。局部反弹在尚未稳定前只记为 REBOUND，不产生第二个 Rep。
+        """
+        config = ABDOMINAL_SEGMENT_CONFIG
+        fps = max(1.0, float(self.sample_fps))
+        stable_frames = max(1, round(config['min_stable_seconds'] * fps))
+        contraction_frames = max(1, round(config['min_contraction_seconds'] * fps))
+        return_frames = max(1, round(config['min_return_seconds'] * fps))
+        min_cycle_frames = max(1, round(config['min_cycle_seconds'] * fps))
+        max_cycle_frames = max(min_cycle_frames + 1, round(config['max_cycle_seconds'] * fps))
+        if len(signal) < stable_frames + contraction_frames + return_frames + 2:
+            return SegmentationResult(version=ABDOMINAL_SEGMENTATION_VERSION_CYCLE, reps=[])
+
+        robust_range = float(np.percentile(signal, 95) - np.percentile(signal, 5)) if len(signal) >= 20 else float(np.ptp(signal))
+        noise_floor = max(float(config['noise_floor_deg']), robust_range * 0.04)
+        candidate_floor = max(noise_floor, robust_range * float(config['candidate_relative_amplitude_ratio']))
+        rebound_limit = max(noise_floor, robust_range * float(config['rebound_relative_amplitude_ratio']))
+        stable_delta = max(noise_floor * 0.35, robust_range * 0.025)
+        trend_delta = max(noise_floor * 0.10, robust_range * 0.010)
+        # 峰值最小上升：peak 高于 start 的幅度必须超过此值才视为真实收缩顶点，
+        # 防止平坦区零值帧被误判为局部极大值。
+        peak_min_rise = max(noise_floor, robust_range * 0.08)
+
+        def is_stable(center: int) -> bool:
+            left = max(0, center - stable_frames + 1)
+            window = signal[left:center + 1]
+            return len(window) >= stable_frames and float(np.ptp(window)) <= stable_delta
+
+        accepted: List[SegmentationCandidate] = []
+        rejected: List[SegmentationCandidate] = []
+        reps: List[Rep] = []
+        state = 'REST'
+        rest_start = 0
+        start = 0
+        peak = 0
+        return_end: Optional[int] = None
+        i = stable_frames
+
+        while i < len(signal):
+            if state == 'REST':
+                if is_stable(i):
+                    rest_start = max(0, i - stable_frames + 1)
+                if i + contraction_frames < len(signal):
+                    changes = np.diff(signal[i:i + contraction_frames + 1])
+                    # 使用当前帧位置计算上升幅度，而非 rest_start；
+                    # 避免长时间稳定区累积微小上升触发收缩。
+                    rise = float(signal[i + contraction_frames] - signal[i])
+                    if rise >= noise_floor and float(np.mean(changes >= -trend_delta)) >= 0.70:
+                        state, start = 'CONTRACTING', rest_start
+                        i += 1
+                        continue
+            elif state == 'CONTRACTING':
+                elapsed = i - start
+                if elapsed > max_cycle_frames:
+                    rejected.append(SegmentationCandidate('INCOMPLETE_TAIL', start, peak or i, reason='收缩后未在最大周期时长内形成回落稳定'))
+                    state = 'REST'
+                elif (
+                    i >= start + contraction_frames
+                    and i + 1 < len(signal)
+                    and signal[i] >= signal[i - 1]
+                    and signal[i] >= signal[i + 1]
+                    and float(signal[i] - signal[start]) >= peak_min_rise
+                ):
+                    peak = i
+                    state = 'PEAK'
+            elif state == 'PEAK':
+                if i + return_frames < len(signal):
+                    changes = np.diff(signal[i:i + return_frames + 1])
+                    drop = float(signal[peak] - signal[i + return_frames])
+                    if drop >= noise_floor and float(np.mean(changes <= trend_delta)) >= 0.70:
+                        state, return_end = 'RETURNING', i + return_frames
+                    # 顶点后出现上升（非回落），说明刚才识别的峰只是同一次
+                    # 收缩中的局部高点，应回到 CONTRACTING 继续寻找真正的顶点。
+                    elif i + 1 < len(signal) and signal[i + 1] - signal[i] > trend_delta:
+                        state = 'CONTRACTING'
+                elif i == len(signal) - 1:
+                    rejected.append(SegmentationCandidate('INCOMPLETE_TAIL', start, peak, reason='顶点后没有足够回落证据'))
+                    state = 'REST'
+            elif state == 'RETURNING':
+                if i + 1 < len(signal) and signal[i + 1] - signal[i] > trend_delta:
+                    rebound_peak = i + 1
+                    while rebound_peak + 1 < len(signal) and signal[rebound_peak + 1] >= signal[rebound_peak]:
+                        rebound_peak += 1
+                    rebound_amplitude = float(signal[rebound_peak] - signal[i])
+                    if rebound_amplitude <= rebound_limit:
+                        rejected.append(SegmentationCandidate('REBOUND', i, rebound_peak, return_frame=i, reason='回落未稳定前的局部反弹，独立幅度不足', amplitude=rebound_amplitude))
+                    else:
+                        # 反弹幅度超过 rebound_limit，说明可能是一次新的收缩起点；
+                        # 放弃当前周期，将 rebound 位置作为新搜索起点。
+                        rejected.append(SegmentationCandidate('REBOUND', start, peak, return_frame=return_end, reason='回落中反弹幅度过大，当前周期不可靠', amplitude=float(signal[peak] - signal[start])))
+                        state, rest_start = 'REST', i
+                        i = rebound_peak
+                        i += 1
+                        continue
+                    i = rebound_peak
+                if is_stable(i):
+                    stable_at = i
+                    duration = stable_at - start
+                    amplitude = float(signal[peak] - signal[start])
+                    if min_cycle_frames <= duration <= max_cycle_frames and amplitude >= candidate_floor:
+                        candidate = SegmentationCandidate('COMPLETE', start, peak, return_frame=return_end, stable_frame=stable_at, reason='完成稳定-收缩-顶点-回落-稳定闭环', amplitude=amplitude)
+                        accepted.append(candidate)
+                        reps.append(self._make_rep(len(reps) + 1, start, stable_at, hold_frame=peak))
+                    else:
+                        rejected.append(SegmentationCandidate('REBOUND', start, peak, return_frame=return_end, stable_frame=stable_at, reason='闭环幅度或时长不足，未形成独立周期', amplitude=amplitude))
+                    state, rest_start = 'REST', stable_at
+            i += 1
+
+        if state in {'CONTRACTING', 'PEAK', 'RETURNING'}:
+            end = len(signal) - 1
+            if state == 'CONTRACTING':
+                # 收缩途中视频结束，尝试在已扫描区域内找最高点作为峰
+                peak = int(np.argmax(signal[start:end + 1])) + start
+            else:
+                peak = peak or int(np.argmax(signal[start:end + 1])) + start
+            # 尾部候选的幅度应基于周期内真正谷值，而非上一个周期的 start。
+            # 当 start 位于上一个周期的回落高点时，signal[peak]-signal[start] 会
+            # 严重低估甚至为负，导致合法尾部动作被误拒。
+            cycle_trough = int(np.argmin(signal[start:peak + 1])) + start
+            amplitude = float(signal[peak] - signal[cycle_trough])
+            returned = float(signal[peak] - signal[end])
+            return_ratio = returned / amplitude if amplitude > 0 else 0.0
+            duration = end - cycle_trough
+            # 尾部周期：回落可能被视频结束截断，只要求从峰到视频末尾
+            # 信号不再上升（即已过顶点），且收缩幅度与时长均合规即可。
+            # 仍保留 return_ratio 判据，但仅对 RETURNING 状态生效；
+            # CONTRACTING/PEAK 状态说明回落尚未开始，不适用 return_ratio。
+            tail_ok = (
+                min_cycle_frames <= duration <= max_cycle_frames
+                and amplitude >= candidate_floor
+                and (
+                    return_ratio >= float(config['tail_min_return_ratio'])
+                    or state == 'CONTRACTING'
+                )
+            )
+            if tail_ok:
+                candidate = SegmentationCandidate('INCOMPLETE_TAIL', cycle_trough, peak, return_frame=end, reason='已收缩且充分回落，稳定窗口被视频结束截断', amplitude=amplitude)
+                accepted.append(candidate)
+                reps.append(self._make_rep(len(reps) + 1, cycle_trough, end, hold_frame=peak))
+            else:
+                rejected.append(SegmentationCandidate('INCOMPLETE_TAIL', cycle_trough, peak, return_frame=end, reason='视频尾部候选未满足充分回落或完整时长', amplitude=amplitude))
+
+        return SegmentationResult(
+            version=ABDOMINAL_SEGMENTATION_VERSION_CYCLE,
+            reps=reps,
+            accepted_cycles=accepted[:50],
+            rejected_candidates=rejected[:50],
+        )
 
     def _segment_abdominal_reps(self, signal: np.ndarray) -> List[Rep]:
         """正侧面缩腹切分：相邻收缩峰的中点定义周期边界。

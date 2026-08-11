@@ -47,6 +47,27 @@ class Rep:
 
 
 @dataclass
+class SegmentationCandidate:
+    """轻量切分候选诊断；只保存周期证据，不保存逐帧关键点。"""
+    state: str
+    start_frame: int
+    peak_frame: int
+    return_frame: Optional[int] = None
+    stable_frame: Optional[int] = None
+    reason: str = ''
+    amplitude: float = 0.0
+
+
+@dataclass
+class SegmentationResult:
+    """一次切分的结果与可持久化诊断。"""
+    version: str
+    reps: List[Rep]
+    accepted_cycles: List[SegmentationCandidate] = field(default_factory=list)
+    rejected_candidates: List[SegmentationCandidate] = field(default_factory=list)
+
+
+@dataclass
 class CompareResult:
     """金标准比对结果"""
     feature_code: str
