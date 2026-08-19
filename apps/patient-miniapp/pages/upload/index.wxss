@@ -49,6 +49,13 @@ page {
   flex-shrink: 0;
 }
 
+.upload-v4-nav__back--disabled,
+.upload-action-card__change--disabled,
+.video-preview-zone--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .upload-v4-nav__back-icon {
   font-size: 48rpx;
   font-weight: 300;
@@ -396,7 +403,8 @@ page {
   box-shadow: 0 12rpx 28rpx rgba(44, 122, 123, 0.28);
 }
 
-.btn-teal[disabled] {
+.btn-teal[disabled],
+.btn-ghost[disabled] {
   opacity: 0.5;
   box-shadow: none;
 }

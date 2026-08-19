@@ -9,7 +9,9 @@ const FINAL_STATUSES = new Set(['completed', 'failed', 'quality_insufficient', '
 export class AnalysisReconciliationService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AnalysisReconciliationService.name);
   private readonly intervalMs = Number(process.env.ANALYSIS_RECONCILIATION_INTERVAL_MS || 60_000);
-  private readonly timeoutMs = Number(process.env.ANALYSIS_TASK_TIMEOUT_SECONDS || 900) * 1000;
+  private readonly processingTimeoutMs = Number(process.env.ANALYSIS_TASK_TIMEOUT_SECONDS || 900) * 1000;
+  // 单 Worker 场景中 queued 是正常背压，不能共用执行超时，否则高峰时会将正常排队任务误标失败。
+  private readonly queuedTimeoutMs = Number(process.env.ANALYSIS_QUEUE_TIMEOUT_SECONDS || 7_200) * 1000;
   private readonly maxEnqueueRetries = Number(process.env.ANALYSIS_ENQUEUE_MAX_RETRIES || 5);
   private timer?: NodeJS.Timeout;
   private running = false;
@@ -41,7 +43,11 @@ export class AnalysisReconciliationService implements OnModuleInit, OnModuleDest
     try {
       const candidates = await this.prisma.analysisTask.findMany({
         where: {
-          task_status: { in: ['queued', 'processing', 'completed', 'failed', 'quality_insufficient', 'review_required'] },
+          OR: [
+            { task_status: { in: ['queued', 'processing'] } },
+            { task_status: 'completed', video: { video_evaluation_result: null } },
+            { callback_status: { in: ['enqueue_retry_pending', 'retry_pending'] } },
+          ],
         },
         include: { video: { include: { video_evaluation_result: true } } },
         take: 100,
@@ -175,10 +181,16 @@ export class AnalysisReconciliationService implements OnModuleInit, OnModuleDest
           continue;
         }
 
-        const active = taskStatus === 'queued' || taskStatus === 'processing';
-        const lastActiveAt = task.started_at || task.updated_at || task.created_at;
-        if (active && now - lastActiveAt.getTime() > this.timeoutMs) {
-          const timeoutReason = '分析任务超时未完成，请重新提交视频';
+        const isQueued = taskStatus === 'queued';
+        const isProcessing = taskStatus === 'processing';
+        const timeoutMs = isProcessing ? this.processingTimeoutMs : this.queuedTimeoutMs;
+        const lastActiveAt = isProcessing
+          ? task.started_at || task.updated_at || task.created_at
+          : task.updated_at || task.created_at;
+        if ((isQueued || isProcessing) && now - lastActiveAt.getTime() > timeoutMs) {
+          const timeoutReason = isQueued
+            ? '分析任务排队超时，请稍后重新提交视频'
+            : '分析任务执行超时未完成，请重新提交视频';
           await this.prisma.$transaction([
             this.prisma.analysisTask.updateMany({
               where: { task_id: task.task_id, task_status: { in: ['queued', 'processing'] } },

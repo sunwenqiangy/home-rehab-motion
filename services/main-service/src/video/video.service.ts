@@ -4,6 +4,8 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type {
@@ -28,7 +30,7 @@ function resolveGrade(score: number | null | undefined, rawGrade?: string | null
 }
 import { randomUUID } from 'crypto';
 import { Prisma } from '@prisma/client';
-import { AnalysisService, type AnalysisEnqueueResult } from '../analysis/analysis.service';
+import { AnalysisService } from '../analysis/analysis.service';
 import { BadgeService } from '../badge/badge.service';
 import { ConfigService } from '../config/config.service';
 import { MotivationService } from '../motivation/motivation.service';
@@ -37,8 +39,14 @@ import { PrivacyService } from '../privacy/privacy.service';
 import { StorageService, type UploadedBinaryFile } from '../storage/storage.service';
 
 @Injectable()
-export class VideoService {
+export class VideoService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(VideoService.name);
+  private readonly uploadRecoveryIntervalMs = Number(process.env.UPLOAD_RECOVERY_INTERVAL_MS || 60_000);
+  private readonly uploadRecoveryMinAgeMs = Number(process.env.UPLOAD_RECOVERY_MIN_AGE_SECONDS || 60) * 1000;
+  private readonly uploadRecoveryMaxAgeMs = Number(process.env.UPLOAD_RECOVERY_MAX_AGE_SECONDS || 900) * 1000;
+  private readonly uploadRecoveryBatchSize = Math.min(20, Math.max(1, Number(process.env.UPLOAD_RECOVERY_BATCH_SIZE || 10)));
+  private uploadRecoveryTimer?: NodeJS.Timeout;
+  private uploadRecoveryRunning = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -50,8 +58,27 @@ export class VideoService {
     private readonly privacyService: PrivacyService,
   ) {}
 
-  async getPresignUpload(userId: number, actionType: TrainingActionType): Promise<PresignUploadResponseDto> {
+  onModuleInit() {
+    this.uploadRecoveryTimer = setInterval(() => void this.recoverUploadedVideos(), this.uploadRecoveryIntervalMs);
+    this.uploadRecoveryTimer.unref();
+  }
+
+  onModuleDestroy() {
+    if (this.uploadRecoveryTimer) {
+      clearInterval(this.uploadRecoveryTimer);
+    }
+  }
+
+  async getPresignUpload(
+    userId: number,
+    actionType: TrainingActionType,
+    duration: number,
+  ): Promise<PresignUploadResponseDto> {
     await this.privacyService.requireActiveConsent(userId);
+    const appConfig = await this.configService.getPatientAppConfig();
+    if (!Number.isFinite(duration) || duration < appConfig.videoMinDurationSeconds || duration > appConfig.videoMaxDurationSeconds) {
+      throw new BadRequestException(`视频时长需在 ${appConfig.videoMinDurationSeconds} 至 ${appConfig.videoMaxDurationSeconds} 秒之间`);
+    }
     if (userId <= 0) {
       throw new BadRequestException('无效的用户身份，无法创建上传任务');
     }
@@ -64,6 +91,7 @@ export class VideoService {
         action_type: actionType,
         source_type: 'miniapp',
         video_key: null,
+        duration,
         analysis_status: 'uploading',
       },
     });
@@ -183,6 +211,59 @@ export class VideoService {
     };
   }
 
+  private async recoverUploadedVideos() {
+    if (this.uploadRecoveryRunning) {
+      return;
+    }
+    this.uploadRecoveryRunning = true;
+    const now = Date.now();
+    const eligibleBefore = new Date(now - this.uploadRecoveryMinAgeMs);
+    const eligibleAfter = new Date(now - this.uploadRecoveryMaxAgeMs);
+    try {
+      const candidates = await this.prisma.trainingVideo.findMany({
+        where: {
+          analysis_status: 'uploading',
+          source_type: 'miniapp',
+          duration: { not: null },
+          created_at: { gte: eligibleAfter, lte: eligibleBefore },
+        },
+        orderBy: { created_at: 'asc' },
+        take: this.uploadRecoveryBatchSize,
+        select: {
+          video_id: true,
+          user_id: true,
+          action_type: true,
+          duration: true,
+          video_key: true,
+        },
+      });
+      for (const video of candidates) {
+        if (!video.video_key || video.duration === null) {
+          continue;
+        }
+        try {
+          const exists = await this.storageService.objectExists(video.video_key);
+          if (!exists) {
+            continue;
+          }
+          await this.confirmUpload(Number(video.user_id), {
+            videoId: Number(video.video_id),
+            actionType: video.action_type as TrainingActionType,
+            duration: video.duration,
+          });
+          this.logger.log(`Recovered uploaded video into analysis queue: videoId=${video.video_id}`);
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          this.logger.warn(`Upload recovery skipped videoId=${video.video_id}, error=${reason}`);
+        }
+      }
+    } catch (error) {
+      this.logger.error('Uploading video recovery scan failed', error instanceof Error ? error.stack : String(error));
+    } finally {
+      this.uploadRecoveryRunning = false;
+    }
+  }
+
   async confirmUpload(
     userId: number,
     payload: ConfirmUploadRequestDto,
@@ -242,20 +323,32 @@ export class VideoService {
     }
     this.logger.log(`Video object verified: videoId=${payload.videoId}, hasObject=true`);
 
-    await this.prisma.trainingVideo.update({
-      where: { video_id: BigInt(payload.videoId) },
+    const confirmedAt = video.confirmed_at || new Date();
+    // 使用条件更新抢占确认权，避免小程序请求与后台恢复扫描同时创建多个 analysis run。
+    const claimed = await this.prisma.trainingVideo.updateMany({
+      where: { video_id: BigInt(payload.videoId), analysis_status: 'uploading' },
       data: {
         action_type: payload.actionType,
         duration: payload.duration,
         video_key: resolvedObjectKey,
-        confirmed_at: video.confirmed_at || new Date(),
+        confirmed_at: confirmedAt,
         analysis_status: 'queued',
         fail_reason: null,
       },
     });
+    if (claimed.count === 0) {
+      const current = await this.prisma.trainingVideo.findUniqueOrThrow({
+        where: { video_id: BigInt(payload.videoId) },
+        select: { analysis_status: true, confirmed_at: true },
+      });
+      if (current.confirmed_at) {
+        return { videoId: payload.videoId, status: current.analysis_status as ConfirmUploadResponseDto['status'], estimatedWaitSeconds: 0 };
+      }
+      throw new BadRequestException('当前视频状态不允许确认上传');
+    }
 
     if (options.recordMotivation !== false) {
-      await this.motivationService.recordConfirmedTraining(userId, payload.videoId, video.confirmed_at || new Date());
+      await this.motivationService.recordConfirmedTraining(userId, payload.videoId, confirmedAt);
     }
 
     const analysisRunId = randomUUID();
@@ -308,15 +401,6 @@ export class VideoService {
         `Analysis task persisted after enqueue: videoId=${payload.videoId}, taskId=${task.task_id}, status=${task.status}, `
         + `elapsedMs=${Date.now() - startedAt}`,
       );
-
-      if (task.status === 'completed' && task.compatReport) {
-        await this.applyCompatAnalyzeResult(payload.videoId, task.compatReport);
-        return {
-          videoId: payload.videoId,
-          status: 'completed',
-          estimatedWaitSeconds: 0,
-        };
-      }
 
       this.logger.log(`Confirm upload completed: videoId=${payload.videoId}, status=queued, elapsedMs=${Date.now() - startedAt}`);
       return {
@@ -498,6 +582,83 @@ callback_last_error: failReason.slice(0, 255),
       }
       throw err;
     }
+  }
+
+  async getAdminAnalysisHealth() {
+    const now = Date.now();
+    const recoveryWindowStart = new Date(now - this.uploadRecoveryMaxAgeMs);
+    const recoveryWindowEnd = new Date(now - this.uploadRecoveryMinAgeMs);
+    const [videoGroups, recoverableUploads, expiredUploads, taskGroups, oldestQueued, oldestProcessing, latestFinished] = await Promise.all([
+      this.prisma.trainingVideo.groupBy({
+        by: ['analysis_status'],
+        _count: { _all: true },
+      }),
+      this.prisma.trainingVideo.count({
+        where: {
+          analysis_status: 'uploading',
+          source_type: 'miniapp',
+          duration: { not: null },
+          created_at: { gte: recoveryWindowStart, lte: recoveryWindowEnd },
+        },
+      }),
+      this.prisma.trainingVideo.count({
+        where: {
+          analysis_status: 'uploading',
+          source_type: 'miniapp',
+          created_at: { lt: recoveryWindowStart },
+        },
+      }),
+      this.prisma.analysisTask.groupBy({
+        by: ['task_status', 'callback_status'],
+        _count: { _all: true },
+      }),
+      this.prisma.analysisTask.findFirst({
+        where: { task_status: 'queued' },
+        orderBy: { created_at: 'asc' },
+        select: { video_id: true, created_at: true, retry_count: true, callback_status: true },
+      }),
+      this.prisma.analysisTask.findFirst({
+        where: { task_status: 'processing' },
+        orderBy: { started_at: 'asc' },
+        select: { video_id: true, started_at: true },
+      }),
+      this.prisma.analysisTask.findFirst({
+        where: { task_status: 'completed' },
+        orderBy: { finished_at: 'desc' },
+        select: { video_id: true, finished_at: true },
+      }),
+    ]);
+    const countByStatus = (groups: Array<{ analysis_status: string; _count: { _all: number } }>) =>
+      Object.fromEntries(groups.map((group) => [group.analysis_status, group._count._all]));
+    const taskCountByState = Object.fromEntries(taskGroups.map((group) => [
+      `${group.task_status}:${group.callback_status}`,
+      group._count._all,
+    ]));
+    return {
+      generatedAt: new Date().toISOString(),
+      videos: countByStatus(videoGroups),
+      uploads: {
+        recoverable: recoverableUploads,
+        expired: expiredUploads,
+      },
+      tasks: taskCountByState,
+      oldestQueued: oldestQueued && {
+        videoId: Number(oldestQueued.video_id),
+        waitSeconds: Math.floor((now - oldestQueued.created_at.getTime()) / 1000),
+        retryCount: oldestQueued.retry_count,
+        callbackStatus: oldestQueued.callback_status,
+      },
+      oldestProcessing: oldestProcessing && {
+        videoId: Number(oldestProcessing.video_id),
+        processingSeconds: oldestProcessing.started_at
+          ? Math.floor((now - oldestProcessing.started_at.getTime()) / 1000)
+          : null,
+      },
+      latestFinished: latestFinished && {
+        videoId: Number(latestFinished.video_id),
+        finishedAt: latestFinished.finished_at?.toISOString() || null,
+      },
+    };
   }
 
   async getAdminDashboardOverview(days = 7) {
@@ -1197,71 +1358,6 @@ callback_last_error: failReason.slice(0, 255),
       videoId: payload.video_id,
       status: payload.analysis_status,
     };
-  }
-
-  private async applyCompatAnalyzeResult(
-    videoId: number,
-    compatReport: NonNullable<AnalysisEnqueueResult['compatReport']>,
-  ) {
-    const numericVideoId = BigInt(videoId);
-    const averageScore = Number(compatReport.score || 0);
-    const confidenceScore = Number(compatReport.confidence || 0);
-
-    await this.prisma.trainingVideo.update({
-      where: { video_id: numericVideoId },
-      data: {
-        analysis_status: 'completed',
-        quality_status: 'passed',
-        quality_score: Math.max(0, Math.min(100, Math.round(confidenceScore * 1000) / 10)),
-        fail_reason: null,
-      },
-    });
-
-    await this.prisma.videoEvaluationResult.upsert({
-      where: { video_id: numericVideoId },
-      update: {
-        total_reps: compatReport.totalReps,
-        valid_reps: compatReport.validReps,
-        average_score: averageScore,
-        grade: compatReport.grade,
-        accuracy_avg: compatReport.dimensions?.accuracy ?? averageScore,
-        stability_avg: compatReport.dimensions?.stability ?? averageScore,
-        control_avg: compatReport.dimensions?.control ?? averageScore,
-        duration_avg: compatReport.dimensions?.duration ?? averageScore,
-        avg_hold_duration: compatReport.averageHoldSeconds ?? 0,
-        main_issues: compatReport.mainIssue ? [compatReport.mainIssue] : [],
-        advice_summary: (compatReport.advice || []).map((item) => ({
-          advice_code: 'COMPAT_ADVICE',
-          patient_text: item,
-        })),
-        confidence_score: confidenceScore,
-        analysis_version: 'compat-analyze-v1',
-      },
-      create: {
-        video_id: numericVideoId,
-        total_reps: compatReport.totalReps,
-        valid_reps: compatReport.validReps,
-        average_score: averageScore,
-        grade: compatReport.grade,
-        accuracy_avg: compatReport.dimensions?.accuracy ?? averageScore,
-        stability_avg: compatReport.dimensions?.stability ?? averageScore,
-        control_avg: compatReport.dimensions?.control ?? averageScore,
-        duration_avg: compatReport.dimensions?.duration ?? averageScore,
-        avg_hold_duration: compatReport.averageHoldSeconds ?? 0,
-        main_issues: compatReport.mainIssue ? [compatReport.mainIssue] : [],
-        advice_summary: (compatReport.advice || []).map((item) => ({
-          advice_code: 'COMPAT_ADVICE',
-          patient_text: item,
-        })),
-        confidence_score: confidenceScore,
-        analysis_version: 'compat-analyze-v1',
-      },
-    });
-
-    const video = await this.prisma.trainingVideo.findUniqueOrThrow({ where: { video_id: numericVideoId } });
-    if (!this.isInternalSample(video.source_type)) {
-      await this.publishCompletedMotivation(Number(video.user_id), videoId);
-    }
   }
 
   private async publishCompletedMotivation(userId: number, videoId: number) {

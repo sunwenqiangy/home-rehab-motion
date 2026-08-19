@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 
+from app.core.config import settings
 from app.db.session import sync_engine
 
 router = APIRouter()
@@ -36,4 +37,17 @@ def readiness_check() -> dict:
             detail=_response('unavailable', checks={'database': 'unavailable'}),
         )
 
-    return _response('ok', checks={'database': 'ok'})
+    checks = {'database': 'ok'}
+    try:
+        from redis import Redis
+
+        Redis.from_url(settings.celery_broker_url, socket_connect_timeout=2, socket_timeout=2).ping()
+        checks['broker'] = 'ok'
+    except Exception:
+        checks['broker'] = 'unavailable'
+        raise HTTPException(
+            status_code=503,
+            detail=_response('unavailable', checks=checks),
+        )
+
+    return _response('ok', checks=checks)

@@ -17,6 +17,23 @@
       </div>
     </section>
 
+    <el-alert
+      v-if="healthError"
+      type="warning"
+      :closable="false"
+      show-icon
+      class="task-alert"
+      title="队列健康概览加载失败"
+      :description="healthError"
+    />
+    <section v-else-if="analysisHealth" class="health-grid">
+      <div class="health-card"><span>可自动恢复上传</span><strong>{{ analysisHealth.uploads.recoverable }}</strong><small>创建后 1～15 分钟，恢复器会自动校验并入队</small></div>
+      <div class="health-card"><span>历史未完成上传</span><strong>{{ analysisHealth.uploads.expired }}</strong><small>超过 15 分钟，通常为用户取消或上传中断，不计为分析失败</small></div>
+      <div class="health-card"><span>队列等待</span><strong>{{ analysisHealth.tasks['queued:null'] || analysisHealth.tasks['queued:enqueue_retry_pending'] || 0 }}</strong><small>{{ oldestQueuedHint }}</small></div>
+      <div class="health-card"><span>分析处理中</span><strong>{{ processingTaskCount }}</strong><small>{{ oldestProcessingHint }}</small></div>
+      <div class="health-card"><span>自动补偿中</span><strong>{{ retryPendingTaskCount }}</strong><small>入队失败会由协调器自动重试</small></div>
+    </section>
+
     <el-card class="surface-card" shadow="never">
       <template #header>
         <div class="section-header">
@@ -98,19 +115,25 @@
 import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
-import { getAdminAnalysisTasks, reanalyzeVideo, type AdminAnalysisTaskItem, type AdminAnalysisTaskPage } from '@/services/video';
+import { getAdminAnalysisHealth, getAdminAnalysisTasks, reanalyzeVideo, type AdminAnalysisHealth, type AdminAnalysisTaskItem, type AdminAnalysisTaskPage } from '@/services/video';
 import { isAdmin } from '@/utils/permission';
 
 const router = useRouter();
 const route = useRoute();
 const loading = ref(false);
 const loadError = ref('');
+const healthError = ref('');
+const analysisHealth = ref<AdminAnalysisHealth | null>(null);
 const status = ref(typeof route.query.status === 'string' ? route.query.status : '');
 const keyword = ref(typeof route.query.keyword === 'string' ? route.query.keyword : '');
 const retryingId = ref<number | null>(null);
 const selectedReanalyzeTask = ref<AdminAnalysisTaskItem | null>(null);
 const reanalyzeDialogVisible = ref(false);
 const canReanalyze = computed(() => isAdmin());
+const processingTaskCount = computed(() => Object.entries(analysisHealth.value?.tasks || {}).filter(([key]) => key.startsWith('processing:')).reduce((total, [, count]) => total + count, 0));
+const retryPendingTaskCount = computed(() => Object.entries(analysisHealth.value?.tasks || {}).filter(([key]) => key.endsWith(':enqueue_retry_pending')).reduce((total, [, count]) => total + count, 0));
+const oldestQueuedHint = computed(() => analysisHealth.value?.oldestQueued ? `最久等待 ${formatElapsed(analysisHealth.value.oldestQueued.waitSeconds)}（#${analysisHealth.value.oldestQueued.videoId}）` : '当前没有排队任务');
+const oldestProcessingHint = computed(() => analysisHealth.value?.oldestProcessing ? `最长处理 ${formatElapsed(analysisHealth.value.oldestProcessing.processingSeconds)}（#${analysisHealth.value.oldestProcessing.videoId}）` : '当前没有处理中任务');
 const taskPage = ref<AdminAnalysisTaskPage>({ items: [], total: 0, page: 1, limit: 10 });
 const statusOptions = [
   ['pending', '待处理'], ['uploading', '上传中'], ['queued', '排队中'], ['processing', '分析中'],
@@ -128,6 +151,12 @@ function queueStatusLabel(row: AdminAnalysisTaskItem) {
   if (row.taskStatus === 'queued') return '已入队，等待分析服务接单';
   return row.taskStatus || '未创建任务';
 }
+function formatElapsed(seconds: number | null) {
+  if (seconds === null || seconds < 0) return '—';
+  if (seconds < 60) return `${seconds} 秒`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} 分钟`;
+  return `${Math.floor(seconds / 3600)} 小时`;
+}
 function formatTime(value?: string | null) {
   if (!value) return '—';
   const date = new Date(value);
@@ -143,12 +172,20 @@ async function load(page = taskPage.value.page) {
   loading.value = true;
   loadError.value = '';
   try {
-    taskPage.value = await getAdminAnalysisTasks({
-      page,
-      limit: taskPage.value.limit,
-      status: status.value || undefined,
-      keyword: keyword.value.trim() || undefined,
-    });
+    const [taskResult, healthResult] = await Promise.allSettled([
+      getAdminAnalysisTasks({
+        page,
+        limit: taskPage.value.limit,
+        status: status.value || undefined,
+        keyword: keyword.value.trim() || undefined,
+      }),
+      getAdminAnalysisHealth(),
+    ]);
+    if (taskResult.status === 'rejected') throw taskResult.reason;
+    taskPage.value = taskResult.value;
+    healthError.value = '';
+    if (healthResult.status === 'fulfilled') analysisHealth.value = healthResult.value;
+    else healthError.value = healthResult.reason?.message || '请检查网络或管理员权限后重试。';
   } catch (error: any) {
     loadError.value = error?.message || '请检查网络或权限后重试。';
   } finally { loading.value = false; }
@@ -192,6 +229,12 @@ onMounted(() => load());
 
 <style scoped>
 .task-alert { margin-bottom: 16px; }
+.health-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.health-card { display: grid; gap: 5px; min-height: 92px; padding: 14px 16px; border: 1px solid rgba(148, 180, 214, .22); border-radius: 12px; background: linear-gradient(145deg, #fff, #f3f9fc); }
+.health-card span, .health-card small { color: var(--ink-500); font-size: 12px; }
+.health-card strong { color: var(--ink-900); font-size: 26px; line-height: 1.1; }
+@media (max-width: 900px) { .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .health-grid { grid-template-columns: 1fr; } }
 .muted { display: block; color: var(--ink-500); font-size: 12px; margin-top: 3px; }
 .pagination-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; color: var(--ink-500); }
 .reanalyze-dialog__message { margin: 0; color: var(--ink-600); line-height: 1.7; }

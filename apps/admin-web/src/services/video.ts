@@ -157,6 +157,19 @@ export interface AdminDashboardOverview {
   trend: Array<{ date: string; uploads: number; completed: number; newPatients: number }>;
 }
 
+export interface AdminAnalysisHealth {
+  generatedAt: string;
+  videos: Record<string, number>;
+  uploads: {
+    recoverable: number;
+    expired: number;
+  };
+  tasks: Record<string, number>;
+  oldestQueued: { videoId: number; waitSeconds: number; retryCount: number; callbackStatus: string | null } | null;
+  oldestProcessing: { videoId: number; processingSeconds: number | null } | null;
+  latestFinished: { videoId: number; finishedAt: string | null } | null;
+}
+
 export interface AdminVideoPage {
   items: AdminVideoItem[];
   total: number;
@@ -167,6 +180,11 @@ export interface AdminVideoPage {
 /** 获取工作台运营趋势（管理端） */
 export function getAdminDashboardOverview(days: 7 | 30): Promise<AdminDashboardOverview> {
   return request<AdminDashboardOverview>({ url: '/videos/admin/dashboard-overview', method: 'GET', params: { days } });
+}
+
+/** 获取 Celery 分析队列健康概览（管理端） */
+export function getAdminAnalysisHealth(): Promise<AdminAnalysisHealth> {
+  return request<AdminAnalysisHealth>({ url: '/videos/admin/analysis-health', method: 'GET' });
 }
 
 /** 获取视频列表（管理端） */

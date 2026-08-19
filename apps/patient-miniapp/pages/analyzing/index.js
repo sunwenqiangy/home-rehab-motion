@@ -11,7 +11,15 @@ function getAppConfig() {
 }
 let pollTimer;
 let isPolling = false;
-function getStatusLabel(status, failed, timeoutReached) {
+function parseActionType(value) {
+    return ['abdominal_crunch', 'pelvic_tilt', 'knee_rotation'].includes(value)
+        ? value
+        : '';
+}
+function getStatusLabel(status, failed, timeoutReached, confirming) {
+    if (confirming) {
+        return '确认视频中';
+    }
     if (status === 'completed') {
         return '分析完成';
     }
@@ -113,11 +121,17 @@ Page({
         statusBarHeight: 20,
         topPlaceholderHeight: 128,
         videoId: 0,
+        actionType: '',
+        duration: 0,
+        confirmingUpload: false,
+        confirmStarted: false,
         title: '系统正在分析您的动作',
         tip: '通常需要 1~2 分钟，请耐心等待。',
         status: 'queued',
         statusLabel: '排队中',
         failed: false,
+        canRetryUpload: false,
+        canRetryConfirm: false,
         timeoutReached: false,
         showHistoryAction: false,
         pollStartedAt: 0,
@@ -137,8 +151,27 @@ Page({
         const sysInfo = wx.getSystemInfoSync();
         const statusBarHeight = sysInfo.statusBarHeight || 20;
         const videoId = Number(query.videoId || 0);
-        this.setData({ videoId, pollStartedAt: Date.now(), statusBarHeight });
+        const actionType = parseActionType(query.actionType);
+        const duration = Number(query.duration || 0);
+        const shouldConfirmUpload = Boolean(videoId && actionType && duration > 0);
+        this.setData({
+            videoId,
+            actionType,
+            duration,
+            confirmingUpload: shouldConfirmUpload,
+            confirmStarted: false,
+            pollStartedAt: Date.now(),
+            statusBarHeight,
+            title: shouldConfirmUpload ? '正在确认您的视频' : '系统正在分析您的动作',
+            tip: shouldConfirmUpload
+                ? '视频已上传，正在创建分析任务，请稍候。'
+                : '通常需要 1~2 分钟，请耐心等待。',
+            statusLabel: getStatusLabel('queued', false, false, shouldConfirmUpload),
+        });
         this.updateTopPlaceholderHeight();
+        if (shouldConfirmUpload) {
+            void this.confirmUploadedVideo();
+        }
         this.pollStatus();
         pollTimer = setInterval(() => this.pollStatus(), POLL_INTERVAL_MS);
     },
@@ -164,8 +197,62 @@ Page({
             pollTimer = undefined;
         }
     },
+    async confirmUploadedVideo() {
+        if (this.data.confirmStarted || !this.data.videoId || !this.data.actionType || this.data.duration <= 0) {
+            return;
+        }
+        this.setData({ confirmStarted: true, confirmingUpload: true });
+        try {
+            const confirmed = await (0, video_1.confirmUpload)({
+                videoId: this.data.videoId,
+                actionType: this.data.actionType,
+                duration: this.data.duration,
+            });
+            this.setData({
+                confirmingUpload: false,
+                canRetryConfirm: false,
+                title: confirmed.status === 'completed' ? '本次训练分析完成' : '系统正在分析您的动作',
+                tip: confirmed.status === 'completed'
+                    ? '分析完成，正在打开报告页…'
+                    : '分析任务已创建，您可以留在此页查看进度，或返回首页等待。',
+                statusLabel: getStatusLabel(confirmed.status, false, false, false),
+                statusSteps: buildStatusSteps(confirmed.status),
+            });
+            if (confirmed.status === 'completed') {
+                wx.redirectTo({ url: `/pages/report/index?videoId=${this.data.videoId}` });
+                return;
+            }
+            // 首次确认失败后轮询已停止；用户点击“重新创建分析任务”成功时恢复轮询。
+            this.pollStatus();
+            if (!pollTimer) {
+                pollTimer = setInterval(() => this.pollStatus(), POLL_INTERVAL_MS);
+            }
+        }
+        catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            const isAuthError = message.includes('401') || message.includes('Unauthorized');
+            this.stopPolling();
+            this.setData({
+                confirmingUpload: false,
+                confirmStarted: false,
+                failed: true,
+                canRetryUpload: false,
+                canRetryConfirm: !isAuthError,
+                showHistoryAction: true,
+                title: isAuthError ? '登录状态已过期' : '暂时无法创建分析任务',
+                tip: isAuthError
+                    ? '请重新登录后到训练记录查看此视频。'
+                    : '视频已经上传成功。请稍后到训练记录查看，系统会自动重试创建分析任务。',
+                statusLabel: isAuthError ? '需要重新登录' : '等待系统重试',
+                failReasonTitle: isAuthError ? '登录状态已过期' : '分析任务创建暂时不可用',
+                failReasonDesc: isAuthError
+                    ? '请重新登录后重试。'
+                    : '无需重新上传视频；系统会在后台尝试恢复任务。',
+            });
+        }
+    },
     async pollStatus() {
-        if (!this.data.videoId || isPolling) {
+        if (!this.data.videoId || isPolling || this.data.confirmingUpload) {
             return;
         }
         isPolling = true;
@@ -178,7 +265,7 @@ Page({
                 showHistoryAction: true,
                 title: '分析时间比预期稍长',
                 tip: '您可以稍后到历史记录里继续查看结果，无需重复上传。',
-                statusLabel: getStatusLabel(this.data.status, false, true),
+                statusLabel: getStatusLabel(this.data.status, false, true, false),
             });
             isPolling = false;
             return;
@@ -209,11 +296,13 @@ Page({
             this.setData({
                 status: result.status,
                 failed,
+                canRetryUpload: failed,
+                canRetryConfirm: false,
                 timeoutReached,
                 showHistoryAction: timeoutReached || failed,
                 title,
                 tip,
-                statusLabel: getStatusLabel(result.status, failed, timeoutReached),
+                statusLabel: getStatusLabel(result.status, failed, timeoutReached, false),
                 statusSteps: buildStatusSteps(result.status),
                 failReasonTitle: failed ? failure.title : '',
                 failReasonDesc: failed ? failure.action : '',
@@ -238,6 +327,8 @@ Page({
                     title: '登录状态已过期',
                     tip: '您可以返回首页重新进入，或稍后到历史记录里查看分析结果。',
                     failed: true,
+                    canRetryUpload: false,
+                    canRetryConfirm: false,
                     showHistoryAction: true,
                     statusLabel: '需要重新登录',
                 });
@@ -256,6 +347,8 @@ Page({
                     title: '状态获取失败',
                     tip: '当前无法确认分析状态，您可以稍后到历史记录里查看，或重新上传一次。',
                     failed: true,
+                    canRetryUpload: true,
+                    canRetryConfirm: false,
                     showHistoryAction: true,
                     statusLabel: '需要重新提交',
                 });
@@ -264,6 +357,20 @@ Page({
         finally {
             isPolling = false;
         }
+    },
+    onRetryConfirmUpload() {
+        if (!this.data.canRetryConfirm) {
+            return;
+        }
+        this.setData({
+            failed: false,
+            canRetryConfirm: false,
+            confirmingUpload: true,
+            title: '正在确认您的视频',
+            tip: '正在重新创建分析任务，请稍候。',
+            statusLabel: getStatusLabel('queued', false, false, true),
+        });
+        void this.confirmUploadedVideo();
     },
     onRetryUpload() {
         const recentUploadMeta = (0, session_1.getRecentUploadMeta)(this.data.videoId);

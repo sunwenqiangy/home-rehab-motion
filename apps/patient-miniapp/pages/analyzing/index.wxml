@@ -53,9 +53,11 @@
 
       <!-- 操作按钮 -->
       <view class="az-actions">
-        <button wx:if="{{failed}}" class="btn-big btn-teal" bindtap="onRetryUpload">🔄 重新上传训练视频</button>
+        <button wx:if="{{canRetryConfirm}}" class="btn-big btn-teal" bindtap="onRetryConfirmUpload">🔄 重新创建分析任务</button>
+        <button wx:if="{{canRetryUpload}}" class="btn-big btn-teal" bindtap="onRetryUpload">🔄 重新上传训练视频</button>
         <button wx:if="{{showHistoryAction}}" class="btn-big btn-outline" bindtap="onViewHistory">📋 去历史记录查看</button>
         <button wx:if="{{!failed}}" class="btn-big btn-outline" bindtap="onBackHomeWait">🏠 返回首页等待</button>
+        <button wx:if="{{failed && !canRetryConfirm && !canRetryUpload}}" class="btn-big btn-outline" bindtap="onBackHomeWait">🏠 返回首页</button>
       </view>
 
     </view>

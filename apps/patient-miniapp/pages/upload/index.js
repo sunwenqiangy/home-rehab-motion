@@ -141,6 +141,7 @@ Page({
         durationText: '未选择',
         canSubmit: false,
         submitting: false,
+        submittingText: '正在准备上传…',
         validationMessage: '',
         actionOptions: [],
         goalDesc: '本次先完成「缩腹运动」1 次，动作稳一点比做得快更重要。',
@@ -203,10 +204,16 @@ Page({
         });
     },
     onActionTap(event) {
+        if (this.data.submitting) {
+            return;
+        }
         const nextValue = event.currentTarget.dataset.value;
         this.changeAction(nextValue);
     },
     onChangeAction() {
+        if (this.data.submitting) {
+            return;
+        }
         const options = this.data.actionOptions || [];
         if (options.length < 2) {
             wx.showToast({ title: '当前仅支持这一种训练动作', icon: 'none' });
@@ -221,7 +228,7 @@ Page({
         });
     },
     changeAction(nextValue) {
-        if (!nextValue || nextValue === this.data.actionType) {
+        if (this.data.submitting || !nextValue || nextValue === this.data.actionType) {
             return;
         }
         const options = this.data.actionOptions || [];
@@ -294,6 +301,9 @@ Page({
         });
     },
     onSelectVideo() {
+        if (this.data.submitting) {
+            return;
+        }
         this.setData({ statusText: '正在打开视频选择，请稍候...' });
         chooseTrainingVideo()
             .then((res) => {
@@ -340,9 +350,13 @@ Page({
             });
             return;
         }
-        this.setData({ submitting: true, statusText: '正在准备上传视频...' });
+        this.setData({
+            submitting: true,
+            submittingText: '正在准备上传…',
+            statusText: '正在准备上传视频…',
+        });
         try {
-            const presign = await (0, video_1.getPresignUpload)(this.data.actionType);
+            const presign = await (0, video_1.getPresignUpload)(this.data.actionType, this.data.duration);
             console.info('[视频上传目标]', {
                 videoId: presign.videoId,
                 uploadType: presign.uploadType,
@@ -354,19 +368,19 @@ Page({
                 duration: this.data.duration || 0,
                 updatedAt: Date.now(),
             });
-            this.setData({ statusText: '正在上传视频，请稍候...' });
-            await (0, video_1.uploadVideoFile)(presign.videoId, presign, this.data.filePath);
-            this.setData({ statusText: '视频上传完成，正在确认分析任务...' });
-            const confirmed = await (0, video_1.confirmUpload)({
-                videoId: presign.videoId,
-                actionType: this.data.actionType,
-                duration: this.data.duration || 30,
+            this.setData({
+                submittingText: '正在上传视频…',
+                statusText: '正在上传视频，请保持页面打开…',
             });
-            this.setData({ statusText: confirmed.status === 'completed' ? '分析已完成，正在打开报告...' : '已提交分析，正在进入分析页面...' });
+            await (0, video_1.uploadVideoFile)(presign.videoId, presign, this.data.filePath);
+            this.setData({
+                submittingText: '视频上传完成…',
+                statusText: '视频上传完成，正在进入分析等待页…',
+            });
+            // 上传文件已完成后立即进入等待页。确认对象、创建分析任务可能受服务端
+            // 网络影响而短暂等待，不应继续阻塞用户停留在上传确认页。
             wx.redirectTo({
-                url: confirmed.status === 'completed'
-                    ? `/pages/report/index?videoId=${presign.videoId}`
-                    : `/pages/analyzing/index?videoId=${presign.videoId}`,
+                url: `/pages/analyzing/index?videoId=${presign.videoId}&actionType=${encodeURIComponent(this.data.actionType)}&duration=${Math.max(1, Math.round(this.data.duration || 30))}`,
             });
         }
         catch (error) {
@@ -388,10 +402,13 @@ Page({
             });
         }
         finally {
-            this.setData({ submitting: false });
+            this.setData({ submitting: false, submittingText: '正在准备上传…' });
         }
     },
     onGoBack() {
+        if (this.data.submitting) {
+            return;
+        }
         if (getCurrentPages().length > 1) {
             wx.navigateBack({ delta: 1 });
             return;

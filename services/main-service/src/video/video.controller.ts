@@ -28,14 +28,18 @@ export class VideoController {
   ) {}
 
   @Get('presign-upload')
-  getPresignUpload(@Req() req: Request, @Query('actionType') actionType?: string) {
+  getPresignUpload(
+    @Req() req: Request,
+    @Query('actionType') actionType?: string,
+    @Query('duration') duration?: string,
+  ) {
     const user = this.authService.requireUser(req, ['patient']);
     const supportedActionTypes = new Set<TrainingActionType>(['abdominal_crunch', 'pelvic_tilt', 'knee_rotation']);
     const resolvedActionType = actionType as TrainingActionType;
     if (!supportedActionTypes.has(resolvedActionType)) {
       throw new BadRequestException('请选择有效的训练动作类型');
     }
-    return this.videoService.getPresignUpload(user.userId, resolvedActionType);
+    return this.videoService.getPresignUpload(user.userId, resolvedActionType, Number(duration));
   }
 
   @Post('confirm-upload')
@@ -109,6 +113,12 @@ export class VideoController {
   getVideoStatus(@Req() req: Request, @Param('videoId') videoId: string) {
     const user = this.authService.requireUser(req, ['patient']);
     return this.videoService.getVideoStatus(Number(videoId), user.userId);
+  }
+
+  @Get('admin/analysis-health')
+  getAdminAnalysisHealth(@Req() req: Request) {
+    this.authService.requireUser(req, ['admin', 'nurse']);
+    return this.videoService.getAdminAnalysisHealth();
   }
 
   @Get('admin/dashboard-overview')

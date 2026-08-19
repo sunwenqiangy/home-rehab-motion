@@ -34,6 +34,18 @@ services:
       AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:?AUTH_TOKEN_SECRET is required}
       ANALYSIS_INTERNAL_TOKEN: ${ANALYSIS_INTERNAL_TOKEN:?ANALYSIS_INTERNAL_TOKEN is required}
       ANALYSIS_SERVICE_URL: http://analysis-service:8000
+      # /analysis/submit 仅投递 Celery；快速失败后由协调器后台补投。
+      ANALYSIS_REQUEST_TIMEOUT_MS: ${ANALYSIS_REQUEST_TIMEOUT_MS:-5000}
+      ANALYSIS_TASK_TIMEOUT_SECONDS: ${ANALYSIS_TASK_TIMEOUT_SECONDS:-600}
+      # 单 Worker 下 queued 是正常背压；排队超时不能沿用单任务执行超时。
+      ANALYSIS_QUEUE_TIMEOUT_SECONDS: ${ANALYSIS_QUEUE_TIMEOUT_SECONDS:-7200}
+      ANALYSIS_RECONCILIATION_INTERVAL_MS: ${ANALYSIS_RECONCILIATION_INTERVAL_MS:-60000}
+      ANALYSIS_ENQUEUE_MAX_RETRIES: ${ANALYSIS_ENQUEUE_MAX_RETRIES:-5}
+      # 小程序在 OSS 上传后意外退出时，恢复器会低频扫描有限窗口内的小批量视频。
+      UPLOAD_RECOVERY_INTERVAL_MS: ${UPLOAD_RECOVERY_INTERVAL_MS:-60000}
+      UPLOAD_RECOVERY_MIN_AGE_SECONDS: ${UPLOAD_RECOVERY_MIN_AGE_SECONDS:-60}
+      UPLOAD_RECOVERY_MAX_AGE_SECONDS: ${UPLOAD_RECOVERY_MAX_AGE_SECONDS:-900}
+      UPLOAD_RECOVERY_BATCH_SIZE: ${UPLOAD_RECOVERY_BATCH_SIZE:-10}
       ANALYSIS_CALLBACK_URL: ${ANALYSIS_CALLBACK_URL:?ANALYSIS_CALLBACK_URL must be public HTTPS}
       PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL:?PUBLIC_API_BASE_URL must be public HTTPS}
       STORAGE_UPLOAD_MODE: s3_post
@@ -134,7 +146,7 @@ services:
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
     healthcheck:
-      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=3)"]
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
       interval: 20s
       timeout: 5s
       retries: 3
@@ -184,6 +196,12 @@ services:
     cpus: 1.0
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
+    healthcheck:
+      test: ['CMD-SHELL', 'celery -A app.tasks.celery_app:celery_app inspect ping --timeout=2 2>/dev/null | grep -q pong']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # 仅运行一个 Beat 实例，负责每分钟调度失败分析回调的重试任务。
   analysis-beat:
