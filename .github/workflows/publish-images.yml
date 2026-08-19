@@ -73,6 +73,11 @@ jobs:
           push: true
           tags: |
             ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ matrix.image }}:${{ env.IMAGE_TAG }}
+          # 部分 ACR 实例不支持 BuildKit 默认推送的 OCI provenance artifact
+          # （其空配置 media type 为 application/vnd.oci.empty.v1+json）。
+          # 该发布只推送可运行镜像，关闭 provenance/SBOM 以保证旧版 Registry 兼容。
+          provenance: false
+          sbom: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
