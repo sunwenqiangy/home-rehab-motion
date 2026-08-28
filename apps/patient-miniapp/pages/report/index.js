@@ -1,13 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const appConfig_1 = require("../../services/appConfig");
 const feedback_1 = require("../../services/feedback");
 const report_1 = require("../../services/report");
 const video_1 = require("../../services/video");
-function getAppConfig() {
-    const app = getApp();
-    return app.globalData.appConfig || appConfig_1.DEFAULT_APP_CONFIG;
-}
 const ACTION_LABEL_MAP = {
     abdominal_crunch: '缩腹运动',
     pelvic_tilt: '骨盆倾斜',
@@ -18,38 +13,6 @@ const STAGE_LABEL_MAP = {
     consolidation: '稳定练习',
     incentive: '坚持成长',
 };
-function getGradeTag(grade, averageScore) {
-    if (grade === '优秀' || averageScore >= 90) {
-        return '建议继续保持';
-    }
-    if (grade === '良好' || averageScore >= 75) {
-        return '继续练会更稳';
-    }
-    return '按建议再练一遍';
-}
-function getGrowthValue(validReps, totalReps) {
-    if (!totalReps) {
-        return '待积累';
-    }
-    if (validReps === totalReps) {
-        return '+1';
-    }
-    if (validReps / totalReps >= 0.7) {
-        return '稳定中';
-    }
-    return '继续加油';
-}
-function formatDuration(seconds) {
-    if (!seconds) {
-        return '训练时长待更新';
-    }
-    if (seconds < 60) {
-        return `训练 ${Math.round(seconds)} 秒`;
-    }
-    const minutes = Math.floor(seconds / 60);
-    const remainSeconds = Math.round(seconds % 60);
-    return remainSeconds ? `训练 ${minutes} 分 ${remainSeconds} 秒` : `训练 ${minutes} 分钟`;
-}
 function getNetworkType() {
     return new Promise((resolve) => {
         wx.getNetworkType({
@@ -104,29 +67,21 @@ Page({
         reviewMessage: '',
         actionLabel: '本次训练',
         actionType: 'abdominal_crunch',
-        durationText: '训练时长待更新',
-        growthValue: '待积累',
-        stageLabel: '稳定练习',
+        stageLabel: '熟悉动作',
+        reportFocusTitle: '本次先熟悉动作',
+        reportFocusText: '',
         compareToLastText: '',
-        trendSummary: '',
-        stageFocusTitle: '当前阶段重点',
         stageFocusDesc: '',
-        stagePrevLabel: '',
-        stageNextLabel: '',
-        streakValue: '0 / 7',
-        streakProgress: 18,
-        streakDesc: '本周完成训练后，会更容易看到持续变化。',
-        streakCarryoverText: '',
         validRepsText: '0 / 0',
         holdDurationText: '0 秒',
-        confidenceText: '待更新',
         accuracyText: '待更新',
         stabilityText: '待更新',
         controlText: '待更新',
         durationMetricText: '待更新',
-        mainIssues: [],
         adviceSummary: [],
-        badgeSummaryText: '',
+        videoReview: null,
+        videoExpanded: false,
+        videoLoadFailed: false,
         improvementMessage: '',
         newlyUnlockedBadges: [],
         showSafetyNotice: false,
@@ -145,25 +100,27 @@ Page({
         const statusBarHeight = sysInfo.statusBarHeight || 20;
         const videoId = Number(query.videoId || 1);
         const showSafetyNotice = query.safetyNotice === '1';
-        const cfg = getAppConfig();
-        const weeklyTarget = cfg.weeklyTarget;
         this.setData({
             videoId,
             statusBarHeight,
             showSafetyNotice,
-            streakValue: `0 / ${weeklyTarget}`,
-            streakProgress: 18,
-            streakDesc: `本周完成 ${weeklyTarget} 天训练后，会更容易看到持续变化。`,
         });
         try {
             const report = await (0, report_1.getReport)(videoId);
             const actionLabel = ACTION_LABEL_MAP[report.actionType] || '本次训练';
-            const badgeSummaryText = report.badgeSummary.length
-                ? report.badgeSummary.map((item) => item.title).join(' / ')
-                : '暂无新徽章';
-            const motivationStage = report.motivation?.stage || report.stage;
-            const stageLabel = STAGE_LABEL_MAP[motivationStage] || '熟悉动作';
-            const stageFocus = resolveStageFocus(motivationStage);
+            // 阶段仅表示长期康复旅程；本次结果重点由 reportFocus 单独表达。
+            const journeyStage = report.stage || report.motivation?.stage || 'corrective';
+            const stageLabel = STAGE_LABEL_MAP[journeyStage] || '熟悉动作';
+            const stageFocus = resolveStageFocus(journeyStage);
+            const reportFocusTitle = report.reportFocus === 'review_pending'
+                ? '本次结果待复核'
+                : report.reportFocus === 'retake_recommended'
+                    ? '建议重新拍摄'
+                    : report.reportFocus === 'build_stability'
+                        ? '本次继续练稳定'
+                        : report.reportFocus === 'maintain_rhythm'
+                            ? '本次保持当前节奏'
+                            : '本次先熟悉动作';
             this.setData({
                 loadFailed: false,
                 isAnalysisFailed: false,
@@ -174,33 +131,21 @@ Page({
                 reviewMessage: report.reviewMessage || '',
                 actionLabel,
                 actionType: report.actionType,
-                durationText: formatDuration(report.duration),
-                growthValue: report.requiresManualReview ? '待复核' : getGrowthValue(report.validReps, report.totalReps),
                 stageLabel,
+                reportFocusTitle,
+                reportFocusText: report.reportFocusText || '',
                 compareToLastText: report.compareToLast || '',
-                trendSummary: report.trendSummary || '',
-                stageFocusTitle: stageFocus.title,
                 stageFocusDesc: stageFocus.desc,
-                stagePrevLabel: stageFocus.prevLabel,
-                stageNextLabel: stageFocus.nextLabel,
-                streakValue: report.motivation
-                    ? `${report.motivation.weeklyTrainingDays} / ${report.motivation.weeklyTargetDays}`
-                    : report.streakSummary.label,
-                streakProgress: report.motivation
-                    ? Math.min(100, Math.round((report.motivation.weeklyTrainingDays / Math.max(1, report.motivation.weeklyTargetDays)) * 100))
-                    : report.streakSummary.progressPercent,
-                streakDesc: report.motivation?.encourageText || report.streakSummary.desc,
-                streakCarryoverText: report.motivation?.nearestBadge?.message || report.streakSummary.carryoverText || '',
                 validRepsText: `${report.validReps} / ${report.totalReps}`,
                 holdDurationText: report.avgHoldDuration ? `${Math.round(report.avgHoldDuration)} 秒` : '待更新',
-                confidenceText: report.requiresManualReview ? '待复核' : (report.confidenceScore ? `${Math.round(report.confidenceScore * 100)}%` : '待更新'),
                 accuracyText: report.accuracyAvg != null ? `${Math.round(report.accuracyAvg)}` : '待更新',
                 stabilityText: report.stabilityAvg != null ? `${Math.round(report.stabilityAvg)}` : '待更新',
                 controlText: report.controlAvg != null ? `${Math.round(report.controlAvg)}` : '待更新',
                 durationMetricText: report.durationAvg != null ? `${Math.round(report.durationAvg)}` : '待更新',
-                mainIssues: report.mainIssues,
                 adviceSummary: report.adviceSummary || [],
-                badgeSummaryText,
+                videoReview: report.videoReview || null,
+                videoExpanded: false,
+                videoLoadFailed: false,
                 improvementMessage: report.motivation?.improvementMessage || report.trendSummary || '',
                 newlyUnlockedBadges: report.newlyUnlockedBadges || [],
             });
@@ -289,6 +234,15 @@ Page({
             this.setData({ activeFeedbackId: 0, feedbackEntryLabel: '提交反馈' });
         }
     },
+    onToggleVideo() {
+        if (!this.data.videoReview || this.data.videoLoadFailed) {
+            return;
+        }
+        this.setData({ videoExpanded: !this.data.videoExpanded });
+    },
+    onVideoError() {
+        this.setData({ videoLoadFailed: true, videoExpanded: false });
+    },
     onToggleFeedback() {
         if (this.data.feedbackEntryLoading)
             return;
@@ -322,8 +276,5 @@ Page({
     onViewHistory() {
         // 从报告查看列表属于流程切换，替换当前报告页，避免“报告 → 历史 → 报告”反复累积。
         wx.redirectTo({ url: '/pages/history/index' });
-    },
-    getResultTagText() {
-        return getGradeTag(this.data.grade, this.data.averageScore);
     },
 });

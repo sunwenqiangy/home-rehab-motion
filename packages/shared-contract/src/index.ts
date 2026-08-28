@@ -3,6 +3,7 @@ import type {
   FeedbackStatus,
   FeedbackType,
   NotificationType,
+  ReportFocus,
   ReportStage,
   TrainingActionType,
   UserRole,
@@ -235,6 +236,7 @@ export interface MotivationSummaryDto {
   improvementLevel: 'none' | 'slight' | 'clear';
   improvementType?: 'score' | 'stability' | 'duration' | 'reps';
   improvementMessage: string;
+  /** 当前康复旅程阶段，不由单次评分决定。 */
   stage: ReportStage;
   badges: BadgeSummaryDto[];
   latestBadge?: BadgeSummaryDto;
@@ -292,11 +294,20 @@ export interface SaveManualVideoReviewRequestDto {
   reviewNote?: string;
 }
 
+export interface ReportVideoReviewDto {
+  /** 已由服务端完成归属校验后签发的短期私有播放地址。 */
+  playbackUrl: string;
+  duration?: number;
+  privacyHint: string;
+}
+
 export interface ReportDto {
   videoId: number;
   actionType: TrainingActionType;
   uploadedAt: string;
   duration: number;
+  /** 本人可按需展开回看的原始训练视频。 */
+  videoReview?: ReportVideoReviewDto;
   grade: string;
   averageScore: number;
   totalReps: number;
@@ -310,7 +321,11 @@ export interface ReportDto {
   stabilityAvg?: number;
   controlAvg?: number;
   durationAvg?: number;
+  /** 当前/快照康复旅程阶段，不由单次评分决定。 */
   stage: ReportStage;
+  /** 单次训练的反馈重点；与长期阶段分离。 */
+  reportFocus?: ReportFocus;
+  reportFocusText?: string;
   compareToLast?: string;
   trendSummary?: string;
   streakSummary: WeeklyProgressDto;

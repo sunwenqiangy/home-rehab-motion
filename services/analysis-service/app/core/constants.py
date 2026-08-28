@@ -190,7 +190,7 @@ SKELETON_CONNECTIONS = [
 
 # 缩腹闭环切分配置。时间值必须由实际 effective_sample_fps 换算为帧数。
 ABDOMINAL_SEGMENTATION_VERSION_LEGACY = 'abdominal_peak_v1'
-ABDOMINAL_SEGMENTATION_VERSION_CYCLE = 'abdominal_cycle_v2'
+ABDOMINAL_SEGMENTATION_VERSION_CYCLE = 'abdominal_cycle_v3'
 ABDOMINAL_SEGMENT_CONFIG = {
     'min_stable_seconds': 0.6,
     'min_contraction_seconds': 0.8,

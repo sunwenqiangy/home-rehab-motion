@@ -1,8 +1,9 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { BadgeSummaryDto, ReportDto, WeeklyProgressDto } from '@home-rehab-motion/shared-contract';
-import type { ReportStage, WeeklyProgressStatus } from '@home-rehab-motion/shared-types';
+import type { ReportFocus, ReportStage, WeeklyProgressStatus } from '@home-rehab-motion/shared-types';
 import { ConfigService } from '../config/config.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { MotivationService } from '../motivation/motivation.service';
 
 function getCurrentWeekStart() {
@@ -69,14 +70,24 @@ function buildWeeklyProgress(
   };
 }
 
-function resolveReportStage(averageScore: number, grade: string, validReps: number, totalReps: number): ReportStage {
-  if (grade === '优秀' || averageScore >= 90) {
-    return 'incentive';
+function resolveReportFocus(params: {
+  requiresManualReview: boolean;
+  grade: string;
+  averageScore: number;
+  validReps: number;
+  totalReps: number;
+  adviceCount: number;
+}): { focus: ReportFocus; text: string } {
+  if (params.requiresManualReview) {
+    return { focus: 'review_pending', text: '本次训练记录已收到，复核完成前暂不展示分数和动作判断。' };
   }
-  if ((grade === '良好' || averageScore >= 75) && validReps > 0 && totalReps > 0) {
-    return 'consolidation';
+  if (params.grade === '无效' || params.averageScore < 60 || params.validReps === 0 || params.totalReps === 0) {
+    return { focus: 'learn_motion', text: '跟着动作步骤慢慢完成，优先保证动作完整和舒适。' };
   }
-  return 'corrective';
+  if (params.grade === '需改进' || params.averageScore < 75 || params.adviceCount > 0) {
+    return { focus: 'build_stability', text: '保持节奏一致，逐步减少代偿并延长顶点保持。' };
+  }
+  return { focus: 'maintain_rhythm', text: '本次动作完成得不错，请按自己的节奏稳定练习。' };
 }
 
 @Injectable()
@@ -85,6 +96,7 @@ export class ReportService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly motivationService: MotivationService,
+    private readonly storageService: StorageService,
   ) {}
 
   private async getWeeklyTarget(): Promise<number> {
@@ -192,7 +204,16 @@ export class ReportService {
     const averageScore = requiresManualReview ? 0 : (usesManualResult ? Number(review?.manual_score || 0) : (result.average_score || 0));
     const validReps = result.valid_reps || 0;
     const totalReps = result.total_reps || 0;
-    const stage = resolveReportStage(averageScore, grade, validReps, totalReps);
+    // 患者的阶段统一来自激励服务的长期旅程规则；单次评分只影响 reportFocus，不再导致阶段跳变。
+    const stage = motivation.stage;
+    const reportFocus = resolveReportFocus({
+      requiresManualReview,
+      grade,
+      averageScore,
+      validReps,
+      totalReps,
+      adviceCount: adviceSummary.length,
+    });
 
     const previousAverageScore = previousCompletedResult?.average_score ?? null;
     const scoreDelta =
@@ -213,6 +234,13 @@ export class ReportService {
       actionType: result.video.action_type as ReportDto['actionType'],
       uploadedAt: result.video.upload_time.toISOString(),
       duration: result.video.duration ? Number(result.video.duration) : 0,
+      videoReview: result.video.video_key
+        ? {
+            playbackUrl: this.storageService.getPrivateObjectUrl(result.video.video_key),
+            duration: result.video.duration ? Number(result.video.duration) : undefined,
+            privacyHint: '仅本人可查看，请注意保护隐私。',
+          }
+        : undefined,
       grade,
       averageScore,
       totalReps,
@@ -226,10 +254,12 @@ export class ReportService {
       controlAvg: requiresManualReview ? undefined : (result.control_avg || 0),
       durationAvg: requiresManualReview ? undefined : (result.duration_avg || 0),
       stage,
+      reportFocus: reportFocus.focus,
+      reportFocusText: reportFocus.text,
       compareToLast: requiresManualReview ? undefined : compareToLast,
       trendSummary: requiresManualReview
         ? '复核完成前，请先以动作指导中的拍摄要求为准。'
-        : stage === 'incentive' ? '近几次训练节奏稳定，建议继续保持当前状态。' : '继续按当前节奏训练，系统会持续记录您的变化。',
+        : reportFocus.focus === 'maintain_rhythm' ? '近几次训练节奏稳定，建议继续保持当前状态。' : '继续按当前节奏训练，系统会持续记录您的变化。',
       streakSummary: buildWeeklyProgress(currentWeekCompletedCount, previousWeekCompletedCount, badgeSummary, weeklyTarget),
       badgeSummary,
       motivation,

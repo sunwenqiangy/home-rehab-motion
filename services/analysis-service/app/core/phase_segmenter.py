@@ -137,7 +137,7 @@ class PhaseSegmenter:
             # 普通按峰计数，避免只完成半程或准备姿势也被展示为一次训练。
             reps = self._segment_pelvic_reps(smoothed)
             logger.info('Segmented %d reps for %s', len(reps), action_type)
-            return SegmentationResult(version='pelvic_tilt_legacy', reps=reps)
+            return SegmentationResult(version='pelvic_tilt_fixed_4fps_v2', reps=reps)
 
         if action_type == 'knee_rotation':
             reps = self._segment_knee_reps(smoothed)
@@ -869,7 +869,10 @@ class PhaseSegmenter:
                         i += 1
                         continue
                     i = rebound_peak
-                if is_stable(i):
+                # return_end 是已观察到持续回落的末帧。在到达该位置前，信号
+                # 即使暂时平缓也仍处在回落中，不能将其视为中立稳定并闭合周期；
+                # 否则会把一次缓慢回正拆成多个 3~5 秒的伪动作。
+                if return_end is not None and i >= return_end and is_stable(i):
                     stable_at = i
                     duration = stable_at - start
                     amplitude = float(signal[peak] - signal[start])

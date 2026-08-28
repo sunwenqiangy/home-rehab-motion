@@ -61,7 +61,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ChatDotRound, TrendCharts, WarningFilled } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
-import { getAdminAnalysisTasks, getAdminDashboardOverview, getAdminVideoList, type AdminDashboardOverview } from '@/services/video';
+import { getAdminDashboardOverview, getAdminVideoList, type AdminDashboardOverview } from '@/services/video';
 import { getFeedbackList } from '@/services/feedback';
 import type { AnalysisStatus, TrainingActionType } from '@home-rehab-motion/shared-types';
 import { ANALYSIS_STATUS_LABELS } from '@home-rehab-motion/shared-constants';
@@ -71,7 +71,6 @@ const loading = ref(false);
 const stats = reactive({ videoCount: 0, pendingFeedback: 0, completedAnalysis: 0 });
 const recentVideos = ref<any[]>([]);
 const videos = ref<any[]>([]);
-const taskItems = ref<any[]>([]);
 const trendDays = ref<7 | 30>(7);
 const overview = ref<AdminDashboardOverview>({ days: 7, totalPatients: 0, activePatientCount: 0, newPatientCount: 0, videoUploadCount: 0, completedAnalysisCount: 0, allVideoCount: 0, allCompletedAnalysisCount: 0, analysisStatusCounts: {}, trend: [] });
 const periodOptions: Array<{ value: 7 | 30; label: string }> = [{ value: 7, label: '近 7 天' }, { value: 30, label: '近 30 天' }];
@@ -128,8 +127,8 @@ async function changeTrendDays(days: 7 | 30) { if (trendDays.value === days) ret
 async function loadDashboard() {
   loading.value = true;
   try {
-    const results = await Promise.allSettled([getAdminVideoList({ page: 1, limit: 100 }), getAdminAnalysisTasks({ page: 1, limit: 100 }), getFeedbackList(false, { page: 1, limit: 100 }), getAdminDashboardOverview(trendDays.value)]);
-    const [videoResult, taskResult, feedbackResult, overviewResult] = results;
+const results = await Promise.allSettled([getAdminVideoList({ page: 1, limit: 100 }), getFeedbackList(false, { page: 1, limit: 100 }), getAdminDashboardOverview(trendDays.value)]);
+const [videoResult, feedbackResult, overviewResult] = results;
     if (videoResult.status === 'fulfilled') {
       videos.value = videoResult.value.items;
       stats.videoCount = videoResult.value.total;
@@ -137,14 +136,16 @@ async function loadDashboard() {
       const riskRank: Record<string, number> = { failed: 0, quality_insufficient: 1, review_required: 2, processing: 3, queued: 3, pending: 3, uploading: 3, completed: 9 };
       recentVideos.value = [...videos.value].sort((left, right) => (riskRank[left.status] ?? 8) - (riskRank[right.status] ?? 8)).filter((item) => item.status !== 'completed').slice(0, 5);
     }
-    if (taskResult.status === 'fulfilled') taskItems.value = taskResult.value.items;
-    if (feedbackResult.status === 'fulfilled') stats.pendingFeedback = feedbackResult.value.items.filter((item) => item.status === 'pending').length;
+if (feedbackResult.status === 'fulfilled') stats.pendingFeedback = feedbackResult.value.items.filter((item) => item.status === 'pending').length;
     if (overviewResult.status === 'fulfilled') {
       overview.value = overviewResult.value;
       stats.videoCount = overview.value.allVideoCount;
       stats.completedAnalysis = overview.value.allCompletedAnalysisCount;
     }
-    if (results.some((result) => result.status === 'rejected')) ElMessage.warning('部分工作台数据加载失败，请刷新后重试');
+    const failedSections = results.flatMap((result, index) => result.status === 'rejected'
+? [['训练视频', '反馈工单', '运营趋势'][index]]
+: []);
+if (failedSections.length) ElMessage.warning(`${failedSections.join('、')}加载失败，请刷新后重试`);
   } catch (error: any) {
     ElMessage.error(error?.response?.data?.message || '工作台数据加载失败');
   } finally {

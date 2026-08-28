@@ -3,6 +3,7 @@
 import copy
 import logging
 import os
+import tempfile
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -13,6 +14,35 @@ from app.core.models import CompareResult, ConfidenceResult, QualityCheckResult,
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
+
+
+def _create_temp_video_path(video_key: str) -> str:
+    """在受控的持久目录创建临时视频路径，避免 Docker tmpfs 被下载文件撑爆。"""
+    temp_dir = Path(settings.analysis_temp_dir)
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    if not temp_dir.is_dir():
+        raise RuntimeError(f'分析临时目录不可用: {temp_dir}')
+    if not os.access(temp_dir, os.W_OK):
+        raise RuntimeError(f'分析临时目录不可写: {temp_dir}')
+    suffix = os.path.splitext(video_key)[1] or '.mp4'
+    fd, local_path = tempfile.mkstemp(suffix=suffix, dir=str(temp_dir))
+    os.close(fd)
+    return local_path
+
+
+def _stream_http_video(url: str, local_path: str) -> bool:
+    """流式下载对象，避免 response.content 将整条视频同时常驻内存。"""
+    import requests
+
+    with requests.get(url, stream=True, timeout=(10, 120)) as response:
+        if response.status_code != 200:
+            logger.warning('Failed to download %s via public URL: status=%s', url, response.status_code)
+            return False
+        with open(local_path, 'wb') as output:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    output.write(chunk)
+    return os.path.getsize(local_path) > 0
 
 
 def _download_video(video_key: str) -> Tuple[Optional[str], bool]:
@@ -30,33 +60,27 @@ def _download_video(video_key: str) -> Tuple[Optional[str], bool]:
 
     public_base = settings.oss_public_base_url.rstrip('/')
     if public_base:
+        local_path: Optional[str] = None
         try:
-            import requests
-            import tempfile
-
-            suffix = os.path.splitext(video_key)[1] or '.mp4'
-            fd, local_path = tempfile.mkstemp(suffix=suffix)
-            os.close(fd)
-
+            local_path = _create_temp_video_path(video_key)
             public_url = f'{public_base}/{video_key}'
-            response = requests.get(public_url, timeout=20)
-            if response.status_code == 200 and response.content:
-                Path(local_path).write_bytes(response.content)
+            if _stream_http_video(public_url, local_path):
                 logger.info('Downloaded video via OSS public URL: %s -> %s', public_url, local_path)
                 return local_path, True
-            logger.warning('Failed to download %s via public URL: status=%s', video_key, response.status_code)
             if os.path.exists(local_path):
                 os.remove(local_path)
         except Exception as exc:
             logger.warning('Failed to download %s via OSS public URL: %s', video_key, exc)
+            if local_path and os.path.exists(local_path):
+                os.remove(local_path)
 
     # ── boto3 S3 下载（兼容 MinIO，使用 path_style + s3v4 签名）────────────
     endpoint = settings.oss_endpoint.strip()
     access_key = settings.oss_access_key or settings.oss_access_key_id
     secret_key = settings.oss_secret_key or settings.oss_access_key_secret
     if endpoint and access_key and secret_key:
+        local_path: Optional[str] = None
         try:
-            import tempfile
             import boto3
             from botocore.config import Config as BotocoreConfig
 
@@ -70,9 +94,7 @@ def _download_video(video_key: str) -> Tuple[Optional[str], bool]:
                     s3={'addressing_style': 'path' if settings.oss_force_path_style else 'auto'},
                 ),
             )
-            suffix = os.path.splitext(video_key)[1] or '.mp4'
-            fd, local_path = tempfile.mkstemp(suffix=suffix)
-            os.close(fd)
+            local_path = _create_temp_video_path(video_key)
             s3.download_file(settings.oss_bucket, video_key, local_path)
             if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
                 logger.info('Downloaded video via S3/MinIO: %s -> %s', video_key, local_path)
@@ -84,22 +106,20 @@ def _download_video(video_key: str) -> Tuple[Optional[str], bool]:
         except Exception as exc:
             logger.warning('Failed to download %s from S3/MinIO: %s', video_key, exc)
             try:
-                if 'local_path' in dir() and os.path.exists(local_path):
+                if local_path and os.path.exists(local_path):
                     os.remove(local_path)
             except OSError:
                 pass
 
     # ── 阿里云 oss2 下载（原生 OSS 环境回退）───────────────────────────────
+    local_path: Optional[str] = None
     try:
-        import tempfile
         import oss2
 
         auth = oss2.Auth(settings.oss_access_key_id, settings.oss_access_key_secret)
         bucket = oss2.Bucket(auth, settings.oss_endpoint, settings.oss_bucket)
 
-        suffix = os.path.splitext(video_key)[1] or '.mp4'
-        fd, local_path = tempfile.mkstemp(suffix=suffix)
-        os.close(fd)
+        local_path = _create_temp_video_path(video_key)
         bucket.get_object_to_file(video_key, local_path)
         logger.info('Downloaded video from OSS: %s -> %s', video_key, local_path)
         return local_path, True
@@ -108,6 +128,8 @@ def _download_video(video_key: str) -> Tuple[Optional[str], bool]:
         return None, False
     except Exception as exc:
         logger.warning('Failed to download %s from OSS: %s', video_key, exc)
+        if local_path and os.path.exists(local_path):
+            os.remove(local_path)
         return None, False
 
 
@@ -145,6 +167,20 @@ def _get_feature_units(action_type: str) -> Dict[str, str]:
 
     template = DEFAULT_TEMPLATES.get(action_type, {})
     return {code: info.get('unit', '') for code, info in template.items()}
+
+
+def _resolve_pose_sampling(action_type: str, requested_sample_fps: Optional[int]) -> Tuple[int, bool]:
+    """返回姿态推理频率及是否按固定时间戳采样。
+
+    骨盆倾斜统一按 4fps 处理：最长 300 秒视频最多正好 1200 帧，短视频也不再
+    使用不同频率，确保同一切分规则面对一致的 MediaPipe 时序输入。
+    """
+    target_fps = settings.sample_fps
+    if isinstance(requested_sample_fps, (int, float)):
+        target_fps = max(5, min(30, int(round(requested_sample_fps))))
+    if action_type == 'pelvic_tilt':
+        return 4, True
+    return target_fps, False
 
 
 @celery_app.task(
@@ -252,15 +288,14 @@ def analyze_video(
 
         from app.core.pose_estimator import PoseEstimator
 
-        effective_sample_fps = settings.sample_fps
-        if isinstance(sample_fps, (int, float)):
-            effective_sample_fps = max(5, min(30, int(round(sample_fps))))
+        effective_sample_fps, exact_sample_timestamps = _resolve_pose_sampling(action_type, sample_fps)
 
         estimator = PoseEstimator(
             sample_fps=effective_sample_fps,
             model_complexity=settings.model_complexity,
             max_frames=settings.max_analysis_frames,
             max_frame_width=settings.max_pose_frame_width,
+            exact_sample_timestamps=exact_sample_timestamps,
         )
         frames = estimator.extract_frames(local_video_path)
         effective_sample_fps = estimator.effective_sample_fps
@@ -377,6 +412,8 @@ def analyze_video(
                 cycle_segment_started = time.monotonic()
                 cycle_result = segmenter.segment_with_diagnostics(frames, action_type, mode='cycle_state_machine')
                 cycle_segment_ms = int((time.monotonic() - cycle_segment_started) * 1000)
+            # shadow 仅记录新旧算法的差异证据，不改变患者正式结果；只有显式
+            # 切到 cycle_state_machine 时才让闭环切分接管正式计数。
             formal_result = cycle_result if cycle_enabled and cycle_result is not None else legacy_result
             reps: List[Rep] = formal_result.reps
             # Candidate 的帧序号是抽样后序列下标；以同一序列的时间戳换算
@@ -643,6 +680,12 @@ def analyze_video(
                 os.remove(local_video_path)
             except OSError:
                 pass
+        # 关键点可视化副本与 NumPy 中间数组可能较大；任务结束时主动释放，
+        # 让单 Worker 能稳定处理下一条视频而不是等待 Python GC 时机。
+        if 'visualization_frames' in locals():
+            del visualization_frames
+        if 'frames' in locals():
+            del frames
 
 
 def _candidate_to_dict(candidate: Any, frame_timestamps: Optional[Dict[int, float]] = None) -> Dict[str, Any]:

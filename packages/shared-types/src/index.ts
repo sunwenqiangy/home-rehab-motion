@@ -36,7 +36,19 @@ export type NotificationType =
   | 'badge_earned'
   | 'system_message';
 
-export type ReportStage = 'corrective' | 'consolidation' | 'incentive';
+/** 患者的长期康复旅程阶段；不由单次训练评分决定。 */
+export type JourneyStage = 'corrective' | 'consolidation' | 'incentive';
+
+/** @deprecated 请使用 JourneyStage。为兼容既有接口暂时保留。 */
+export type ReportStage = JourneyStage;
+
+/** 单次报告的反馈重点，与长期旅程阶段分离。 */
+export type ReportFocus =
+  | 'review_pending'
+  | 'retake_recommended'
+  | 'learn_motion'
+  | 'build_stability'
+  | 'maintain_rhythm';
 
 export type WeeklyProgressStatus =
   | 'started'

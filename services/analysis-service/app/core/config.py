@@ -43,13 +43,18 @@ class Settings(BaseSettings):
     # 分析任务上限。低配实例必须限制单条视频的计算量，避免 MediaPipe 长时间占满 CPU / 内存。
     analysis_timeout_seconds: int = Field(default=600, alias='ANALYSIS_TIMEOUT_SECONDS')
     max_analysis_duration_seconds: int = Field(default=300, alias='MAX_ANALYSIS_DURATION_SECONDS')
-    max_analysis_frames: int = Field(default=600, alias='MAX_ANALYSIS_FRAMES')
+    # 与最长 300 秒视频的固定 4fps 骨盆倾斜采样对齐，默认完整覆盖 1200 帧。
+    max_analysis_frames: int = Field(default=1200, alias='MAX_ANALYSIS_FRAMES')
     max_pose_frame_width: int = Field(default=720, alias='MAX_POSE_FRAME_WIDTH')
+    # 临时下载目录必须位于持久磁盘卷，不能使用 Docker tmpfs；否则大视频会直接挤占容器内存。
+    analysis_temp_dir: str = Field(default='/tmp', alias='ANALYSIS_TEMP_DIR')
+    # 限制 OpenCV/BLAS 等原生库线程，避免单 Worker 在 2C2G 主机上抢占全部 CPU。
+    native_thread_count: int = Field(default=1, alias='NATIVE_THREAD_COUNT')
     # 是否允许无真实上传视频时回退样例视频
     allow_sample_video_fallback: bool = Field(default=False, alias='ALLOW_SAMPLE_VIDEO_FALLBACK')
     # 是否允许无 mediapipe 时使用 mock 关键点
     allow_mock_keypoints_fallback: bool = Field(default=False, alias='ALLOW_MOCK_KEYPOINTS_FALLBACK')
-    # P0 默认保持旧切分正式生效；shadow 仅为缩腹额外生成轻量诊断。
+    # 默认保持峰值切分正式生效；shadow 仅额外保存闭环差异诊断，确认样本覆盖后再切换。
     abdominal_segmentation_mode: str = Field(default='legacy_peak', alias='ABDOMINAL_SEGMENTATION_MODE')
 
     @property

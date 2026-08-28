@@ -93,7 +93,7 @@ services:
   analysis-storage-init:
     image: ${ANALYSIS_SERVICE_IMAGE:?ANALYSIS_SERVICE_IMAGE is required}
     user: '0:0'
-    command: ['sh', '-c', 'mkdir -p /var/lib/home-rehab-motion && chown -R home_rehab_motion:home_rehab_motion /var/lib/home-rehab-motion']
+    command: ['sh', '-c', 'mkdir -p /var/lib/home-rehab-motion/tmp && chown -R home_rehab_motion:home_rehab_motion /var/lib/home-rehab-motion']
     volumes:
       - analysis-keypoints-data:/var/lib/home-rehab-motion
     restart: 'no'
@@ -121,7 +121,7 @@ services:
       # 与 Worker 共享持久卷：API 只读提供关键点骨架预览。
       LOCAL_STORAGE_ROOT: /var/lib/home-rehab-motion
       MAX_ANALYSIS_DURATION_SECONDS: ${MAX_ANALYSIS_DURATION_SECONDS:-300}
-      MAX_ANALYSIS_FRAMES: ${MAX_ANALYSIS_FRAMES:-600}
+      MAX_ANALYSIS_FRAMES: ${MAX_ANALYSIS_FRAMES:-1200}
       MAX_POSE_FRAME_WIDTH: ${MAX_POSE_FRAME_WIDTH:-720}
       MPLCONFIGDIR: /tmp/matplotlib
       XDG_CACHE_HOME: /tmp/.cache
@@ -153,7 +153,7 @@ services:
 
   analysis-worker:
     image: ${ANALYSIS_SERVICE_IMAGE:?ANALYSIS_SERVICE_IMAGE is required}
-    command: ['celery', '-A', 'app.tasks.celery_app:celery_app', 'worker', '--loglevel=INFO', '--concurrency=1', '--queues=analysis', '--hostname=analysis-worker@%h']
+    command: ['celery', '-A', 'app.tasks.celery_app:celery_app', 'worker', '--loglevel=INFO', '--concurrency=1', '--max-tasks-per-child=1', '--queues=analysis', '--hostname=analysis-worker@%h']
     environment:
       NODE_ENV: production
       DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE}
@@ -169,10 +169,19 @@ services:
       OSS_PUBLIC_BASE_URL: ''
       # Worker 负责写入关键点数据；同一命名卷由 analysis-service 只读挂载。
       LOCAL_STORAGE_ROOT: /var/lib/home-rehab-motion
-      # 2C2G 单机保护：单任务最多推理 600 帧，避免长视频耗尽宿主机资源。
+      # OSS 下载落到磁盘持久卷，而非 /tmp tmpfs；防止 200MB 视频占满容器内存。
+      ANALYSIS_TEMP_DIR: /var/lib/home-rehab-motion/tmp
+      # OpenCV/MediaPipe 原生线程受控为 1，保证 Celery 单任务不会争抢宿主机 CPU。
+      NATIVE_THREAD_COUNT: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      # 2C2G 单机保护：单任务最多推理 1200 帧；骨盆倾斜固定 4fps 可完整覆盖最长 300 秒视频。
       MAX_ANALYSIS_DURATION_SECONDS: ${MAX_ANALYSIS_DURATION_SECONDS:-300}
-      MAX_ANALYSIS_FRAMES: ${MAX_ANALYSIS_FRAMES:-600}
+      MAX_ANALYSIS_FRAMES: ${MAX_ANALYSIS_FRAMES:-1200}
       MAX_POSE_FRAME_WIDTH: ${MAX_POSE_FRAME_WIDTH:-720}
+      # 缩腹保持峰值正式切分，并额外记录闭环诊断供样本验证。
+      ABDOMINAL_SEGMENTATION_MODE: ${ABDOMINAL_SEGMENTATION_MODE:-shadow}
       MPLCONFIGDIR: /tmp/matplotlib
       XDG_CACHE_HOME: /tmp/.cache
       XDG_CONFIG_HOME: /tmp/.config

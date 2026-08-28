@@ -22,20 +22,27 @@ class PoseEstimator:
         sample_fps: int = 10,
         max_frames: Optional[int] = None,
         max_frame_width: Optional[int] = None,
+        exact_sample_timestamps: bool = False,
     ):
         self.sample_fps = sample_fps
         self.max_frames = max_frames if max_frames and max_frames > 0 else None
         self.max_frame_width = max_frame_width if max_frame_width and max_frame_width > 0 else None
+        # 固定节奏采样按视频时间戳而非源帧序号取样，用于要求跨视频长度保持
+        # 一致时序分辨率的动作；不会增加帧预算，只消除 source_fps 整除取步长的漂移。
+        self.exact_sample_timestamps = exact_sample_timestamps
         self.effective_sample_fps = float(sample_fps)
         self._model_complexity = model_complexity
         self._mp_pose = None
         self._pose = None
 
     def _init_model(self):
-        """延迟初始化 MediaPipe（避免 import 时加载）"""
+        """延迟初始化 MediaPipe（避免 import 时加载）。"""
         if self._pose is not None:
             return
         try:
+            # OpenCV 会按宿主机核数创建线程池；在单 Worker、限 1 CPU 的容器中
+            # 反而造成调度竞争和内存峰值。推理逐帧执行，因此固定为受控线程数。
+            cv2.setNumThreads(max(1, settings.native_thread_count))
             import mediapipe as mp
             self._mp_pose = mp.solutions.pose
             self._pose = self._mp_pose.Pose(
@@ -58,9 +65,13 @@ class PoseEstimator:
         """
         self._init_model()
 
+        # FFMPEG 解码由 VideoCapture 逐帧输出；通过 OpenCV 的原生线程限制避免
+        # 单个分析任务把 2C2G 实例的所有 CPU 核心占满。
+        cv2.setNumThreads(max(1, settings.native_thread_count))
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             logger.error('Cannot open video: %s', video_path)
+            self._close_model()
             return []
 
         source_fps = cap.get(cv2.CAP_PROP_FPS)
@@ -69,41 +80,53 @@ class PoseEstimator:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         # 限制总推理帧数而非仅限制视频文件时长：高帧率长视频会自动增大抽帧步长，
         # 既避免低配服务器被单任务耗尽，也保留完整时间范围供周期切分。
-        sampled_frame_count = (total_frames + source_step - 1) // source_step if total_frames > 0 else 0
         budget_step = (total_frames + self.max_frames - 1) // self.max_frames if self.max_frames and total_frames > self.max_frames else 1
         step = max(source_step, budget_step)
-        effective_fps = source_fps / step
-        self.effective_sample_fps = effective_fps
-        if step > source_step:
-            logger.info(
-                'Pose sampling capped: requested_fps=%d, source_fps=%.2f, total_frames=%d, max_frames=%d, step=%d, effective_fps=%.2f',
-                self.sample_fps, source_fps, total_frames, self.max_frames, step, effective_fps,
-            )
-        elif sampled_frame_count:
-            logger.info(
-                'Pose sampling: requested_fps=%d, source_fps=%.2f, total_frames=%d, step=%d, sampled_frames=%d',
-                self.sample_fps, source_fps, total_frames, step, sampled_frame_count,
-            )
 
         frames: List[Frame] = []
         frame_index = 0
+        next_sample_timestamp = 0.0
+        sample_interval = 1.0 / max(self.sample_fps, 1)
 
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+        try:
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-            if frame_index % step == 0:
                 timestamp = frame_index / source_fps if source_fps > 0 else 0.0
-                mp_frame = self._process_frame(frame, frame_index, timestamp)
-                frames.append(mp_frame)
+                if self.exact_sample_timestamps:
+                    # 固定节奏模式不依赖整数 source_step。长短视频均使用同一个时间间隔，
+                    # 同时严格遵守帧预算，保证最长 300 秒骨盆倾斜视频也能完整分析。
+                    should_sample = timestamp + 1e-9 >= next_sample_timestamp
+                    if should_sample and (not self.max_frames or len(frames) < self.max_frames):
+                        frames.append(self._process_frame(frame, frame_index, timestamp))
+                        next_sample_timestamp += sample_interval
+                elif frame_index % step == 0:
+                    frames.append(self._process_frame(frame, frame_index, timestamp))
 
-            frame_index += 1
-
-        cap.release()
-        logger.info('Extracted %d frames from %s (total=%d, step=%d)',
-                     len(frames), video_path, total_frames, step)
+                frame_index += 1
+        finally:
+            cap.release()
+            # MediaPipe 的 Python 封装不会立即回收底层图、纹理和临时张量；每个
+            # Celery 子进程只处理一个任务时显式 close 能显著降低任务尾部的内存峰值。
+            self._close_model()
+        if len(frames) >= 2:
+            self.effective_sample_fps = (len(frames) - 1) / (frames[-1].timestamp - frames[0].timestamp)
+        else:
+            self.effective_sample_fps = float(self.sample_fps)
+        sampling_mode = 'timestamp' if self.exact_sample_timestamps else f'step={step}'
+        logger.info(
+            'Extracted %d frames from %s (total=%d, requested_fps=%d, mode=%s, effective_fps=%.2f)',
+            len(frames), video_path, total_frames, self.sample_fps, sampling_mode, self.effective_sample_fps,
+        )
         return frames
+
+    def _close_model(self) -> None:
+        """显式释放 MediaPipe 的底层图资源，允许异常路径也及时归还内存。"""
+        pose, self._pose = self._pose, None
+        if pose is not None:
+            pose.close()
 
     def _process_frame(self, frame: np.ndarray, frame_index: int, timestamp: float) -> Frame:
         """处理单帧，提取关键点"""

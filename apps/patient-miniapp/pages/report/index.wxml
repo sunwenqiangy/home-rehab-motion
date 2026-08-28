@@ -61,7 +61,8 @@
         <view class="rp-review-notice__badge">结果处理中</view>
         <view class="rp-review-notice__title">本次训练结果待复核</view>
         <view class="rp-review-notice__desc">{{reviewMessage}}</view>
-        <view class="rp-review-notice__tip">复核完成前，请先按动作指导练习；本次暂不展示分数和问题判断。</view>
+        <view wx:if="{{showSafetyNotice}}" class="rp-review-notice__tip">本次身体不适反馈已记录。复核完成前请先暂停训练，并以医生或医疗机构的建议为准。</view>
+        <view wx:else class="rp-review-notice__tip">复核完成前，请先按动作指导练习；本次暂不展示分数和问题判断。</view>
       </view>
 
       <!-- 评级 Hero -->
@@ -73,10 +74,9 @@
           </view>
           <view class="rp-hero__info">
             <text class="rp-hero__title">{{actionLabel}}</text>
-            <text wx:if="{{compareToLastText}}" class="rp-hero__compare">{{compareToLastText}}</text>
-            <view class="rp-hero__chips">
+            <text wx:if="{{compareToLastText && !showSafetyNotice}}" class="rp-hero__compare">{{compareToLastText}}</text>
+            <view wx:if="{{!showSafetyNotice}}" class="rp-hero__chips">
               <text class="rp-hero__chip">{{stageLabel}}</text>
-              <text class="rp-hero__chip">{{confidenceText}} 置信度</text>
             </view>
           </view>
         </view>
@@ -119,53 +119,49 @@
             <text class="rp-metric-val rp-metric-val--orange">{{durationMetricText}}</text>
           </view>
         </view>
-        <view class="rp-metric-summary">四项指标基于本次视频分析生成，可结合下方建议继续练习。</view>
+        <view wx:if="{{showSafetyNotice}}" class="rp-metric-summary">四项指标仅用于回顾本次训练结果。请先暂停训练，并以医生或医疗机构的建议为准。</view>
+        <view wx:else class="rp-metric-summary">四项指标基于本次视频分析生成，可结合下方建议继续练习。</view>
       </view>
 
-      <!-- 阶段重点 (绿色左边框) -->
-      <view wx:if="{{!requiresManualReview}}" class="rp-stage-focus">
-        <view class="rp-stage-focus__title">🌿 当前阶段：{{stageLabel}}</view>
+      <!-- 身体不适时优先安全提示，不再展示继续训练导向的阶段文案 -->
+      <view wx:if="{{!showSafetyNotice}}" class="rp-stage-focus">
+        <view class="rp-stage-focus__title">🌿 当前康复阶段：{{stageLabel}}</view>
         <view class="rp-stage-focus__body">
           <text class="rp-stage-focus__line">💡 {{stageFocusDesc}}</text>
           <text class="rp-stage-focus__line">✅ 请结合下方动作建议，按自己的节奏持续练习。</text>
         </view>
       </view>
 
-      <!-- 阶段对比与下一步 -->
-      <view wx:if="{{!requiresManualReview}}" class="info-panel">
-        <view class="info-title">🔁 阶段对比与下一步</view>
-        <view class="stage-grid">
-          <view class="stage-card stage-card--waiting">
-            <view class="stage-name">{{stagePrevLabel}}</view>
-            <view class="stage-tip">重点是纠正姿势错误，避免代偿动作。</view>
-          </view>
-          <view class="stage-card stage-card--active">
-            <view class="stage-name">当前阶段：{{stageLabel}}（进行中）</view>
-            <view class="stage-tip">{{stageFocusDesc}}</view>
-          </view>
-          <view class="stage-card stage-card--waiting">
-            <view class="stage-name">{{stageNextLabel}}</view>
-            <view class="stage-tip">重点关注连续训练与徽章激励，维持长期习惯。</view>
-          </view>
-        </view>
-      </view>
-
-      <!-- 本次进步与新成就 -->
-      <view wx:if="{{!requiresManualReview && (improvementMessage || newlyUnlockedBadges.length)}}" class="rp-motivation-panel">
-        <view wx:if="{{improvementMessage}}" class="rp-motivation-panel__message">{{improvementMessage}}</view>
-        <view wx:for="{{newlyUnlockedBadges}}" wx:key="badgeCode" class="rp-motivation-panel__badge">🏅 解锁「{{item.title}}」</view>
-      </view>
-
-      <!-- 下一步建议 -->
-      <view class="info-panel rp-next-step-panel">
-        <view class="rp-next-step-panel__eyebrow">下一步怎么做</view>
-        <view class="info-title">建议先把动作做稳</view>
-        <view class="rp-advice-list">
+      <!-- 身体不适安全态不展示训练重点和动作建议，避免与“暂停训练”冲突。 -->
+      <view wx:if="{{!requiresManualReview && !showSafetyNotice}}" class="info-panel rp-next-step-panel">
+        <view class="rp-next-step-panel__eyebrow">本次重点</view>
+        <view class="info-title">🎯 {{reportFocusTitle}}</view>
+        <view class="rp-next-step-panel__summary">{{reportFocusText}}</view>
+        <view wx:if="{{!requiresManualReview}}" class="rp-advice-list">
           <block wx:for="{{adviceSummary}}" wx:key="adviceCode">
             <view class="rp-advice-item"><text class="rp-advice-item__dot"></text><text>{{item.patientText}}</text></view>
           </block>
           <view wx:if="{{!adviceSummary.length}}" class="rp-advice-item"><text class="rp-advice-item__dot"></text><text>本次暂未生成具体动作建议，可按训练指导中的步骤继续练习。</text></view>
         </view>
+      </view>
+
+      <!-- 原始训练视频按需展开：不自动播放，避免干扰报告阅读与暴露敏感内容 -->
+      <view wx:if="{{videoReview}}" class="rp-video-review">
+        <view class="rp-video-review__header" bindtap="onToggleVideo">
+          <view>
+            <view class="rp-video-review__title">本次训练视频</view>
+            <view class="rp-video-review__hint">{{videoReview.privacyHint}}</view>
+          </view>
+          <text class="rp-video-review__toggle">{{videoExpanded ? '收起' : '查看回放'}}</text>
+        </view>
+        <video wx:if="{{videoExpanded && !videoLoadFailed}}" class="rp-video-review__player" src="{{videoReview.playbackUrl}}" controls show-center-play-btn show-fullscreen-btn enable-progress-gesture object-fit="contain" binderror="onVideoError"></video>
+        <view wx:if="{{videoLoadFailed}}" class="rp-video-review__error">视频暂时无法播放，请稍后从训练记录中查看。</view>
+      </view>
+
+      <!-- 身体不适安全态不展示正向训练激励，避免形成继续训练导向。 -->
+      <view wx:if="{{!requiresManualReview && !showSafetyNotice && (improvementMessage || newlyUnlockedBadges.length)}}" class="rp-motivation-panel">
+        <view wx:if="{{improvementMessage}}" class="rp-motivation-panel__message">{{improvementMessage}}</view>
+        <view wx:for="{{newlyUnlockedBadges}}" wx:key="badgeCode" class="rp-motivation-panel__badge">🏅 解锁「{{item.title}}」</view>
       </view>
 
       <!-- 反馈入口 -->
@@ -185,8 +181,9 @@
     </view>
   </scroll-view>
 
-  <!-- 底部固定操作栏 -->
+  <!-- 底部固定操作栏：身体不适时不引导继续训练 -->
   <view class="action-dock">
-    <button class="btn-big btn-teal" bindtap="onBackHome">再练一次</button>
+    <button wx:if="{{showSafetyNotice}}" class="btn-big btn-teal" bindtap="onViewHistory">查看训练记录</button>
+    <button wx:else class="btn-big btn-teal" bindtap="onBackHome">再练一次</button>
   </view>
 </view>

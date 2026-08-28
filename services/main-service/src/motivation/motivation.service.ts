@@ -72,11 +72,11 @@ function shanghaiDayBounds(now = new Date()) {
   };
 }
 
-function resolveStage(totalTrainingCount: number, rehabilitationWeek: number): ReportStage {
-  // 阶段是患者端的鼓励重点，不是能力评级：按真实周数推进，并以最低训练次数避免过早跳阶段。
-  if (rehabilitationWeek <= 2 || totalTrainingCount < 4) return 'corrective';
-  if (rehabilitationWeek <= 4 || totalTrainingCount < 8) return 'consolidation';
-  return 'incentive';
+function resolveJourneyStage(totalTrainingCount: number, rehabilitationWeek: number): ReportStage {
+  // 阶段代表长期康复旅程而非单次能力评级；周数与训练量均满足才推进，避免练习量不足时过早跳阶段。
+  if (rehabilitationWeek >= 5 && totalTrainingCount >= 8) return 'incentive';
+  if (rehabilitationWeek >= 3 && totalTrainingCount >= 4) return 'consolidation';
+  return 'corrective';
 }
 
 function resolveTodayState(video: { analysis_status: string; video_evaluation_result?: unknown } | null): MotivationSummaryDto['todayTrainingState'] {
@@ -175,7 +175,7 @@ export class MotivationService {
       this.badgeService.listUserBadges(userId),
     ]);
 
-    const stage = resolveStage(totalTrainingCount, rehabilitationWeek);
+    const stage = resolveJourneyStage(totalTrainingCount, rehabilitationWeek);
     const latestBadge = badges[0];
     const nearestBadge = this.buildNearestBadge(badges, totalTrainingDays, consecutiveTrainingDays);
     const latestGrade = latestEvaluation?.grade || undefined;

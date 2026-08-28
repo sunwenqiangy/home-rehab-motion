@@ -9,7 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.core.models import Frame, Keypoint, Rep, SegmentationCandidate, SegmentationResult
 from app.core.phase_segmenter import PhaseSegmenter
 from app.core.preprocessor import DataPreprocessor, KeypointQualityError
-from app.tasks.analyze_video import _build_segmentation_snapshot
+from app.core.config import Settings
+from app.tasks.analyze_video import _build_segmentation_snapshot, _resolve_pose_sampling
 
 
 def _signal_from_cycles(fps, cycles, duration=32):
@@ -40,6 +41,27 @@ def _trunk_frame(index, visibility=1.0):
         for name in ('LEFT_SHOULDER', 'RIGHT_SHOULDER', 'LEFT_HIP', 'RIGHT_HIP')
     }
     return Frame(frame_index=index, timestamp=index / 5, keypoints=keypoints)
+
+
+# ─── 姿态采样策略 ───────────────────────────────────────────────────────
+
+
+def test_pelvic_tilt_uses_fixed_four_fps_timestamp_sampling():
+    """骨盆倾斜不随视频长度或调用方采样参数改变 MediaPipe 的时序输入。"""
+    assert _resolve_pose_sampling('pelvic_tilt', None) == (4, True)
+    assert _resolve_pose_sampling('pelvic_tilt', 30) == (4, True)
+
+
+def test_other_actions_keep_requested_or_default_sampling():
+    assert _resolve_pose_sampling('abdominal_crunch', None) == (10, False)
+    assert _resolve_pose_sampling('knee_rotation', 8) == (8, False)
+
+
+def test_default_frame_budget_covers_longest_fixed_fps_pelvic_video():
+    """未通过 Compose 注入配置时，默认预算也须覆盖 300 秒×4fps。"""
+    default_settings = Settings(_env_file=None)
+    pose_fps, _ = _resolve_pose_sampling('pelvic_tilt', None)
+    assert default_settings.max_analysis_frames >= default_settings.max_analysis_duration_seconds * pose_fps
 
 
 # ─── 关键点质量门禁 ─────────────────────────────────────────────────────
@@ -168,7 +190,25 @@ def test_legacy_peak_is_available_unchanged():
     segmenter = PhaseSegmenter(sample_fps=5)
     legacy = segmenter._segment_abdominal_reps(signal)
     assert len(legacy) == 2
-    assert segmenter._segment_abdominal_cycle_state_machine(signal).version == 'abdominal_cycle_v2'
+    assert segmenter._segment_abdominal_cycle_state_machine(signal).version == 'abdominal_cycle_v3'
+
+
+def test_cycle_waits_for_confirmed_return_before_closing_rep():
+    """缓慢回正中出现短暂平缓不能提前闭合为一次动作。"""
+    fps = 5
+    # 2s 开始收缩、5s 到顶；5~9s 缓慢回正，其中 6.2~6.8s 近乎平坦。
+    # 若不等待 return_end，平坦段会在回正途中被误当成稳定中立。
+    signal = np.zeros(int(14 * fps), dtype=float)
+    signal[10:26] = np.linspace(0, 2.0, 16)
+    signal[26:46] = np.linspace(2.0, 0, 20)
+    signal[31:35] = signal[31]
+    result = _run(signal, fps)
+
+    assert len(result.reps) == 1
+    accepted = result.accepted_cycles[0]
+    assert accepted.return_frame is not None
+    assert accepted.stable_frame is not None
+    assert accepted.stable_frame >= accepted.return_frame
 
 
 # ─── PEAK→CONTRACTING 回退（局部峰后继续上升） ──────────────────────────
@@ -230,7 +270,7 @@ def test_shadow_snapshot_keeps_legacy_as_formal_and_records_cycle_evidence():
         reps=[Rep(id=1, start_frame=2, end_frame=12)],
     )
     cycle = SegmentationResult(
-        version='abdominal_cycle_v2',
+        version='abdominal_cycle_v3',
         reps=[Rep(id=1, start_frame=2, end_frame=12), Rep(id=2, start_frame=16, end_frame=29)],
         accepted_cycles=[
             SegmentationCandidate(
