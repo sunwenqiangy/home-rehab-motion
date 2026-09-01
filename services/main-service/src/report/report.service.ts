@@ -84,10 +84,14 @@ function resolveReportFocus(params: {
   if (params.grade === '无效' || params.averageScore < 60 || params.validReps === 0 || params.totalReps === 0) {
     return { focus: 'learn_motion', text: '跟着动作步骤慢慢完成，优先保证动作完整和舒适。' };
   }
-  if (params.grade === '需改进' || params.averageScore < 75 || params.adviceCount > 0) {
-    return { focus: 'build_stability', text: '保持节奏一致，逐步减少代偿并延长顶点保持。' };
+  if (params.grade === '需改进' || params.averageScore < 75) {
+    return { focus: 'build_stability', text: '保持均匀节奏，动作到位后停一小会儿，再慢慢回到起始位置。' };
   }
-  return { focus: 'maintain_rhythm', text: '本次动作完成得不错，请按自己的节奏稳定练习。' };
+  // 单次轻微提示不应覆盖整体优秀表现；具体改进项已在 adviceSummary 中单独呈现。
+  if (params.adviceCount > 0 && params.averageScore < 90) {
+    return { focus: 'build_stability', text: '保持均匀节奏，动作到位后停一小会儿，再慢慢回到起始位置。' };
+  }
+  return { focus: 'maintain_rhythm', text: '动作整体完成得不错。下次继续按舒适、均匀的速度练习，注意动作完整即可。' };
 }
 
 @Injectable()
@@ -251,7 +255,8 @@ export class ReportService {
       reviewMessage,
       accuracyAvg: requiresManualReview ? undefined : (result.accuracy_avg || 0),
       stabilityAvg: requiresManualReview ? undefined : (result.stability_avg || 0),
-      controlAvg: requiresManualReview ? undefined : (result.control_avg || 0),
+      // 骨盆倾斜没有独立的“控制力”维度，持久化的 fallback 分数不能作为该指标对外展示。
+      controlAvg: requiresManualReview || result.video.action_type === 'pelvic_tilt' ? undefined : (result.control_avg || 0),
       durationAvg: requiresManualReview ? undefined : (result.duration_avg || 0),
       stage,
       reportFocus: reportFocus.focus,

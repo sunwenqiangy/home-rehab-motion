@@ -169,7 +169,13 @@
 .profile-nickname-actions .profile-wechat-name,
 .profile-nickname-actions .profile-nickname-save {
   flex: 1;
+  min-width: 0;
+  min-height: 72rpx;
   margin-top: 0;
+  padding: 0 12rpx;
+  box-sizing: border-box;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .profile-wechat-name {
@@ -191,8 +197,20 @@
 
 .profile-save,
 .profile-phone-button {
+  display: flex;
+  width: fit-content;
+  min-width: 240rpx;
+  min-height: 76rpx;
+  margin-right: auto;
+  margin-left: auto;
+  padding: 0 32rpx;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   color: #fff;
   background: #0e9aa7;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .profile-phone-status {

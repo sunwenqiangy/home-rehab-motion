@@ -77,6 +77,9 @@ class CompareResult:
     deviation_sigma: float
     label: str  # normal / warning / invalid
     in_valid_range: bool
+    # 保留阈值语义，使评分阶段能区分“刚好达标”和“接近参考目标”。
+    scoring_mode: str = 'two_sided'
+    normal_threshold: Optional[float] = None
 
 
 @dataclass

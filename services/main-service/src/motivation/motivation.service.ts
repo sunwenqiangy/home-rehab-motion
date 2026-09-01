@@ -318,13 +318,6 @@ export class MotivationService {
         message: (level) => level === 'clear' ? '这次身体明显更稳了，您的练习正在看到成果。' : '这次身体更稳了一些，继续把动作放慢就会更好。',
       },
       {
-        type: 'reps',
-        delta: latest.valid_reps - previous.valid_reps,
-        slight: rules.repsSlightDelta,
-        clear: rules.repsClearDelta,
-        message: (level) => level === 'clear' ? '这次完成的有效动作更多了，节奏越来越稳定。' : '这次有效动作多了一些，继续保持。',
-      },
-      {
         type: 'score',
         delta: (numberOrNull(latest.average_score) ?? 0) - (numberOrNull(previous.average_score) ?? 0),
         slight: rules.scoreSlightDelta,

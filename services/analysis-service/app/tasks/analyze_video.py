@@ -172,14 +172,15 @@ def _get_feature_units(action_type: str) -> Dict[str, str]:
 def _resolve_pose_sampling(action_type: str, requested_sample_fps: Optional[int]) -> Tuple[int, bool]:
     """返回姿态推理频率及是否按固定时间戳采样。
 
-    骨盆倾斜统一按 4fps 处理：最长 300 秒视频最多正好 1200 帧，短视频也不再
-    使用不同频率，确保同一切分规则面对一致的 MediaPipe 时序输入。
+    骨盆倾斜的线上默认值为 4fps，以适配 300 秒 / 1200 帧的资源预算；传入显式
+    采样率时则按请求值执行，供 4fps、6fps、10fps 的同视频回归对比使用。骨盆动作
+    始终按真实时间戳采样，避免源视频帧率不能整除时产生时序漂移。
     """
     target_fps = settings.sample_fps
     if isinstance(requested_sample_fps, (int, float)):
-        target_fps = max(5, min(30, int(round(requested_sample_fps))))
+        target_fps = max(4, min(30, int(round(requested_sample_fps))))
     if action_type == 'pelvic_tilt':
-        return 4, True
+        return (target_fps if requested_sample_fps is not None else 4), True
     return target_fps, False
 
 

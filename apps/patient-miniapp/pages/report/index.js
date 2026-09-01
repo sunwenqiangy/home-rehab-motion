@@ -8,11 +8,6 @@ const ACTION_LABEL_MAP = {
     pelvic_tilt: '骨盆倾斜',
     knee_rotation: '膝关节旋转',
 };
-const STAGE_LABEL_MAP = {
-    corrective: '熟悉动作',
-    consolidation: '稳定练习',
-    incentive: '坚持成长',
-};
 function getNetworkType() {
     return new Promise((resolve) => {
         wx.getNetworkType({
@@ -20,30 +15,6 @@ function getNetworkType() {
             fail: () => resolve('unknown'),
         });
     });
-}
-function resolveStageFocus(stage) {
-    if (stage === 'corrective') {
-        return {
-            title: '熟悉动作（第1~2周）重点',
-            desc: '跟着步骤慢慢做，找到舒服、稳定的动作节奏。',
-            prevLabel: '起始阶段',
-            nextLabel: '下一阶段：稳定练习',
-        };
-    }
-    if (stage === 'incentive') {
-        return {
-            title: '坚持成长（第5周+）重点',
-            desc: '关注连续训练、累计训练日和徽章，保持自己的节奏。',
-            prevLabel: '上一阶段：稳定练习',
-            nextLabel: '当前保持成长节奏',
-        };
-    }
-    return {
-        title: '稳定练习（第3~4周）重点',
-        desc: '保持节奏一致，逐步把动作做得更稳，保持时间再延长 1~2 秒。',
-        prevLabel: '上一阶段：熟悉动作',
-        nextLabel: '下一阶段：坚持成长',
-    };
 }
 Page({
     data: {
@@ -67,11 +38,9 @@ Page({
         reviewMessage: '',
         actionLabel: '本次训练',
         actionType: 'abdominal_crunch',
-        stageLabel: '熟悉动作',
         reportFocusTitle: '本次先熟悉动作',
         reportFocusText: '',
         compareToLastText: '',
-        stageFocusDesc: '',
         validRepsText: '0 / 0',
         holdDurationText: '0 秒',
         accuracyText: '待更新',
@@ -108,10 +77,7 @@ Page({
         try {
             const report = await (0, report_1.getReport)(videoId);
             const actionLabel = ACTION_LABEL_MAP[report.actionType] || '本次训练';
-            // 阶段仅表示长期康复旅程；本次结果重点由 reportFocus 单独表达。
-            const journeyStage = report.stage || report.motivation?.stage || 'corrective';
-            const stageLabel = STAGE_LABEL_MAP[journeyStage] || '熟悉动作';
-            const stageFocus = resolveStageFocus(journeyStage);
+            const shouldShowControlMetric = report.actionType !== 'pelvic_tilt';
             const reportFocusTitle = report.reportFocus === 'review_pending'
                 ? '本次结果待复核'
                 : report.reportFocus === 'retake_recommended'
@@ -119,7 +85,7 @@ Page({
                     : report.reportFocus === 'build_stability'
                         ? '本次继续练稳定'
                         : report.reportFocus === 'maintain_rhythm'
-                            ? '本次保持当前节奏'
+                            ? '这次完成得很稳'
                             : '本次先熟悉动作';
             this.setData({
                 loadFailed: false,
@@ -131,17 +97,16 @@ Page({
                 reviewMessage: report.reviewMessage || '',
                 actionLabel,
                 actionType: report.actionType,
-                stageLabel,
                 reportFocusTitle,
                 reportFocusText: report.reportFocusText || '',
                 compareToLastText: report.compareToLast || '',
-                stageFocusDesc: stageFocus.desc,
                 validRepsText: `${report.validReps} / ${report.totalReps}`,
                 holdDurationText: report.avgHoldDuration ? `${Math.round(report.avgHoldDuration)} 秒` : '待更新',
                 accuracyText: report.accuracyAvg != null ? `${Math.round(report.accuracyAvg)}` : '待更新',
                 stabilityText: report.stabilityAvg != null ? `${Math.round(report.stabilityAvg)}` : '待更新',
                 controlText: report.controlAvg != null ? `${Math.round(report.controlAvg)}` : '待更新',
                 durationMetricText: report.durationAvg != null ? `${Math.round(report.durationAvg)}` : '待更新',
+                showControlMetric: shouldShowControlMetric,
                 adviceSummary: report.adviceSummary || [],
                 videoReview: report.videoReview || null,
                 videoExpanded: false,

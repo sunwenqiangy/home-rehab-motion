@@ -6,8 +6,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.core.models import Frame, Keypoint, Rep, SegmentationCandidate, SegmentationResult
+from app.core.models import CompareResult, Frame, Keypoint, Rep, RepScore, SegmentationCandidate, SegmentationResult
 from app.core.phase_segmenter import PhaseSegmenter
+from app.core.scoring import ScoringEngine, generate_advice
 from app.core.preprocessor import DataPreprocessor, KeypointQualityError
 from app.core.config import Settings
 from app.tasks.analyze_video import _build_segmentation_snapshot, _resolve_pose_sampling
@@ -46,10 +47,15 @@ def _trunk_frame(index, visibility=1.0):
 # ─── 姿态采样策略 ───────────────────────────────────────────────────────
 
 
-def test_pelvic_tilt_uses_fixed_four_fps_timestamp_sampling():
-    """骨盆倾斜不随视频长度或调用方采样参数改变 MediaPipe 的时序输入。"""
+def test_pelvic_tilt_uses_four_fps_timestamp_sampling_by_default():
+    """骨盆倾斜线上默认保持 4fps，且按时间戳抽样。"""
     assert _resolve_pose_sampling('pelvic_tilt', None) == (4, True)
-    assert _resolve_pose_sampling('pelvic_tilt', 30) == (4, True)
+
+
+@pytest.mark.parametrize('requested_fps', [4, 6, 10])
+def test_pelvic_tilt_honors_requested_sampling_rate_for_comparison(requested_fps):
+    """回归对比时，骨盆倾斜可明确以指定帧率进行关键点采样。"""
+    assert _resolve_pose_sampling('pelvic_tilt', requested_fps) == (requested_fps, True)
 
 
 def test_other_actions_keep_requested_or_default_sampling():
@@ -62,6 +68,148 @@ def test_default_frame_budget_covers_longest_fixed_fps_pelvic_video():
     default_settings = Settings(_env_file=None)
     pose_fps, _ = _resolve_pose_sampling('pelvic_tilt', None)
     assert default_settings.max_analysis_frames >= default_settings.max_analysis_duration_seconds * pose_fps
+
+
+# ─── 骨盆倾斜时间归一切分 ───────────────────────────────────────────────
+
+
+def test_pelvic_tilt_logical_timeline_matches_online_default_sampling():
+    """切分逻辑轴固定为线上默认 4fps，避免改变已验证的十次动作口径。"""
+    assert PhaseSegmenter._PELVIC_SEGMENTATION_FPS == 4.0
+
+
+def _pelvic_frames_from_signal(signal, fps):
+    """将合成躯干倾角序列转换为骨盆倾斜切分所需的关键点帧。"""
+    frames = []
+    for index, angle in enumerate(signal):
+        radians = np.radians(angle)
+        frames.append(Frame(
+            frame_index=index,
+            timestamp=index / fps,
+            keypoints={},
+            hip_mid=(0.0, 0.0, 0.0),
+            shoulder_mid=(float(np.sin(radians)), float(-np.cos(radians)), 0.0),
+        ))
+    return frames
+
+
+def test_pelvic_tilt_count_is_stable_when_source_sampling_rate_changes():
+    """同一真实时间信号即使姿态帧率下降，也必须得到一致的完整动作次数。"""
+    cycles = [(2, 7, 14, 4.0), (18, 23, 30, 4.0), (34, 39, 46, 4.0)]
+    counts = []
+    for fps in (3, 4, 6, 10):
+        signal = _signal_from_cycles(fps, cycles, duration=52)
+        frames = _pelvic_frames_from_signal(signal, fps)
+        result = PhaseSegmenter(sample_fps=fps).segment_with_diagnostics(frames, 'pelvic_tilt')
+        counts.append(len(result.reps))
+        assert result.version == 'pelvic_tilt_time_v3'
+    assert counts == [3, 3, 3, 3]
+
+
+def test_pelvic_tilt_counts_ten_compact_complete_cycles_at_every_sampling_rate():
+    """标准教学节奏的十个完整后倾—回正周期不得因抽帧率或中间短暂静止被合并。"""
+    cycles = [
+        (1 + index * 12, 5 + index * 12, 10 + index * 12, 4.0)
+        for index in range(10)
+    ]
+    counts = []
+    for fps in (4, 6, 10):
+        signal = _signal_from_cycles(fps, cycles, duration=125)
+        frames = _pelvic_frames_from_signal(signal, fps)
+        result = PhaseSegmenter(sample_fps=fps).segment_with_diagnostics(frames, 'pelvic_tilt')
+        counts.append(len(result.reps))
+        assert result.version == 'pelvic_tilt_time_v3'
+    assert counts == [10, 10, 10]
+
+
+def test_pelvic_tilt_keeps_native_four_fps_signal_without_reinterpolation(monkeypatch):
+    """规范 4fps 输入不应二次插值，避免在真实峰谷边界引入数值漂移。"""
+    signal = _signal_from_cycles(4, [(2, 7, 14, 4.0), (18, 23, 30, 4.0)], duration=34)
+    frames = _pelvic_frames_from_signal(signal, 4)
+    monkeypatch.setattr(np, 'interp', lambda *_: pytest.fail('native 4fps should not be reinterpolated'))
+    assert len(PhaseSegmenter(sample_fps=4).segment_with_diagnostics(frames, 'pelvic_tilt').reps) == 2
+
+
+def test_pelvic_stability_window_rejects_a_short_pause_inside_return_motion():
+    """稳定中立位需要覆盖谷值前后，以免回正中的短暂停顿被误计成新动作。"""
+    signal = np.array([0.0, 0.04, 0.07, 0.11, 0.41, 0.72], dtype=float)
+    assert not PhaseSegmenter._is_stable_pelvic_baseline(signal, 2, 3, 0.15)
+
+
+# ─── 单向评分连续性 ──────────────────────────────────────────────────────
+
+
+def test_directional_normal_scores_distinguish_threshold_from_reference_target():
+    """刚达标的保持时间不能与接近模板目标的动作同为 100 分。"""
+    engine = ScoringEngine()
+    threshold_rep = engine.score_rep(
+        1,
+        [CompareResult(
+            feature_code='hold_duration', measured=0.31, reference_mean=1.6,
+            reference_std=0.65, deviation_sigma=0, label='normal', in_valid_range=True,
+            scoring_mode='lower_bound', normal_threshold=0.31,
+        )],
+        'pelvic_tilt',
+    )
+    target_rep = engine.score_rep(
+        2,
+        [CompareResult(
+            feature_code='hold_duration', measured=1.6, reference_mean=1.6,
+            reference_std=0.65, deviation_sigma=0, label='normal', in_valid_range=True,
+            scoring_mode='lower_bound', normal_threshold=0.31,
+        )],
+        'pelvic_tilt',
+    )
+
+    assert threshold_rep.duration_score == 85
+    assert target_rep.duration_score == 100
+    assert threshold_rep.total_score < target_rep.total_score
+
+
+# ─── 视频级建议聚合 ─────────────────────────────────────────────────────
+
+
+def _rep_score_with_issues(rep_id, issues=None):
+    return RepScore(
+        rep_id=rep_id,
+        accuracy_score=95,
+        stability_score=95,
+        control_score=95,
+        duration_score=95,
+        total_score=95,
+        grade='优秀',
+        valid_flag=True,
+        compensation_types=issues or [],
+    )
+
+
+def test_advice_ignores_a_single_warning_in_an_otherwise_stable_video():
+    """8 次动作中只有 1 次轻微波动，不应被泛化为整段训练的问题。"""
+    rep_scores = [_rep_score_with_issues(1, ['trunk_angle_change'])]
+    rep_scores.extend(_rep_score_with_issues(rep_id) for rep_id in range(2, 9))
+
+    main_issues, advice_summary = generate_advice(rep_scores, confidence_score=0.9)
+
+    assert main_issues == []
+    assert advice_summary == []
+
+
+def test_advice_surfaces_a_recurrent_warning_with_patient_friendly_copy():
+    """相同问题在多次动作中重复出现时，才展示专项纠正建议。"""
+    rep_scores = [
+        _rep_score_with_issues(1, ['trunk_angle_change']),
+        _rep_score_with_issues(2, ['trunk_angle_change']),
+        *[_rep_score_with_issues(rep_id) for rep_id in range(3, 9)],
+    ]
+
+    main_issues, advice_summary = generate_advice(rep_scores, confidence_score=0.9)
+
+    assert main_issues == [{'feature': 'trunk_angle_change', 'label': 'warning'}]
+    assert advice_summary == [{
+        'advice_code': 'ADV_TRUNK_STABILITY',
+        'patient_text': '上身有些晃动。下次可轻轻收紧腹部，让躯干尽量保持稳定。',
+        'nurse_text': 'trunk_angle_change 在多次动作中偏高，可能存在躯干代偿',
+    }]
 
 
 # ─── 关键点质量门禁 ─────────────────────────────────────────────────────

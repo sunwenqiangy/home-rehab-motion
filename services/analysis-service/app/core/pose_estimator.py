@@ -87,6 +87,13 @@ class PoseEstimator:
         frame_index = 0
         next_sample_timestamp = 0.0
         sample_interval = 1.0 / max(self.sample_fps, 1)
+        if self.exact_sample_timestamps and self.max_frames and total_frames > 1:
+            # 固定时间戳模式也必须覆盖整段视频。不能在前 max_frames 个采样点后
+            # 静默停止，否则高采样率长视频会只分析开头一段。将实际间隔放宽到帧预算
+            # 可承载的最小值，后续由 effective_sample_fps 如实记录实际抽样率。
+            duration_seconds = (total_frames - 1) / source_fps
+            max_budget_fps = max(1, self.max_frames - 1) / max(duration_seconds, 1e-6)
+            sample_interval = max(sample_interval, 1.0 / max_budget_fps)
 
         try:
             while cap.isOpened():
@@ -115,7 +122,10 @@ class PoseEstimator:
             self.effective_sample_fps = (len(frames) - 1) / (frames[-1].timestamp - frames[0].timestamp)
         else:
             self.effective_sample_fps = float(self.sample_fps)
-        sampling_mode = 'timestamp' if self.exact_sample_timestamps else f'step={step}'
+        sampling_mode = (
+            f'timestamp_interval={sample_interval:.4f}s'
+            if self.exact_sample_timestamps else f'step={step}'
+        )
         logger.info(
             'Extracted %d frames from %s (total=%d, requested_fps=%d, mode=%s, effective_fps=%.2f)',
             len(frames), video_path, total_frames, self.sample_fps, sampling_mode, self.effective_sample_fps,

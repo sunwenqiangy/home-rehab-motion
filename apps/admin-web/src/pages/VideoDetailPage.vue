@@ -260,7 +260,8 @@ const dimensionScores = computed(() => {
   const values = [
     { label: '准确度', value: summary?.accuracyAvg, tone: 'tone-teal' },
     { label: '稳定性', value: summary?.stabilityAvg, tone: 'tone-cyan' },
-    { label: '控制度', value: summary?.controlAvg, tone: 'tone-orange' },
+    // 骨盆倾斜当前没有独立控制性特征，历史字段会回填综合分，不能误导为真实指标。
+    ...(detail.value?.actionType === 'pelvic_tilt' ? [] : [{ label: '控制度', value: summary?.controlAvg, tone: 'tone-orange' }]),
     { label: '持续度', value: summary?.durationAvg, tone: 'tone-purple' },
   ];
   return values.map((item) => ({ ...item, value: Math.max(0, Math.min(100, Number(item.value) || 0)), display: item.value === null || item.value === undefined ? '-' : Math.round(Number(item.value)) }));

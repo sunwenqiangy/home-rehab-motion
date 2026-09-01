@@ -38,6 +38,10 @@ class PhaseSegmenter:
         'pelvic_tilt':       2.0,  # 骨盆倾斜幅度通常 2~10°；<2° 说明骨盆几乎不动
         'abdominal_crunch':  0.5,  # 缩腹躯干角度变化较小，下限设低
     }
+    # 骨盆切分统一重采样到线上默认的 4fps 逻辑时间轴；不会新增 MediaPipe
+    # 推理帧。以已验证的十次教学动作口径为锚点，让 4fps、6fps、10fps 的
+    # 姿态提取都在同一时间语义下切分。
+    _PELVIC_SEGMENTATION_FPS = 4.0
 
     # 动作类型中文名，用于用户可读的错误提示
     _ACTION_TYPE_NAMES: dict = {
@@ -88,6 +92,16 @@ class PhaseSegmenter:
             )
         # ──────────────────────────────────────────────────────────────────────────
 
+        if action_type == 'pelvic_tilt':
+            # 对骨盆动作先按真实时间戳归一；避免低配实例帧率下降后，固定帧数窗口
+            # 代表更长物理时长，进而漏掉完整周期。返回边界仍映射回真实关键点帧。
+            reps = self._segment_pelvic_time_normalized(signal, frames)
+            logger.info(
+                'Segmented %d reps for %s on %.1ffps logical timeline',
+                len(reps), action_type, self._PELVIC_SEGMENTATION_FPS,
+            )
+            return SegmentationResult(version='pelvic_tilt_time_v3', reps=reps)
+
         # 移动平均平滑
         smoothed = self._moving_average(signal)
 
@@ -131,13 +145,6 @@ class PhaseSegmenter:
                 version=ABDOMINAL_SEGMENTATION_VERSION_LEGACY,
                 reps=reps,
             )
-
-        if action_type == 'pelvic_tilt':
-            # 状态机要求“稳定中立 → 后倾峰值 → 回到稳定中立”闭环；不回退到
-            # 普通按峰计数，避免只完成半程或准备姿势也被展示为一次训练。
-            reps = self._segment_pelvic_reps(smoothed)
-            logger.info('Segmented %d reps for %s', len(reps), action_type)
-            return SegmentationResult(version='pelvic_tilt_fixed_4fps_v2', reps=reps)
 
         if action_type == 'knee_rotation':
             reps = self._segment_knee_reps(smoothed)
@@ -206,6 +213,9 @@ class PhaseSegmenter:
             valid = np.isfinite(values)
             if not np.any(valid):
                 return None
+            # 完整关键点序列无需插值；避免在本就连续的峰谷附近引入无意义的数值改写。
+            if np.all(valid):
+                return values
             # 短暂漏检以最近有效值延续，避免 0 度插入人为的假谷值。
             valid_indexes = np.flatnonzero(valid)
             return np.interp(np.arange(len(values)), valid_indexes, values[valid_indexes])
@@ -227,6 +237,77 @@ class PhaseSegmenter:
             return np.array(signal)
 
         return None
+
+    def _segment_pelvic_time_normalized(self, signal: np.ndarray, frames: List[Frame]) -> List[Rep]:
+        """在固定 4fps 逻辑时间轴切分骨盆倾斜，再映射回真实关键点下标。"""
+        timestamps = np.asarray([frame.timestamp for frame in frames], dtype=float)
+        if len(timestamps) != len(signal) or len(timestamps) < 5:
+            return []
+        if not np.all(np.isfinite(timestamps)) or np.any(np.diff(timestamps) <= 0):
+            # 异常时间戳不进行插值，保持向后兼容并避免虚构时间关系。
+            return self._segment_pelvic_reps(self._moving_average(signal))
+
+        step_seconds = 1.0 / self._PELVIC_SEGMENTATION_FPS
+        source_intervals = np.diff(timestamps)
+        source_effective_fps = (len(timestamps) - 1) / (timestamps[-1] - timestamps[0])
+        # 线上默认姿态采样本身就是规范 4fps 时间轴。解码器只能选择源视频中最接近
+        # 目标时刻的帧，故相邻时间戳可在 0.233/0.267 秒间交替；按全程有效采样率和
+        # 合理间隔带识别这类原生 4fps 序列，避免再次插值改变已验证的十次动作边界。
+        # 非 4fps 或存在明显缺帧间隙的输入仍统一重采样到 4fps 再切分。
+        native_interval_band = (source_intervals >= step_seconds * 0.8) & (
+            source_intervals <= step_seconds * 1.2
+        )
+        if (
+            np.isclose(source_effective_fps, self._PELVIC_SEGMENTATION_FPS, rtol=0.02)
+            and bool(np.all(native_interval_band))
+        ):
+            return self._segment_pelvic_reps(self._moving_average(signal))
+
+        normalized_times = np.arange(
+            timestamps[0],
+            timestamps[-1] + step_seconds * 0.5,
+            step_seconds,
+        )
+        if len(normalized_times) < 5:
+            return []
+
+        normalized_signal = np.interp(normalized_times, timestamps, signal)
+        normalized_segmenter = PhaseSegmenter(sample_fps=self._PELVIC_SEGMENTATION_FPS)
+        normalized_reps = normalized_segmenter._segment_pelvic_reps(
+            normalized_segmenter._moving_average(normalized_signal),
+        )
+        return self._map_normalized_pelvic_reps(normalized_reps, normalized_times, timestamps)
+
+    @staticmethod
+    def _map_normalized_pelvic_reps(
+        normalized_reps: List[Rep],
+        normalized_times: np.ndarray,
+        source_times: np.ndarray,
+    ) -> List[Rep]:
+        """将逻辑轴 rep 的各边界映射为最近真实关键点帧，并保持顺序合法。"""
+        def source_index(normalized_index: int) -> int:
+            index = max(0, min(int(normalized_index), len(normalized_times) - 1))
+            return int(np.argmin(np.abs(source_times - normalized_times[index])))
+
+        mapped: List[Rep] = []
+        for rep in normalized_reps:
+            start = source_index(rep.start_frame)
+            end = source_index(rep.end_frame)
+            if end <= start:
+                end = min(len(source_times) - 1, start + 1)
+            if end <= start:
+                continue
+            phases = {
+                name: max(start, min(end, source_index(frame_index)))
+                for name, frame_index in rep.phases.items()
+            }
+            mapped.append(Rep(
+                id=len(mapped) + 1,
+                start_frame=start,
+                end_frame=end,
+                phases=phases,
+            ))
+        return mapped
 
     def _moving_average(self, signal: np.ndarray, win: Optional[int] = None) -> np.ndarray:
         """移动平均平滑"""
@@ -504,6 +585,8 @@ class PhaseSegmenter:
         # 幅度阈值：峰值相对两侧中立位的倾角变化至少满足此值。
         amplitude_threshold = max(0.5, signal_std * 0.30, signal_range * 0.10)
         baseline_stability_threshold = max(0.15, signal_std * 0.12, signal_range * 0.025)
+        # 使用谷值前后各约 0.7 秒的连续稳定证据，避免回正途中短暂平缓被当作
+        # 新的中立位。逻辑轴已固定为 4fps，因此该保护窗口不会再随实际姿态采样率漂移。
         stable_frames = max(2, int(0.7 * self.sample_fps))
         # 状态机：以连续出现的两个“稳定中立谷值”为一次动作边界。每个区间仅
         # 允许一个主峰；存在多个峰代表调整、抖动或代偿，不能被拆成多个 rep。
@@ -601,10 +684,11 @@ class PhaseSegmenter:
         stability_threshold: float,
     ) -> bool:
         """确认中立位在谷值附近持续稳定，而非单帧噪声低点。"""
-        left = max(0, center - stable_frames)
-        right = min(len(signal), center + stable_frames + 1)
+        radius_frames = max(1, int(stable_frames))
+        left = max(0, center - radius_frames)
+        right = min(len(signal), center + radius_frames + 1)
         window = signal[left:right]
-        return len(window) >= stable_frames + 1 and float(np.ptp(window)) <= stability_threshold
+        return len(window) >= radius_frames + 1 and float(np.ptp(window)) <= stability_threshold
 
     def _detect_opening_pelvic_preparation_peak(
         self,

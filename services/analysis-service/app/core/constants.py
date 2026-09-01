@@ -131,38 +131,38 @@ DEFAULT_THRESHOLDS = {
 ADVICE_RULES = {
     'ADV_TRUNK_STABILITY': {
         'trigger': {'feature': 'trunk_angle_change', 'label': ['warning', 'invalid']},
-        'patient_text': '训练过程中躯干晃动较大，尝试收紧核心保持上身稳定',
-        'nurse_text': 'trunk_angle_change 偏高，可能存在躯干代偿',
+        'patient_text': '上身有些晃动。下次可轻轻收紧腹部，让躯干尽量保持稳定。',
+        'nurse_text': 'trunk_angle_change 在多次动作中偏高，可能存在躯干代偿',
     },
     'ADV_PELVIS_SHIFT': {
         'trigger': {'feature': 'pelvis_shift', 'label': ['warning', 'invalid']},
-        'patient_text': '骨盆位移较大，尽量保持骨盆稳定不动',
-        'nurse_text': 'pelvis_shift 偏高，骨盆控制不足',
+        'patient_text': '骨盆有额外滑动。下次可放慢速度，除目标倾斜外尽量减少骨盆偏移。',
+        'nurse_text': 'pelvis_shift 在多次动作中偏高，存在额外骨盆偏移',
     },
     'ADV_HOLD_DURATION': {
         'trigger': {'feature': 'hold_duration', 'label': ['warning', 'invalid']},
-        'patient_text': '保持时间不足，尝试在目标位置多停留几秒',
-        'nurse_text': 'hold_duration 低于有效区间',
+        'patient_text': '在目标位置停留时间偏短。下次可在舒适的情况下多停一小会儿，再慢慢回到起始位置。',
+        'nurse_text': 'hold_duration 在多次动作中低于有效区间',
     },
     'ADV_ABD_AMPLITUDE': {
         'trigger': {'feature': 'abdominal_displacement', 'label': ['warning', 'invalid']},
-        'patient_text': '腹部收缩幅度不够，尝试更深地向内收紧腹部',
-        'nurse_text': 'abdominal_displacement 低于有效区间',
+        'patient_text': '收腹幅度可以再清楚一些。请在不憋气、不疼痛的前提下，缓慢向内收紧腹部。',
+        'nurse_text': 'abdominal_displacement 在多次动作中低于有效区间',
     },
     'ADV_KNEE_ROTATION_RANGE': {
         'trigger': {'feature': 'knee_rotation_angle', 'label': ['warning', 'invalid']},
-        'patient_text': '膝关节左右摆动幅度不够或过大，建议在舒适范围内平稳完成双向旋转',
-        'nurse_text': 'knee_rotation_angle 偏离参考区间，需复核旋转幅度',
+        'patient_text': '左右旋转幅度有些不均匀。请在舒适范围内，平稳完成双向旋转。',
+        'nurse_text': 'knee_rotation_angle 在多次动作中偏离参考区间，需复核旋转幅度',
     },
     'ADV_KNEE_SYMMETRY': {
         'trigger': {'feature': 'knee_symmetry', 'label': ['warning', 'invalid']},
-        'patient_text': '左右两侧旋转幅度不够均衡，尝试让两侧动作幅度保持一致',
-        'nurse_text': 'knee_symmetry 偏低，左右旋转控制不均衡',
+        'patient_text': '左右两侧的旋转幅度有些不一样。下次可放慢速度，让两边尽量做得一样大。',
+        'nurse_text': 'knee_symmetry 在多次动作中偏低，左右旋转控制不均衡',
     },
     'ADV_KNEE_ROTATION_SPEED': {
         'trigger': {'feature': 'rotation_velocity', 'label': ['warning', 'invalid']},
-        'patient_text': '旋转节奏偏快或偏慢，建议放慢动作并保持左右方向匀速完成',
-        'nurse_text': 'rotation_velocity 偏离参考区间，旋转节奏控制不足',
+        'patient_text': '旋转速度有些不均匀。下次可适当放慢，左右两边用相近的速度完成。',
+        'nurse_text': 'rotation_velocity 在多次动作中偏离参考区间，旋转节奏控制不足',
     },
     'ADV_LOW_CONFIDENCE': {
         'trigger': {'confidence_level': 'medium'},
@@ -171,8 +171,8 @@ ADVICE_RULES = {
     },
     'ADV_PELVIC_TILT_RANGE': {
         'trigger': {'feature': 'pelvic_tilt_delta', 'label': ['warning', 'invalid']},
-        'patient_text': '骨盆倾斜幅度不够，尝试更大幅度地前后倾斜骨盆',
-        'nurse_text': 'pelvic_tilt_delta 低于有效区间',
+        'patient_text': '骨盆前后倾幅度可以再明显一些。请在舒适范围内慢慢完成，不要用力过猛。',
+        'nurse_text': 'pelvic_tilt_delta 在多次动作中低于有效区间',
     },
 }
 

@@ -63,6 +63,7 @@ import { ChatDotRound, TrendCharts, WarningFilled } from '@element-plus/icons-vu
 import { ElMessage } from 'element-plus';
 import { getAdminDashboardOverview, getAdminVideoList, type AdminDashboardOverview } from '@/services/video';
 import { getFeedbackList } from '@/services/feedback';
+import { isAuthenticationError } from '@/utils/request';
 import type { AnalysisStatus, TrainingActionType } from '@home-rehab-motion/shared-types';
 import { ANALYSIS_STATUS_LABELS } from '@home-rehab-motion/shared-constants';
 
@@ -143,11 +144,14 @@ if (feedbackResult.status === 'fulfilled') stats.pendingFeedback = feedbackResul
       stats.completedAnalysis = overview.value.allCompletedAnalysisCount;
     }
     const failedSections = results.flatMap((result, index) => result.status === 'rejected'
-? [['训练视频', '反馈工单', '运营趋势'][index]]
-: []);
+  && !isAuthenticationError(result.reason)
+  ? [['训练视频', '反馈工单', '运营趋势'][index]]
+  : []);
 if (failedSections.length) ElMessage.warning(`${failedSections.join('、')}加载失败，请刷新后重试`);
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.message || '工作台数据加载失败');
+    if (!isAuthenticationError(error)) {
+      ElMessage.error(error?.response?.data?.message || '工作台数据加载失败');
+    }
   } finally {
     loading.value = false;
   }

@@ -1,12 +1,32 @@
 """Step 7: 评分引擎与建议生成"""
 
 import logging
+from collections import Counter
 from typing import Dict, List
 
 from app.core.models import CompareResult, RepScore, VideoScore
 from app.core.constants import ADVICE_RULES, ANALYSIS_VERSION, DEFAULT_WEIGHTS, FEATURE_DIMENSIONS
 
 logger = logging.getLogger(__name__)
+
+
+def _normal_score(compare_result: CompareResult) -> float:
+    """为单向指标的达标区间保留质量梯度，避免“刚过线即满分”。"""
+    threshold = compare_result.normal_threshold
+    reference_std = max(compare_result.reference_std, 1e-6)
+    if threshold is None or compare_result.scoring_mode == 'two_sided':
+        return max(85, 100 - compare_result.deviation_sigma * 5)
+
+    if compare_result.scoring_mode == 'lower_bound':
+        target = max(compare_result.reference_mean, threshold + reference_std)
+        progress = (compare_result.measured - threshold) / max(target - threshold, reference_std)
+    elif compare_result.scoring_mode == 'upper_bound':
+        target = min(compare_result.reference_mean, threshold - reference_std)
+        progress = (threshold - compare_result.measured) / max(threshold - target, reference_std)
+    else:
+        return max(85, 100 - compare_result.deviation_sigma * 5)
+
+    return 85 + 15 * min(1.0, max(0.0, progress))
 
 
 def resolve_grade(score: float) -> str:
@@ -43,7 +63,7 @@ class ScoringEngine:
             if not dimension or cr.label == 'review_required':
                 continue
             if cr.label == 'normal':
-                score = max(85, 100 - cr.deviation_sigma * 5)
+                score = _normal_score(cr)
             elif cr.label == 'warning':
                 score = max(60, 80 - cr.deviation_sigma * 10)
                 compensation_types.append(cr.feature_code)
@@ -158,52 +178,46 @@ class ScoringEngine:
         )
 
 
+def _is_recurrent_issue(issue_count: int, total_reps: int) -> bool:
+    """仅把重复出现的波动作为视频级问题，避免一组偶发异常被泛化。"""
+    if total_reps < 2:
+        return False
+    if total_reps <= 3:
+        return issue_count >= 2
+    return issue_count >= 2 and issue_count / total_reps >= 0.25
+
+
 def generate_advice(rep_scores: List[RepScore],
                      confidence_score: float) -> tuple:
-    """
-    根据评价结果生成建议（参数触发 + 规则模板）
-    """
-    main_issues = []
+    """根据视频级重复问题生成患者建议，最多呈现两个最常出现的专项问题。"""
     advice_summary = []
-    triggered_rules = set()
+    total_reps = len(rep_scores)
+    issue_counts = Counter(
+        issue
+        for rep_score in rep_scores
+        for issue in set(rep_score.compensation_types)
+    )
+    recurrent_issues = [
+        issue
+        for issue, count in issue_counts.items()
+        if _is_recurrent_issue(count, total_reps)
+    ]
+    recurrent_issues.sort(key=lambda issue: (-issue_counts[issue], issue))
+    displayed_issues = recurrent_issues[:2]
+    main_issues = [{'feature': issue, 'label': 'warning'} for issue in displayed_issues]
 
-    # 收集所有代偿类型
-    for rs in rep_scores:
-        for ct in rs.compensation_types:
-            main_issues.append({'feature': ct, 'label': 'warning'})
-
-    # 限制最多 2 个主要问题
-    main_issues = main_issues[:2]
-
-    # 规则触发
     for rule_code, rule in ADVICE_RULES.items():
         trigger = rule.get('trigger', {})
-
-        # 置信度规则
         if 'confidence_level' in trigger:
-            level = trigger['confidence_level']
-            if level == 'medium' and 0.55 <= confidence_score < 0.75:
-                if rule_code not in triggered_rules:
-                    advice_summary.append({
-                        'advice_code': rule_code,
-                        'patient_text': rule['patient_text'],
-                        'nurse_text': rule['nurse_text'],
-                    })
-                    triggered_rules.add(rule_code)
-
-        # 特征规则
-        if 'feature' in trigger:
-            feature = trigger['feature']
-            labels = trigger.get('label', [])
-            for rs in rep_scores:
-                if feature in rs.compensation_types:
-                    if rule_code not in triggered_rules:
-                        advice_summary.append({
-                            'advice_code': rule_code,
-                            'patient_text': rule['patient_text'],
-                            'nurse_text': rule['nurse_text'],
-                        })
-                        triggered_rules.add(rule_code)
-                    break
+            # 当前中低置信度会进入人工复核，不应同时向患者提供确定性专项建议。
+            continue
+        feature = trigger.get('feature')
+        if feature not in displayed_issues:
+            continue
+        advice_summary.append({
+            'advice_code': rule_code,
+            'patient_text': rule['patient_text'],
+            'nurse_text': rule['nurse_text'],
+        })
 
     return main_issues, advice_summary

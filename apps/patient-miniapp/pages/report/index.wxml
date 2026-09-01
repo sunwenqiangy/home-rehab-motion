@@ -75,9 +75,6 @@
           <view class="rp-hero__info">
             <text class="rp-hero__title">{{actionLabel}}</text>
             <text wx:if="{{compareToLastText && !showSafetyNotice}}" class="rp-hero__compare">{{compareToLastText}}</text>
-            <view wx:if="{{!showSafetyNotice}}" class="rp-hero__chips">
-              <text class="rp-hero__chip">{{stageLabel}}</text>
-            </view>
           </view>
         </view>
       </view>
@@ -94,9 +91,9 @@
         </view>
       </view>
 
-      <!-- 四维评分摘要 -->
+      <!-- 动作评分摘要：仅展示当前动作具备独立计算依据的维度。 -->
       <view wx:if="{{!requiresManualReview}}" class="info-panel">
-        <view class="info-title">📊 四维评分摘要</view>
+        <view class="info-title">📊 动作评分摘要</view>
         <view class="rp-metric-list">
           <view class="rp-metric-line">
             <text class="rp-metric-key">准确性</text>
@@ -108,7 +105,7 @@
             <view class="rp-progress-bar"><view class="rp-progress-bar__fill" style="width: {{stabilityText}}%;"></view></view>
             <text class="rp-metric-val rp-metric-val--teal">{{stabilityText}}</text>
           </view>
-          <view class="rp-metric-line">
+          <view wx:if="{{showControlMetric}}" class="rp-metric-line">
             <text class="rp-metric-key">控制力</text>
             <view class="rp-progress-bar"><view class="rp-progress-bar__fill rp-progress-bar__fill--orange" style="width: {{controlText}}%;"></view></view>
             <text class="rp-metric-val rp-metric-val--orange">{{controlText}}</text>
@@ -119,17 +116,8 @@
             <text class="rp-metric-val rp-metric-val--orange">{{durationMetricText}}</text>
           </view>
         </view>
-        <view wx:if="{{showSafetyNotice}}" class="rp-metric-summary">四项指标仅用于回顾本次训练结果。请先暂停训练，并以医生或医疗机构的建议为准。</view>
-        <view wx:else class="rp-metric-summary">四项指标基于本次视频分析生成，可结合下方建议继续练习。</view>
-      </view>
-
-      <!-- 身体不适时优先安全提示，不再展示继续训练导向的阶段文案 -->
-      <view wx:if="{{!showSafetyNotice}}" class="rp-stage-focus">
-        <view class="rp-stage-focus__title">🌿 当前康复阶段：{{stageLabel}}</view>
-        <view class="rp-stage-focus__body">
-          <text class="rp-stage-focus__line">💡 {{stageFocusDesc}}</text>
-          <text class="rp-stage-focus__line">✅ 请结合下方动作建议，按自己的节奏持续练习。</text>
-        </view>
+        <view wx:if="{{showSafetyNotice}}" class="rp-metric-summary">本次指标仅用于回顾训练结果。请先暂停训练，并以医生或医疗机构的建议为准。</view>
+        <view wx:else class="rp-metric-summary">本次指标基于视频分析生成，可结合下方建议继续练习。</view>
       </view>
 
       <!-- 身体不适安全态不展示训练重点和动作建议，避免与“暂停训练”冲突。 -->
@@ -137,11 +125,10 @@
         <view class="rp-next-step-panel__eyebrow">本次重点</view>
         <view class="info-title">🎯 {{reportFocusTitle}}</view>
         <view class="rp-next-step-panel__summary">{{reportFocusText}}</view>
-        <view wx:if="{{!requiresManualReview}}" class="rp-advice-list">
+        <view wx:if="{{adviceSummary.length}}" class="rp-advice-list">
           <block wx:for="{{adviceSummary}}" wx:key="adviceCode">
             <view class="rp-advice-item"><text class="rp-advice-item__dot"></text><text>{{item.patientText}}</text></view>
           </block>
-          <view wx:if="{{!adviceSummary.length}}" class="rp-advice-item"><text class="rp-advice-item__dot"></text><text>本次暂未生成具体动作建议，可按训练指导中的步骤继续练习。</text></view>
         </view>
       </view>
 

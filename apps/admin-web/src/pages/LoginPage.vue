@@ -64,6 +64,7 @@ import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import { Lock, User } from '@element-plus/icons-vue';
 import { adminLogin } from '@/services/auth';
+import { resetSessionExpiryState } from '@/utils/request';
 
 const router = useRouter();
 const route = useRoute();
@@ -89,6 +90,7 @@ async function handleLogin() {
     const res = await adminLogin({ username: form.username, password: form.password });
     localStorage.setItem('admin_token', res.token);
     localStorage.setItem('admin_role', res.role);
+    resetSessionExpiryState();
     ElMessage.success('登录成功');
 
     const redirect = (route.query.redirect as string) || '/';

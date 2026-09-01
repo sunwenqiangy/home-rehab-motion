@@ -61,9 +61,11 @@ class GoldStandardComparator:
             param_threshold = {}
         scoring_mode = param_threshold.get('scoring_mode', ref.get('scoring_mode', 'two_sided'))
 
+        normal_threshold = None
         if scoring_mode == 'upper_bound':
             normal_max = float(param_threshold.get('normal_max', ref.get('normal_max', reference_mean)))
             warning_max = float(param_threshold.get('warning_max', ref.get('warning_max', normal_max + max(reference_std, 1e-6))))
+            normal_threshold = normal_max
             deviation_sigma = max(0.0, measured_value - normal_max) / max(reference_std, 1e-6)
             in_valid_range = measured_value <= normal_max
             if measured_value <= normal_max:
@@ -75,6 +77,7 @@ class GoldStandardComparator:
         elif scoring_mode == 'lower_bound':
             normal_min = float(param_threshold.get('normal_min', reference_mean))
             warning_min = float(param_threshold.get('warning_min', normal_min - max(reference_std, 1e-6)))
+            normal_threshold = normal_min
             deviation_sigma = max(0.0, normal_min - measured_value) / max(reference_std, 1e-6)
             in_valid_range = measured_value >= normal_min
             if measured_value >= normal_min:
@@ -121,6 +124,8 @@ class GoldStandardComparator:
             deviation_sigma=deviation_sigma,
             label=label,
             in_valid_range=in_valid_range,
+            scoring_mode=scoring_mode,
+            normal_threshold=normal_threshold,
         )
 
     def compare_all(self, params: Dict[str, float]) -> List[CompareResult]:
