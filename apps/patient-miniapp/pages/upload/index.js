@@ -45,6 +45,8 @@ function buildActionState(actionType, options) {
     };
 }
 const ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.mov', '.m4v', '.avi'];
+// wx.chooseVideo 的 maxDuration 仅支持 3~60 秒；业务侧的上传总时长仍由后续校验控制。
+const WX_CHOOSE_VIDEO_MAX_DURATION_SECONDS = 60;
 function getAppConfig() {
     const app = getApp();
     return app.globalData.appConfig || appConfig_1.DEFAULT_APP_CONFIG;
@@ -75,39 +77,23 @@ function getMaxDurationSeconds(source) {
 }
 function chooseTrainingVideo(sourceType = ['album', 'camera']) {
     const cfg = getAppConfig();
-    const maxDuration = sourceType.length === 1 && sourceType[0] === 'camera'
+    const configuredMaxDuration = sourceType.length === 1 && sourceType[0] === 'camera'
         ? cfg.videoRecordMaxDurationSeconds
         : cfg.videoMaxDurationSeconds;
+    // 传入 60 以上会让微信直接拒绝打开选择器。
+    const maxDuration = Math.max(3, Math.min(configuredMaxDuration, WX_CHOOSE_VIDEO_MAX_DURATION_SECONDS));
     return new Promise((resolve, reject) => {
-        const chooseMedia = wx.chooseMedia;
-        if (typeof chooseMedia === 'function') {
-            chooseMedia({
-                count: 1,
-                mediaType: ['video'],
-                sourceType,
-                maxDuration,
-                camera: 'back',
-                success: (res) => {
-                    const selected = res.tempFiles?.[0];
-                    if (!selected?.tempFilePath) {
-                        reject(new Error('NO_VIDEO_SELECTED'));
-                        return;
-                    }
-                    resolve({
-                        tempFilePath: selected.tempFilePath,
-                        duration: Number(selected.duration || 0),
-                        size: Number(selected.size || 0),
-                    });
-                },
-                fail: reject,
-            });
-            return;
-        }
+        // chooseMedia 不支持 compressed 参数；姿态分析依赖肩髋细节，统一以原始视频上传。
         wx.chooseVideo({
             sourceType,
             maxDuration,
             camera: 'back',
+            compressed: false,
             success: (res) => {
+                if (!res?.tempFilePath) {
+                    reject(new Error('NO_VIDEO_SELECTED'));
+                    return;
+                }
                 resolve({
                     tempFilePath: res.tempFilePath,
                     duration: Number(res.duration || 0),
@@ -138,6 +124,7 @@ Page({
         filePath: '',
         fileName: '',
         duration: 0,
+        fileSizeBytes: 0,
         durationText: '未选择',
         canSubmit: false,
         submitting: false,
@@ -242,6 +229,7 @@ Page({
             filePath: hasSelectedVideo ? '' : this.data.filePath,
             fileName: hasSelectedVideo ? '' : this.data.fileName,
             duration: hasSelectedVideo ? 0 : this.data.duration,
+            fileSizeBytes: hasSelectedVideo ? 0 : this.data.fileSizeBytes,
             durationText: hasSelectedVideo ? '未选择' : this.data.durationText,
             previewPoster: hasSelectedVideo ? '' : this.data.previewPoster,
             canSubmit: false,
@@ -283,9 +271,9 @@ Page({
         }
         if (size > maxBytes) {
             this.setData({
-                validationMessage: `视频文件超过 ${cfg.videoMaxSizeMB}MB，请压缩或裁剪后再上传。`,
+                validationMessage: `视频文件超过 ${cfg.videoMaxSizeMB}MB，请裁剪后再上传。`,
                 canSubmit: false,
-                statusText: '当前视频文件过大，请压缩或重新选择。',
+                statusText: '当前视频文件过大，请裁剪或重新选择。',
             });
             return;
         }
@@ -294,6 +282,7 @@ Page({
             fileName: getFileName(res.tempFilePath),
             validationMessage: '',
             duration: res.duration,
+            fileSizeBytes: size,
             durationText: formatDuration(res.duration),
             canSubmit: true,
             statusText: '视频可以上传分析，请确认预览画面无误。',
@@ -356,7 +345,11 @@ Page({
             statusText: '正在准备上传视频…',
         });
         try {
-            const presign = await (0, video_1.getPresignUpload)(this.data.actionType, this.data.duration);
+            const fileSizeBytes = Number(this.data.fileSizeBytes || 0);
+            if (!Number.isSafeInteger(fileSizeBytes) || fileSizeBytes <= 0) {
+                throw new Error('无法读取原视频文件大小，请重新选择视频后再上传。');
+            }
+            const presign = await (0, video_1.getPresignUpload)(this.data.actionType, this.data.duration, fileSizeBytes);
             console.info('[视频上传目标]', {
                 videoId: presign.videoId,
                 uploadType: presign.uploadType,
@@ -366,6 +359,7 @@ Page({
                 videoId: presign.videoId,
                 actionType: this.data.actionType,
                 duration: this.data.duration || 0,
+                fileSizeBytes,
                 updatedAt: Date.now(),
             });
             this.setData({
@@ -380,7 +374,7 @@ Page({
             // 上传文件已完成后立即进入等待页。确认对象、创建分析任务可能受服务端
             // 网络影响而短暂等待，不应继续阻塞用户停留在上传确认页。
             wx.redirectTo({
-                url: `/pages/analyzing/index?videoId=${presign.videoId}&actionType=${encodeURIComponent(this.data.actionType)}&duration=${Math.max(1, Math.round(this.data.duration || 30))}`,
+                url: `/pages/analyzing/index?videoId=${presign.videoId}&actionType=${encodeURIComponent(this.data.actionType)}&duration=${Math.max(1, Math.round(this.data.duration || 30))}&fileSizeBytes=${fileSizeBytes}`,
             });
         }
         catch (error) {

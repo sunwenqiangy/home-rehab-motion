@@ -576,9 +576,10 @@ class PhaseSegmenter:
             return []
 
         reps: List[Rep] = []
-        # 一个完整周期需要收紧、保持与回正。标准训练稳定周期通常约 14~23 秒；
-        # 低于 10 秒的往返多为调整、呼吸或关键点抖动，不单独计次。
-        min_frames = int(10.0 * self.sample_fps)
+        # 一个完整周期需要收紧、保持与回正。临床教学的连续完整后倾—回正周期
+        # 不应短于约 8 秒；10 秒会漏掉较快但受控的动作，低于 8 秒则更可能是
+        # 呼吸、调整或关键点抖动。峰间隔、双侧中立位和摆幅校验继续作为第二层保护。
+        min_frames = int(8.0 * self.sample_fps)
         max_frames = int(30.0 * self.sample_fps)
         signal_std = float(np.std(signal)) if len(signal) else 0.0
         signal_range = float(np.max(signal) - np.min(signal)) if len(signal) else 0.0

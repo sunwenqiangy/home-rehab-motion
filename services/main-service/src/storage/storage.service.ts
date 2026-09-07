@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { createHash, createHmac } from 'crypto';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
-import { mkdir, access, writeFile } from 'fs/promises';
+import { mkdir, stat, writeFile } from 'fs/promises';
 import path from 'path';
 
 const REPO_ROOT = path.resolve(__dirname, '../../../..');
@@ -11,6 +11,10 @@ export interface UploadedBinaryFile {
   originalname?: string;
   buffer?: Buffer;
   size?: number;
+}
+
+export interface StoredObjectMetadata {
+  size: number;
 }
 
 @Injectable()
@@ -209,19 +213,30 @@ export class StorageService {
   }
 
   async objectExists(objectKey: string) {
-    if (this.isS3PostEnabled()) {
-      if (this.skipDirectObjectCheck) {
-        return true;
-      }
-      return this.checkDirectObjectExists(objectKey);
+    // 开发环境可显式跳过旧的存在性探测；生产确认上传会始终调用
+    // getObjectMetadata 做真实的 Content-Length 完整性校验。
+    if (this.isS3PostEnabled() && this.skipDirectObjectCheck) {
+      return true;
     }
-
     try {
-      await access(this.resolveObjectPath(objectKey));
+      await this.getObjectMetadata(objectKey);
       return true;
     } catch (_error) {
       return false;
     }
+  }
+
+  /**
+   * 读取实际落盘/OSS 对象大小。直传成功状态只代表 OSS 接收了请求，不能证明
+   * 手机原文件已完整到达；确认上传时必须将这里的 size 与客户端选择的 size 对比。
+   */
+  async getObjectMetadata(objectKey: string): Promise<StoredObjectMetadata> {
+    if (this.isS3PostEnabled()) {
+      return this.getDirectObjectMetadata(objectKey);
+    }
+
+    const { size } = await stat(this.resolveObjectPath(objectKey));
+    return { size };
   }
 
   getAbsoluteObjectPath(objectKey: string) {
@@ -346,10 +361,18 @@ export class StorageService {
     return fields;
   }
 
-  private async checkDirectObjectExists(objectKey: string) {
+  private async getDirectObjectMetadata(objectKey: string): Promise<StoredObjectMetadata> {
     const targetUrl = this.buildPresignedHeadUrl(objectKey);
-    const statusCode = await this.sendHeadRequest(targetUrl);
-    return statusCode >= 200 && statusCode < 300;
+    const response = await this.sendHeadRequest(targetUrl);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw new BadRequestException(`OSS 对象校验失败（HTTP ${response.statusCode}）`);
+    }
+    const rawContentLength = response.headers['content-length'];
+    const contentLength = Number(Array.isArray(rawContentLength) ? rawContentLength[0] : rawContentLength);
+    if (!Number.isSafeInteger(contentLength) || contentLength <= 0) {
+      throw new BadRequestException('OSS 未返回有效的视频文件大小');
+    }
+    return { size: contentLength };
   }
 
   private buildPresignedHeadUrl(objectKey: string) {
@@ -421,7 +444,7 @@ export class StorageService {
     return `${endpointInfo.protocol}//${host}${canonicalUri}?${finalQuery}`;
   }
 
-  private sendHeadRequest(urlString: string): Promise<number> {
+  private sendHeadRequest(urlString: string): Promise<{ statusCode: number; headers: Record<string, string | string[] | undefined> }> {
     return new Promise((resolve, reject) => {
       const url = new URL(urlString);
       const requester = url.protocol === 'https:' ? httpsRequest : httpRequest;
@@ -436,7 +459,10 @@ export class StorageService {
           timeout: this.objectCheckTimeoutMs,
         },
         (res) => {
-          resolve(res.statusCode || 500);
+          resolve({
+            statusCode: res.statusCode || 500,
+            headers: res.headers,
+          });
         },
       );
 

@@ -127,6 +127,8 @@ model TrainingVideo {
   video_key              String?                @db.VarChar(255)
   video_key_720p         String?                @db.VarChar(255)
   duration               Float?
+  // 小程序选择的原始文件字节数；确认上传时与 OSS Content-Length 对比，防止直传截断。
+  upload_size_bytes      Int?                   @db.UnsignedInt
   resolution             String?                @db.VarChar(20)
   upload_time            DateTime               @default(now())
   confirmed_at           DateTime?

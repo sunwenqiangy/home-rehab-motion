@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 class PoseEstimator:
     """MediaPipe Pose 关键点提取器"""
 
+    # 允许容器元数据与最终可读帧存在极小尾差，超过该比例即不应把截断画面用于评分。
+    MIN_DECODE_COMPLETION_RATIO = 0.95
+
     def __init__(
         self,
         model_complexity: int = 1,
@@ -31,6 +34,11 @@ class PoseEstimator:
         # 一致时序分辨率的动作；不会增加帧预算，只消除 source_fps 整除取步长的漂移。
         self.exact_sample_timestamps = exact_sample_timestamps
         self.effective_sample_fps = float(sample_fps)
+        # 解码完整性用于防止容器元数据声明的时长远长于实际可读取画面时，
+        # 将一段截断视频误当作完整训练视频进行计数和评分。
+        self.source_duration_seconds = 0.0
+        self.decoded_duration_seconds = 0.0
+        self.decode_completion_ratio = 1.0
         self._model_complexity = model_complexity
         self._mp_pose = None
         self._pose = None
@@ -59,10 +67,21 @@ class PoseEstimator:
             logger.warning('mediapipe not installed, using mock keypoints')
             self._pose = None
 
+    @property
+    def has_complete_decode(self) -> bool:
+        """视频元数据可用时，确认实际解码已覆盖几乎完整的时长。"""
+        return (
+            self.source_duration_seconds <= 0
+            or self.decode_completion_ratio >= self.MIN_DECODE_COMPLETION_RATIO
+        )
+
     def extract_frames(self, video_path: str) -> List[Frame]:
         """
         从视频中按 sample_fps 采样帧，提取关键点
         """
+        self.source_duration_seconds = 0.0
+        self.decoded_duration_seconds = 0.0
+        self.decode_completion_ratio = 1.0
         self._init_model()
 
         # FFMPEG 解码由 VideoCapture 逐帧输出；通过 OpenCV 的原生线程限制避免
@@ -78,6 +97,7 @@ class PoseEstimator:
         source_fps = source_fps if source_fps > 0 else float(self.sample_fps)
         source_step = max(1, int(source_fps / self.sample_fps))
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.source_duration_seconds = max(0.0, (total_frames - 1) / source_fps) if total_frames > 1 else 0.0
         # 限制总推理帧数而非仅限制视频文件时长：高帧率长视频会自动增大抽帧步长，
         # 既避免低配服务器被单任务耗尽，也保留完整时间范围供周期切分。
         budget_step = (total_frames + self.max_frames - 1) // self.max_frames if self.max_frames and total_frames > self.max_frames else 1
@@ -120,15 +140,24 @@ class PoseEstimator:
             self._close_model()
         if len(frames) >= 2:
             self.effective_sample_fps = (len(frames) - 1) / (frames[-1].timestamp - frames[0].timestamp)
+            self.decoded_duration_seconds = max(0.0, frames[-1].timestamp - frames[0].timestamp)
         else:
             self.effective_sample_fps = float(self.sample_fps)
+            self.decoded_duration_seconds = 0.0
+        self.decode_completion_ratio = (
+            min(1.0, self.decoded_duration_seconds / self.source_duration_seconds)
+            if self.source_duration_seconds > 0
+            else 1.0
+        )
         sampling_mode = (
             f'timestamp_interval={sample_interval:.4f}s'
             if self.exact_sample_timestamps else f'step={step}'
         )
         logger.info(
-            'Extracted %d frames from %s (total=%d, requested_fps=%d, mode=%s, effective_fps=%.2f)',
+            'Extracted %d frames from %s (total=%d, requested_fps=%d, mode=%s, effective_fps=%.2f, '
+            'source_duration=%.2fs, decoded_duration=%.2fs, decode_completion=%.3f)',
             len(frames), video_path, total_frames, self.sample_fps, sampling_mode, self.effective_sample_fps,
+            self.source_duration_seconds, self.decoded_duration_seconds, self.decode_completion_ratio,
         )
         return frames
 

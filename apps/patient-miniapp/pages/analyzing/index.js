@@ -41,21 +41,40 @@ function getStatusLabel(status, failed, timeoutReached, confirming) {
     return '准备中';
 }
 function failurePresentation(status, failReason) {
-    const reason = `${failReason || ''}`.toLowerCase();
-    if (status === 'quality_insufficient') {
-        const trunkKeypointsUnstable = reason.includes('关键躯干点') || reason.includes('肩髋');
-        return trunkKeypointsUnstable
-            ? {
-                title: '拍摄画面暂不适合评估',
-                tip: '部分画面未能稳定识别到肩部或髋部，暂时无法可靠分析本次动作。',
-                action: '请将肩膀到髋部完整拍入画面，动作过程中保持身体不移出镜头，并避免遮挡后重新上传。',
-            }
-            : {
-                title: '视频质量不足',
-                tip: '请确保动作完整入镜、光线清晰后重新上传。',
-                action: '请回到指导页确认拍摄角度、入镜范围和光线，再重新上传。',
-            };
-    }
+const reason = `${failReason || ''}`.toLowerCase();
+if (status === 'quality_insufficient') {
+const uploadIncomplete = reason.includes('视频上传不完整')
+|| reason.includes('视频文件信息不一致')
+|| reason.includes('缺少原视频文件大小');
+if (uploadIncomplete) {
+return {
+title: '视频上传不完整',
+tip: '手机原文件大小与服务器收到的文件不一致，系统没有开始分析。',
+action: '请检查网络后从相册重新选择原视频并上传，不要使用聊天软件转发或剪辑过程中生成的临时文件。',
+};
+}
+const incompleteDecode = reason.includes('视频解码不完整') || reason.includes('video_decode_incomplete');
+if (incompleteDecode) {
+return {
+title: '视频文件不完整',
+tip: '视频时长信息与实际可读取画面不一致，继续分析会遗漏部分动作。',
+action: '请从相册重新选择原视频，确认预览可以完整播放后再上传；不要使用聊天软件转发或剪辑过程中生成的临时文件。',
+};
+}
+const trunkKeypointsUnstable = reason.includes('关键躯干点') || reason.includes('肩髋');
+return trunkKeypointsUnstable
+? {
+title: '拍摄画面暂不适合评估',
+tip: '部分画面未能稳定识别到肩部或髋部，暂时无法可靠分析本次动作。',
+action: '请将肩膀到髋部完整拍入画面，动作过程中保持身体不移出镜头，并避免遮挡后重新上传。',
+}
+: {
+title: '视频质量不足',
+tip: '请确保动作完整入镜、光线清晰后重新上传。',
+action: '请回到指导页确认拍摄角度、入镜范围和光线，再重新上传。',
+};
+}
+
     if (reason.includes('analysis_queue_unavailable') || reason.includes('分析服务')) {
         return {
             title: '分析服务暂时繁忙',
@@ -123,6 +142,7 @@ Page({
         videoId: 0,
         actionType: '',
         duration: 0,
+        fileSizeBytes: 0,
         confirmingUpload: false,
         confirmStarted: false,
         title: '系统正在分析您的动作',
@@ -153,20 +173,35 @@ Page({
         const videoId = Number(query.videoId || 0);
         const actionType = parseActionType(query.actionType);
         const duration = Number(query.duration || 0);
-        const shouldConfirmUpload = Boolean(videoId && actionType && duration > 0);
+        const fileSizeBytes = Number(query.fileSizeBytes || 0);
+        const hasValidFileSize = Number.isSafeInteger(fileSizeBytes) && fileSizeBytes > 0;
+        const shouldConfirmUpload = Boolean(videoId && actionType && duration > 0 && hasValidFileSize);
+        const requiresReselect = Boolean(videoId && actionType && duration > 0 && !hasValidFileSize);
         this.setData({
             videoId,
             actionType,
             duration,
+            fileSizeBytes,
             confirmingUpload: shouldConfirmUpload,
             confirmStarted: false,
             pollStartedAt: Date.now(),
             statusBarHeight,
-            title: shouldConfirmUpload ? '正在确认您的视频' : '系统正在分析您的动作',
-            tip: shouldConfirmUpload
-                ? '视频已上传，正在创建分析任务，请稍候。'
-                : '通常需要 1~2 分钟，请耐心等待。',
-            statusLabel: getStatusLabel('queued', false, false, shouldConfirmUpload),
+            failed: requiresReselect,
+            canRetryUpload: requiresReselect,
+            showHistoryAction: requiresReselect,
+            title: requiresReselect
+                ? '需要重新选择视频'
+                : shouldConfirmUpload ? '正在确认您的视频' : '系统正在分析您的动作',
+            tip: requiresReselect
+                ? '无法确认原视频文件大小。为确保上传完整，请从相册重新选择原视频后再上传。'
+                : shouldConfirmUpload
+                    ? '视频已上传，正在创建分析任务，请稍候。'
+                    : '通常需要 1~2 分钟，请耐心等待。',
+            statusLabel: requiresReselect
+                ? '需要重新上传'
+                : getStatusLabel('queued', false, false, shouldConfirmUpload),
+            failReasonTitle: requiresReselect ? '无法校验视频完整性' : '',
+            failReasonDesc: requiresReselect ? '请重新选择原视频并完成上传。' : '',
         });
         this.updateTopPlaceholderHeight();
         if (shouldConfirmUpload) {
@@ -198,7 +233,8 @@ Page({
         }
     },
     async confirmUploadedVideo() {
-        if (this.data.confirmStarted || !this.data.videoId || !this.data.actionType || this.data.duration <= 0) {
+        if (this.data.confirmStarted || !this.data.videoId || !this.data.actionType || this.data.duration <= 0
+            || !Number.isSafeInteger(this.data.fileSizeBytes) || this.data.fileSizeBytes <= 0) {
             return;
         }
         this.setData({ confirmStarted: true, confirmingUpload: true });
@@ -207,6 +243,7 @@ Page({
                 videoId: this.data.videoId,
                 actionType: this.data.actionType,
                 duration: this.data.duration,
+                fileSizeBytes: this.data.fileSizeBytes,
             });
             this.setData({
                 confirmingUpload: false,
@@ -231,23 +268,34 @@ Page({
         catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             const isAuthError = message.includes('401') || message.includes('Unauthorized');
+            const uploadIntegrityFailed = message.includes('视频上传不完整')
+                || message.includes('视频文件信息不一致')
+                || message.includes('缺少原视频文件大小');
             this.stopPolling();
             this.setData({
                 confirmingUpload: false,
                 confirmStarted: false,
                 failed: true,
-                canRetryUpload: false,
-                canRetryConfirm: !isAuthError,
+                canRetryUpload: uploadIntegrityFailed,
+                canRetryConfirm: !isAuthError && !uploadIntegrityFailed,
                 showHistoryAction: true,
-                title: isAuthError ? '登录状态已过期' : '暂时无法创建分析任务',
+                title: isAuthError
+                    ? '登录状态已过期'
+                    : uploadIntegrityFailed ? '视频上传不完整' : '暂时无法创建分析任务',
                 tip: isAuthError
                     ? '请重新登录后到训练记录查看此视频。'
-                    : '视频已经上传成功。请稍后到训练记录查看，系统会自动重试创建分析任务。',
-                statusLabel: isAuthError ? '需要重新登录' : '等待系统重试',
-                failReasonTitle: isAuthError ? '登录状态已过期' : '分析任务创建暂时不可用',
+                    : uploadIntegrityFailed
+                        ? '为避免漏掉动作，系统没有开始分析。请从相册重新选择原视频后再次上传。'
+                        : '视频已经上传成功。请稍后到训练记录查看，系统会自动重试创建分析任务。',
+                statusLabel: isAuthError ? '需要重新登录' : uploadIntegrityFailed ? '需要重新上传' : '等待系统重试',
+                failReasonTitle: isAuthError
+                    ? '登录状态已过期'
+                    : uploadIntegrityFailed ? '无法确认上传完整性' : '分析任务创建暂时不可用',
                 failReasonDesc: isAuthError
                     ? '请重新登录后重试。'
-                    : '无需重新上传视频；系统会在后台尝试恢复任务。',
+                    : uploadIntegrityFailed
+                        ? '请重新选择原始相册视频并上传。'
+                        : '无需重新上传视频；系统会在后台尝试恢复任务。',
             });
         }
     },

@@ -303,13 +303,60 @@ def analyze_video(
         # 算法预处理会缩放和平移关键点；单独保留原始画面坐标供管理端骨架叠加，不能用处理后的坐标覆盖它。
         visualization_frames = copy.deepcopy(frames)
         logger.info(
-            '[%s] Pose extraction: %d frames (effective_sample_fps=%.2f, max_frames=%d, max_frame_width=%d)',
+            '[%s] Pose extraction: %d frames (effective_sample_fps=%.2f, max_frames=%d, max_frame_width=%d, '
+            'source_duration=%.2fs, decoded_duration=%.2fs, decode_completion=%.3f)',
             task_id,
             len(frames),
             effective_sample_fps,
             settings.max_analysis_frames,
             settings.max_pose_frame_width,
+            estimator.source_duration_seconds,
+            estimator.decoded_duration_seconds,
+            estimator.decode_completion_ratio,
         )
+
+        if not estimator.has_complete_decode:
+            reason = (
+                f'视频解码不完整：可读取 {estimator.decoded_duration_seconds:.0f} 秒，'
+                f'文件标注 {estimator.source_duration_seconds:.0f} 秒；请重新导出或重新上传完整视频'
+            )
+            logger.warning(
+                '[%s] Incomplete video decode: video_id=%d, decoded=%.2fs, source=%.2fs, completion=%.3f',
+                task_id,
+                video_id,
+                estimator.decoded_duration_seconds,
+                estimator.source_duration_seconds,
+                estimator.decode_completion_ratio,
+            )
+            with sync_session_scope() as session:
+                repo = AnalysisRepository(session)
+                repo.update_video_quality(
+                    video_id,
+                    'insufficient',
+                    quality_issues=[{
+                        'code': 'VIDEO_DECODE_INCOMPLETE',
+                        'decoded_duration_seconds': round(estimator.decoded_duration_seconds, 3),
+                        'source_duration_seconds': round(estimator.source_duration_seconds, 3),
+                        'decode_completion_ratio': round(estimator.decode_completion_ratio, 4),
+                    }],
+                )
+                repo.mark_task_quality_insufficient(video_id, reason)
+            _notify_callback(
+                callback_url,
+                video_id,
+                analysis_run_id,
+                task_id,
+                'quality_insufficient',
+                fail_reason=reason,
+                quality_status='insufficient',
+                quality_issues=[{
+                    'code': 'VIDEO_DECODE_INCOMPLETE',
+                    'decoded_duration_seconds': round(estimator.decoded_duration_seconds, 3),
+                    'source_duration_seconds': round(estimator.source_duration_seconds, 3),
+                    'decode_completion_ratio': round(estimator.decode_completion_ratio, 4),
+                }],
+            )
+            return {'video_id': video_id, 'status': 'quality_insufficient', 'reason': reason}
 
         # 先保存原始关键点帧数据，供骨架可视化与失败排查使用
         _save_keypoints_json(

@@ -12,7 +12,20 @@ const SHOOTING_DEFAULTS = {
 };
 function getAppConfig() { const app = getApp(); return app.globalData.appConfig || appConfig_1.DEFAULT_APP_CONFIG; }
 function resolveAssetUrl(url) { if (!url || /^https?:\/\//.test(url) || url.startsWith('data:')) return url || ''; const origin = env_1.API_BASE_URL.replace(/\/api\/?$/, ''); return `${origin}${url.startsWith('/') ? url : `/${url}`}`; }
-function chooseTrainingVideo(source) { const cfg = getAppConfig(); const maxDuration = source === 'camera' ? cfg.videoRecordMaxDurationSeconds : cfg.videoMaxDurationSeconds; return new Promise((resolve, reject) => { const success = (res) => { const selected = res.tempFiles?.[0] || res; if (!selected?.tempFilePath) return reject(new Error('NO_VIDEO_SELECTED')); resolve({ tempFilePath: selected.tempFilePath, duration: Number(selected.duration || 0), size: Number(selected.size || 0) }); }; if (typeof wx.chooseMedia === 'function') return wx.chooseMedia({ count: 1, mediaType: ['video'], sourceType: [source], maxDuration, camera: 'back', success, fail: reject }); wx.chooseVideo({ sourceType: [source], maxDuration, camera: 'back', success, fail: reject }); }); }
+function chooseTrainingVideo(source) {
+  const cfg = getAppConfig();
+  // wx.chooseVideo 的 maxDuration 仅支持 3~60 秒，超过上限会导致选择器无法打开。
+  const configuredMaxDuration = source === 'camera' ? cfg.videoRecordMaxDurationSeconds : cfg.videoMaxDurationSeconds;
+  const maxDuration = Math.max(3, Math.min(configuredMaxDuration, 60));
+  return new Promise((resolve, reject) => {
+    const success = (res) => {
+      if (!res?.tempFilePath) return reject(new Error('NO_VIDEO_SELECTED'));
+      resolve({ tempFilePath: res.tempFilePath, duration: Number(res.duration || 0), size: Number(res.size || 0) });
+    };
+    // 使用 chooseVideo 的 compressed=false，避免微信压缩改变姿态估计所依赖的图像细节。
+    wx.chooseVideo({ sourceType: [source], maxDuration, camera: 'back', compressed: false, success, fail: reject });
+  });
+}
 function toShootingViewModel(requirements) { const byType = (requirements || []).reduce((result, item) => ({ ...result, [item.type]: item }), {}); return Object.keys(SHOOTING_DEFAULTS).map((type) => { const fallback = SHOOTING_DEFAULTS[type]; const item = byType[type] || {}; return { ...fallback, ...item, order: fallback.order, typeLabel: fallback.typeLabel, title: item.title || fallback.title, description: item.description || fallback.description, altText: item.altText || fallback.altText, correctUrl: resolveAssetUrl(item.correctImage?.url) || fallback.correctUrl }; }); }
 function toViewModel(detail) { return { ...detail, coverUrl: resolveAssetUrl(detail.coverImage?.url) || resolveAssetUrl(DEFAULT_COVERS[detail.actionType]), videoUrl: resolveAssetUrl(detail.video?.asset?.url), videoFallbackText: detail.video?.fallbackText || '教学视频暂时无法播放，您可以先查看下面的图文步骤。', steps: (detail.steps || []).map((item, index) => ({ ...item, number: index + 1, imageUrl: resolveAssetUrl(item.image?.url) })), commonMistakes: (detail.commonMistakes || []).map((item) => ({ ...item, media: { ...item.media, url: resolveAssetUrl(item.media?.url) } })), hasCommonMistakes: (detail.commonMistakes || []).length > 0, shootingRequirements: toShootingViewModel(detail.shootingRequirements) }; }
 function getNetworkType() { return new Promise((resolve) => wx.getNetworkType({ success: (result) => resolve(result.networkType || 'unknown'), fail: () => resolve('unknown') })); }

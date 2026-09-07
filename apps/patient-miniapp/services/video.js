@@ -10,9 +10,9 @@ const request_1 = require("../utils/request");
 async function uploadWithRelogin(uploadTarget, filePath) {
     return doUploadFile(uploadTarget, filePath);
 }
-function getPresignUpload(actionType, duration) {
+function getPresignUpload(actionType, duration, fileSizeBytes) {
 return (0, request_1.request)({
-url: `/videos/presign-upload?actionType=${encodeURIComponent(actionType)}&duration=${encodeURIComponent(String(duration))}`,
+url: `/videos/presign-upload?actionType=${encodeURIComponent(actionType)}&duration=${encodeURIComponent(String(duration))}&fileSizeBytes=${encodeURIComponent(String(fileSizeBytes))}`,
 });
 }
 /** 实际执行 wx.uploadFile，抽取为独立函数以支持重试 */

@@ -32,6 +32,7 @@ export class VideoController {
     @Req() req: Request,
     @Query('actionType') actionType?: string,
     @Query('duration') duration?: string,
+    @Query('fileSizeBytes') fileSizeBytes?: string,
   ) {
     const user = this.authService.requireUser(req, ['patient']);
     const supportedActionTypes = new Set<TrainingActionType>(['abdominal_crunch', 'pelvic_tilt', 'knee_rotation']);
@@ -39,7 +40,12 @@ export class VideoController {
     if (!supportedActionTypes.has(resolvedActionType)) {
       throw new BadRequestException('请选择有效的训练动作类型');
     }
-    return this.videoService.getPresignUpload(user.userId, resolvedActionType, Number(duration));
+    return this.videoService.getPresignUpload(
+      user.userId,
+      resolvedActionType,
+      Number(duration),
+      Number(fileSizeBytes),
+    );
   }
 
   @Post('confirm-upload')

@@ -122,6 +122,30 @@ def test_pelvic_tilt_counts_ten_compact_complete_cycles_at_every_sampling_rate()
     assert counts == [10, 10, 10]
 
 
+def test_pelvic_tilt_counts_complete_eight_second_cycles():
+    """连续完成的约八秒骨盆倾斜周期应逐次计数，不应再被十秒阈值过滤。"""
+    cycles = [
+        (1 + index * 9, 4 + index * 9, 8 + index * 9, 4.0)
+        for index in range(10)
+    ]
+    signal = _signal_from_cycles(4, cycles, duration=96)
+    frames = _pelvic_frames_from_signal(signal, 4)
+
+    result = PhaseSegmenter(sample_fps=4).segment_with_diagnostics(frames, 'pelvic_tilt')
+
+    assert len(result.reps) == 10
+
+
+def test_pelvic_tilt_rejects_complete_cycles_shorter_than_eight_seconds():
+    """不足八秒的往返不作为独立训练动作，避免把调整或抖动记为次数。"""
+    signal = _signal_from_cycles(4, [(1, 3, 7, 4.0)], duration=12)
+    frames = _pelvic_frames_from_signal(signal, 4)
+
+    result = PhaseSegmenter(sample_fps=4).segment_with_diagnostics(frames, 'pelvic_tilt')
+
+    assert result.reps == []
+
+
 def test_pelvic_tilt_keeps_native_four_fps_signal_without_reinterpolation(monkeypatch):
     """规范 4fps 输入不应二次插值，避免在真实峰谷边界引入数值漂移。"""
     signal = _signal_from_cycles(4, [(2, 7, 14, 4.0), (18, 23, 30, 4.0)], duration=34)

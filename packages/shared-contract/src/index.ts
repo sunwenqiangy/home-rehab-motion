@@ -142,6 +142,8 @@ export interface ConfirmUploadRequestDto {
   videoId: number;
   actionType: TrainingActionType;
   duration: number;
+  /** 小程序选择原文件的字节数；服务端与存储对象 Content-Length 严格核对。 */
+  fileSizeBytes?: number;
   /** 可选：分析采样帧率（仅在触发重新分析时生效） */
   sampleFps?: number;
   /** 可选：sigma 阈值倍数，会影响参数 normal/warning/invalid 判定边界 */

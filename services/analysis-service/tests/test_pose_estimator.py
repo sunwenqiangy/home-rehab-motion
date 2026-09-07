@@ -11,8 +11,9 @@ from app.core.pose_estimator import PoseEstimator
 
 
 class _FakeCapture:
-    def __init__(self, total_frames: int, source_fps: float):
+    def __init__(self, total_frames: int, source_fps: float, reported_total_frames=None):
         self.total_frames = total_frames
+        self.reported_total_frames = reported_total_frames if reported_total_frames is not None else total_frames
         self.source_fps = source_fps
         self.index = 0
 
@@ -29,7 +30,7 @@ class _FakeCapture:
         if property_id == cv2.CAP_PROP_FPS:
             return self.source_fps
         if property_id == cv2.CAP_PROP_FRAME_COUNT:
-            return self.total_frames
+            return self.reported_total_frames
         return 0
 
     def release(self):
@@ -54,3 +55,29 @@ def test_timestamp_sampling_stretches_interval_to_preserve_full_video_under_fram
     assert frames[0].timestamp == 0.0
     assert frames[-1].timestamp >= 9.0
     assert estimator.effective_sample_fps <= 1.2
+    assert estimator.has_complete_decode
+
+
+def test_timestamp_sampling_reports_incomplete_video_decode(monkeypatch):
+    """容器声明的视频时长与实际可读取内容不符时，必须暴露不完整解码证据。"""
+    estimator = PoseEstimator(sample_fps=10, max_frames=120, exact_sample_timestamps=True)
+    monkeypatch.setattr(estimator, '_init_model', lambda: None)
+    monkeypatch.setattr(estimator, '_close_model', lambda: None)
+    monkeypatch.setattr(
+        cv2,
+        'VideoCapture',
+        lambda _: _FakeCapture(total_frames=51, source_fps=10, reported_total_frames=101),
+    )
+    monkeypatch.setattr(
+        estimator,
+        '_process_frame',
+        lambda _, index, timestamp: Frame(frame_index=index, timestamp=timestamp, keypoints={}),
+    )
+
+    frames = estimator.extract_frames('truncated-video.mp4')
+
+    assert frames[-1].timestamp == 5.0
+    assert estimator.source_duration_seconds == 10.0
+    assert estimator.decoded_duration_seconds == 5.0
+    assert estimator.decode_completion_ratio == 0.5
+    assert not estimator.has_complete_decode

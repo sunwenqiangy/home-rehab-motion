@@ -73,6 +73,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
     userId: number,
     actionType: TrainingActionType,
     duration: number,
+    fileSizeBytes: number,
   ): Promise<PresignUploadResponseDto> {
     await this.privacyService.requireActiveConsent(userId);
     const appConfig = await this.configService.getPatientAppConfig();
@@ -81,6 +82,9 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
     }
     if (userId <= 0) {
       throw new BadRequestException('无效的用户身份，无法创建上传任务');
+    }
+    if (!Number.isSafeInteger(fileSizeBytes) || fileSizeBytes <= 0 || fileSizeBytes > 200 * 1024 * 1024) {
+      throw new BadRequestException('无法确认原视频文件大小，请重新选择不超过 200MB 的视频');
     }
 
     const ownerId = BigInt(userId);
@@ -92,6 +96,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
         source_type: 'miniapp',
         video_key: null,
         duration,
+        upload_size_bytes: fileSizeBytes,
         analysis_status: 'uploading',
       },
     });
@@ -200,6 +205,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
       where: { video_id: BigInt(videoId) },
       data: {
         video_key: stored.objectKey,
+        upload_size_bytes: stored.size,
         analysis_status: 'uploading',
       },
     });
@@ -234,6 +240,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
           user_id: true,
           action_type: true,
           duration: true,
+          upload_size_bytes: true,
           video_key: true,
         },
       });
@@ -250,6 +257,8 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
             videoId: Number(video.video_id),
             actionType: video.action_type as TrainingActionType,
             duration: video.duration,
+            // 后台恢复沿用创建上传任务时已持久化的原始文件大小。
+            fileSizeBytes: video.upload_size_bytes ?? undefined,
           });
           this.logger.log(`Recovered uploaded video into analysis queue: videoId=${video.video_id}`);
         } catch (error) {
@@ -262,6 +271,22 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
     } finally {
       this.uploadRecoveryRunning = false;
     }
+  }
+
+  private async markUploadIntegrityInsufficient(
+    videoId: number,
+    reason: string,
+    issueCode: 'UPLOAD_CLIENT_SIZE_MISMATCH' | 'UPLOAD_SIZE_METADATA_MISSING' | 'UPLOAD_SIZE_MISMATCH',
+  ) {
+    await this.prisma.trainingVideo.update({
+      where: { video_id: BigInt(videoId) },
+      data: {
+        analysis_status: 'quality_insufficient',
+        quality_status: 'insufficient',
+        quality_issues: [{ code: issueCode }],
+        fail_reason: reason.slice(0, 255),
+      },
+    });
   }
 
   async confirmUpload(
@@ -316,12 +341,54 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
       ? objectKey
       : `${objectKey}.mp4`;
 
-    const objectExists = await this.storageService.objectExists(resolvedObjectKey);
-    if (!objectExists) {
-      this.logger.warn(`Confirm upload rejected: videoId=${payload.videoId}, reason=object_not_found`);
-      throw new BadRequestException('视频文件尚未上传，请先完成上传');
+    const requiresClientSizeValidation = video.source_type === 'miniapp';
+    if (
+      requiresClientSizeValidation
+      && video.upload_size_bytes !== null
+      && payload.fileSizeBytes !== undefined
+      && payload.fileSizeBytes !== video.upload_size_bytes
+    ) {
+      const reason = '视频文件信息不一致，请从相册重新选择原视频后再次上传';
+      this.logger.warn(
+        `Confirm upload rejected: videoId=${payload.videoId}, reason=client_size_mismatch, expected=${video.upload_size_bytes}, received=${payload.fileSizeBytes}`,
+      );
+      await this.markUploadIntegrityInsufficient(payload.videoId, reason, 'UPLOAD_CLIENT_SIZE_MISMATCH');
+      throw new BadRequestException(reason);
     }
-    this.logger.log(`Video object verified: videoId=${payload.videoId}, hasObject=true`);
+    const expectedSizeBytes = video.upload_size_bytes ?? payload.fileSizeBytes;
+    const hasValidExpectedSize = typeof expectedSizeBytes === 'number'
+      && Number.isSafeInteger(expectedSizeBytes)
+      && expectedSizeBytes > 0;
+    if (requiresClientSizeValidation && !hasValidExpectedSize) {
+      const reason = '缺少原视频文件大小，无法确认上传完整性；请重新选择并上传视频';
+      this.logger.warn(`Confirm upload rejected: videoId=${payload.videoId}, reason=missing_expected_file_size`);
+      await this.markUploadIntegrityInsufficient(payload.videoId, reason, 'UPLOAD_SIZE_METADATA_MISSING');
+      throw new BadRequestException(reason);
+    }
+
+    let objectSizeBytes: number;
+    try {
+      objectSizeBytes = (await this.storageService.getObjectMetadata(resolvedObjectKey)).size;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Confirm upload rejected: videoId=${payload.videoId}, reason=object_metadata_unavailable, error=${reason}`);
+      throw new BadRequestException('视频文件尚未完整上传，请检查网络后重新上传');
+    }
+    if (requiresClientSizeValidation) {
+      const verifiedExpectedSize = expectedSizeBytes as number;
+      if (objectSizeBytes !== verifiedExpectedSize) {
+        const reason = '视频上传不完整，请从相册重新选择原视频后再次上传';
+        this.logger.warn(
+          `Confirm upload rejected: videoId=${payload.videoId}, reason=size_mismatch, expected=${verifiedExpectedSize}, actual=${objectSizeBytes}`,
+        );
+        await this.markUploadIntegrityInsufficient(payload.videoId, reason, 'UPLOAD_SIZE_MISMATCH');
+        throw new BadRequestException(reason);
+      }
+    }
+    this.logger.log(
+      `Video object integrity verified: videoId=${payload.videoId}, sizeBytes=${objectSizeBytes}, `
+      + `clientSizeValidated=${requiresClientSizeValidation}`,
+    );
 
     const confirmedAt = video.confirmed_at || new Date();
     // 使用条件更新抢占确认权，避免小程序请求与后台恢复扫描同时创建多个 analysis run。

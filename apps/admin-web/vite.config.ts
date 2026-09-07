@@ -22,8 +22,11 @@ export default defineConfig({
     },
   },
   server: {
+    // 本地管理端只绑定回环地址并严格占用 5173；避免与其他项目的 Vite 服务
+    // 同时监听该端口时，浏览器被路由到错误的项目页面。
     port: 5173,
-    host: '0.0.0.0',
+    host: '127.0.0.1',
+    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3000',
