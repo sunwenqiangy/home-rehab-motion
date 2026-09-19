@@ -17,6 +17,16 @@ export type AnalysisStatus =
   | 'quality_insufficient'
   | 'review_required';
 
+/** 患者端可感知的分析流水线阶段，不等同于任务最终状态。 */
+export type AnalysisProgressStage =
+  | 'waiting_for_worker'
+  | 'quality_check'
+  | 'keypoint_extraction'
+  | 'motion_analysis'
+  | 'report_generation'
+  | 'report_ready'
+  | 'reviewing';
+
 export type UserRole = 'patient' | 'nurse' | 'admin';
 
 export type FeedbackType =

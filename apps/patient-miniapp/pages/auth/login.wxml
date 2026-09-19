@@ -33,8 +33,6 @@
       <view class="login-phone-button__icon">⌕</view>
       <text>微信一键登录</text>
     </button>
-    <button wx:if="{{mockLoginEnabled}}" class="login-mock-button" bindtap="onMockLogin">体验登录后页面</button>
-    <view wx:if="{{mockLoginEnabled}}" class="login-mock-hint">预览模式：不请求服务端，不会保存真实训练数据</view>
     <view class="login-agreement" bindtap="onAgreementChange">
       <view class="login-check {{agreed ? 'login-check--selected' : ''}}">{{agreed ? '✓' : ''}}</view>
       <text>我已阅读并同意</text>

@@ -10,7 +10,7 @@
       <view class="v4-navbar-left" bindtap="onGoBack">
         <text class="v4-navbar-back">‹</text>
       </view>
-      <view class="v4-navbar-title">💬 消息中心</view>
+      <view class="v4-navbar-title">消息中心</view>
       <view class="v4-navbar-capsule"></view>
     </view>
   </view>
@@ -32,7 +32,7 @@
 
     <!-- 加载状态 -->
     <view wx:if="{{loading}}" class="v4-empty-state">
-      <view class="v4-empty-icon">⏳</view>
+      <image class="v4-loading-icon" src="../../assets/icons/common/loading.svg" mode="aspectFit" />
       <view class="v4-empty-title">正在加载通知...</view>
     </view>
 

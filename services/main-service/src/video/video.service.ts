@@ -16,7 +16,35 @@ import type {
   SaveManualVideoReviewRequestDto,
   VideoStatusDto,
 } from '@home-rehab-motion/shared-contract';
-import type { AnalysisStatus, TrainingActionType, TrainingVideoSourceType } from '@home-rehab-motion/shared-types';
+import type {
+  AnalysisProgressStage,
+  AnalysisStatus,
+  TrainingActionType,
+  TrainingVideoSourceType,
+} from '@home-rehab-motion/shared-types';
+
+function resolveProgressStage(
+  status: AnalysisStatus,
+  taskProgressStage?: string | null,
+): AnalysisProgressStage | undefined {
+  if (status === 'queued') {
+    return 'waiting_for_worker';
+  }
+  if (status === 'processing') {
+    return taskProgressStage === 'keypoint_extraction'
+      || taskProgressStage === 'motion_analysis'
+      || taskProgressStage === 'report_generation'
+      ? taskProgressStage
+      : 'quality_check';
+  }
+  if (status === 'completed') {
+    return 'report_ready';
+  }
+  if (status === 'review_required') {
+    return 'reviewing';
+  }
+  return undefined;
+}
 
 function resolveGrade(score: number | null | undefined, rawGrade?: string | null) {
   const numeric = Number(score ?? 0);
@@ -452,6 +480,8 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
           analysis_run_id: analysisRunId,
           // worker 可能已先一步把任务标记为 processing，不能再被确认接口降级回 queued。
           task_status: task.status === 'completed' ? 'completed' : undefined,
+          // Worker 已开始时不覆盖其已写入的细分步骤。
+          progress_stage: task.status === 'completed' ? 'report_ready' : undefined,
           fail_reason: null,
           finished_at: task.status === 'completed' ? new Date() : undefined,
         },
@@ -460,6 +490,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
           provider_task_id: task.task_id,
           analysis_run_id: analysisRunId,
           task_status: task.status === 'completed' ? 'completed' : 'queued',
+          progress_stage: task.status === 'completed' ? 'report_ready' : 'waiting_for_worker',
           finished_at: task.status === 'completed' ? new Date() : null,
         },
       });
@@ -497,20 +528,22 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
           where: { video_id: BigInt(payload.videoId) },
           update: {
             analysis_run_id: analysisRunId,
-task_status: 'queued',
-fail_reason: failReason.slice(0, 255),
-callback_status: 'enqueue_retry_pending',
-callback_last_error: failReason.slice(0, 255),
+            task_status: 'queued',
+            progress_stage: 'waiting_for_worker',
+            fail_reason: failReason.slice(0, 255),
+            callback_status: 'enqueue_retry_pending',
+            callback_last_error: failReason.slice(0, 255),
             callback_next_retry_at: retryAt,
             finished_at: null,
           },
           create: {
             video_id: BigInt(payload.videoId),
             analysis_run_id: analysisRunId,
-task_status: 'queued',
-fail_reason: failReason.slice(0, 255),
-callback_status: 'enqueue_retry_pending',
-callback_last_error: failReason.slice(0, 255),
+            task_status: 'queued',
+            progress_stage: 'waiting_for_worker',
+            fail_reason: failReason.slice(0, 255),
+            callback_status: 'enqueue_retry_pending',
+            callback_last_error: failReason.slice(0, 255),
             callback_next_retry_at: retryAt,
           },
         }),
@@ -594,9 +627,11 @@ callback_last_error: failReason.slice(0, 255),
       ? 30
       : undefined;
 
+    const status = (effectiveStatus as AnalysisStatus) || 'pending';
     const result = {
       videoId,
-      status: (effectiveStatus as AnalysisStatus) || 'pending',
+      status,
+      progressStage: resolveProgressStage(status, video.analysis_task?.progress_stage),
       reportReady:
         (effectiveStatus === 'completed' || effectiveStatus === 'review_required')
         && Boolean(video.video_evaluation_result),
@@ -1336,6 +1371,7 @@ callback_last_error: failReason.slice(0, 255),
       where: { video_id: videoId },
       update: {
         task_status: payload.analysis_status,
+        progress_stage: resolveProgressStage(payload.analysis_status as AnalysisStatus),
         analysis_run_id: payload.analysis_run_id,
         provider_task_id: payload.provider_task_id,
         fail_reason: payload.fail_reason,
@@ -1353,6 +1389,7 @@ callback_last_error: failReason.slice(0, 255),
       create: {
         video_id: videoId,
         task_status: payload.analysis_status,
+        progress_stage: resolveProgressStage(payload.analysis_status as AnalysisStatus),
         analysis_run_id: payload.analysis_run_id,
         provider_task_id: payload.provider_task_id,
         fail_reason: payload.fail_reason,

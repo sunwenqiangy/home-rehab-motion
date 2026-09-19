@@ -83,6 +83,7 @@ class AnalysisRepository:
             existing.provider_task_id = provider_task_id
             existing.analysis_run_id = analysis_run_id
             existing.task_status = 'processing'
+            existing.progress_stage = 'quality_check'
             existing.started_at = datetime.utcnow()
             # retry_count 仅表示主服务自动补偿“入队失败”的次数；Worker 首次
             # 开始执行以及重复投递都不是自动补偿，不能在这里累加。
@@ -94,6 +95,7 @@ class AnalysisRepository:
                 provider_task_id=provider_task_id,
                 analysis_run_id=analysis_run_id,
                 task_status='processing',
+                progress_stage='quality_check',
                 started_at=datetime.utcnow(),
             )
             self.session.add(task)
@@ -109,6 +111,7 @@ class AnalysisRepository:
             existing.provider_task_id = provider_task_id
             existing.analysis_run_id = analysis_run_id
             existing.task_status = 'processing'
+            existing.progress_stage = 'quality_check'
             existing.started_at = datetime.utcnow()
             # retry_count 仅表示主服务自动补偿“入队失败”的次数；Worker 首次
             # 开始执行以及重复投递都不是自动补偿，不能在这里累加。
@@ -129,11 +132,19 @@ class AnalysisRepository:
         self.session.flush()
         return task
 
+    def update_progress_stage(self, video_id: int, progress_stage: str) -> None:
+        """更新患者端展示的分析步骤，不改变任务终态。"""
+        task = self.get_analysis_task(video_id)
+        if task and task.task_status == 'processing':
+            task.progress_stage = progress_stage
+            self.session.flush()
+
     def mark_task_completed(self, video_id: int) -> None:
         """标记分析任务完成"""
         task = self.get_analysis_task(video_id)
         if task and task.task_status not in ('failed', 'quality_insufficient', 'review_required'):
             task.task_status = 'completed'
+            task.progress_stage = 'report_ready'
             task.finished_at = datetime.utcnow()
             self.session.flush()
 
@@ -148,6 +159,7 @@ class AnalysisRepository:
         task = self.get_analysis_task(video_id)
         if task and task.task_status != 'completed':
             task.task_status = 'failed'
+            task.progress_stage = None
             task.fail_reason = fail_reason[:255]
             task.finished_at = datetime.utcnow()
             self.session.flush()
@@ -164,6 +176,7 @@ class AnalysisRepository:
         task = self.get_analysis_task(video_id)
         if task and task.task_status != 'completed':
             task.task_status = 'review_required'
+            task.progress_stage = 'reviewing'
             task.fail_reason = reason[:255]
             task.finished_at = datetime.utcnow()
             self.session.flush()
@@ -179,6 +192,7 @@ class AnalysisRepository:
         task = self.get_analysis_task(video_id)
         if task and task.task_status != 'completed':
             task.task_status = 'quality_insufficient'
+            task.progress_stage = None
             task.fail_reason = fail_reason[:255]
             task.finished_at = datetime.utcnow()
             self.session.flush()

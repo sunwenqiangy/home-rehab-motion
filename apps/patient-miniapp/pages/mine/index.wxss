@@ -95,13 +95,13 @@
 .v4-profile-avatar {
   width: 120rpx;
   height: 120rpx;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 60rpx;
   flex-shrink: 0;
+}
+
+.v4-profile-avatar__image {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .v4-profile-info {
   flex: 1;
@@ -422,6 +422,10 @@
   font-size: 22rpx;
   color: #718096;
 }
+.v4-tab-item:not(.v4-tab-item--active) .v4-tab-icon {
+  opacity: 0.52;
+  filter: saturate(0.5);
+}
 .v4-tab-item--active {
   color: #087f8b;
   font-weight: 800;
@@ -436,18 +440,13 @@
   content: '';
 }
 .v4-tab-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48rpx;
-  height: 48rpx;
-  font-size: 40rpx;
-  line-height: 1;
+  display: block;
+  width: 44rpx;
+  height: 44rpx;
+  object-fit: contain;
 }
 .v4-tab-item--active .v4-tab-icon {
-  border-radius: 16rpx;
-  background: #e6f7f8;
-  transform: translateY(-2rpx) scale(1.08);
+  transform: translateY(-2rpx) scale(1.06);
 }
 .v4-tab-label {
   font-size: 22rpx;

@@ -7,9 +7,9 @@ const notification_1 = require("../../services/notification");
 const session_1 = require("../../store/session");
 const WEEK_DAYS = ['一', '二', '三', '四', '五', '六', '日'];
 const ACTION_ICON_MAP = {
-    abdominal_crunch: '🫁',
-    pelvic_tilt: '🦴',
-    knee_rotation: '🦵',
+    abdominal_crunch: '../../assets/icons/training/abdominal-crunch.svg',
+    pelvic_tilt: '../../assets/icons/training/pelvic-tilt.svg',
+    knee_rotation: '../../assets/icons/training/knee-rotation.svg',
 };
 const ACTION_CHIP_CLASS_MAP = {
     abdominal_crunch: 'v4-chip-teal',
@@ -31,7 +31,7 @@ function buildQuickActions() {
     const supported = ['abdominal_crunch', 'pelvic_tilt', 'knee_rotation'];
     return supported.map((actionType) => ({
         actionType,
-        icon: ACTION_ICON_MAP[actionType] || '🏋️',
+        iconUrl: ACTION_ICON_MAP[actionType] || '',
         label: ACTION_LABEL_MAP[actionType] || '训练动作',
         chipText: '去训练',
         chipClass: ACTION_CHIP_CLASS_MAP[actionType] || 'v4-chip-teal',

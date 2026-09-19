@@ -190,6 +190,16 @@
   font-size: 96rpx;
   margin-bottom: 24rpx;
 }
+.v4-loading-icon {
+  display: block;
+  width: 88rpx;
+  height: 88rpx;
+  margin: 0 auto 24rpx;
+  animation: notification-loading-spin 1.15s linear infinite;
+}
+@keyframes notification-loading-spin {
+  to { transform: rotate(360deg); }
+}
 .v4-empty-title {
   font-size: 36rpx;
   font-weight: 700;

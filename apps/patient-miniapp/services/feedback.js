@@ -32,10 +32,22 @@ function appendPatientFeedbackMessage(feedbackId, payload) {
         data: payload,
     });
 }
-function getFeedbackImageUploadTarget() {
+function getFeedbackImageUploadTarget(filePath) {
+    const fileName = `${filePath || ''}`.split('/').pop() || '';
     return (0, request_1.request)({
-        url: '/feedback/presign-upload',
+        url: `/feedback/presign-upload?fileName=${encodeURIComponent(fileName)}`,
     });
+}
+function getDirectUploadError(response) {
+    const responseText = `${response.data || ''}`;
+    const code = responseText.match(/<Code>([^<]+)<\/Code>/i)?.[1];
+    if (code === 'SignatureDoesNotMatch' || code === 'InvalidAccessKeyId') {
+        return new Error('图片上传凭证校验失败，请稍后重试。');
+    }
+    if (code === 'AccessDenied') {
+        return new Error('图片上传权限不足，请联系工作人员。');
+    }
+    return new Error(`图片上传失败（HTTP ${response.statusCode}）`);
 }
 function uploadFeedbackImage(uploadTarget, filePath) {
     const isDirectUpload = uploadTarget.uploadType === 's3_post';
@@ -55,7 +67,12 @@ function uploadFeedbackImage(uploadTarget, filePath) {
                         resolve({ objectKey: uploadTarget.objectKey, assetUrl: uploadTarget.assetUrl || '' });
                         return;
                     }
-                    reject(new Error(`图片上传失败（HTTP ${response.statusCode}）`));
+                    console.error('[反馈图片直传失败]', {
+                        url: uploadTarget.uploadUrl,
+                        statusCode: response.statusCode,
+                        response: response.data,
+                    });
+                    reject(getDirectUploadError(response));
                     return;
                 }
                 try {

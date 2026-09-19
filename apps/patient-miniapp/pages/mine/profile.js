@@ -1,12 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const me_1 = require("../../services/me");
+function avatarLabel(nickname) {
+    const label = String(nickname || '').trim();
+    return label ? Array.from(label)[0] : '训';
+}
 Page({
     data: {
         statusBarHeight: 20,
         navHeight: 112,
         nicknameInputFocus: false,
         nickname: '',
+        avatarLabel: '训',
+        avatarGender: 'unknown',
         phoneBound: false,
         maskedPhone: '',
         age: '',
@@ -28,6 +34,8 @@ Page({
             const profile = await (0, me_1.getProfile)();
             this.setData({
                 nickname: profile.nickname || '',
+                avatarLabel: avatarLabel(profile.nickname),
+                avatarGender: profile.gender === 'female' ? 'female' : profile.gender === 'male' ? 'male' : 'unknown',
                 phoneBound: Boolean(profile.phoneBound),
                 maskedPhone: profile.phoneBound ? '已绑定微信手机号' : '',
                 age: profile.age || '',
@@ -39,7 +47,8 @@ Page({
         }
     },
     onNicknameInput(event) {
-        this.setData({ nickname: String(event.detail.value || '').slice(0, 50) });
+        const nickname = String(event.detail.value || '').slice(0, 50);
+        this.setData({ nickname, avatarLabel: avatarLabel(nickname) });
     },
     onUseWechatNickname() {
         // chooseNickname 不是有效的 button open-type；微信昵称能力由 input type="nickname" 提供。
@@ -51,7 +60,11 @@ Page({
         this.setData({ age: String(event.detail.value || '').replace(/[^0-9]/g, '').slice(0, 3) });
     },
     onGenderChange(event) {
-        this.setData({ genderIndex: Number(event.detail.value) });
+        const genderIndex = Number(event.detail.value);
+        this.setData({
+            genderIndex,
+            avatarGender: genderIndex === 0 ? 'male' : genderIndex === 1 ? 'female' : 'unknown',
+        });
     },
     async onSaveProfile() {
         const nickname = String(this.data.nickname || '').trim();
@@ -74,8 +87,10 @@ Page({
             });
             this.setData({
                 nickname: profile.nickname,
+                avatarLabel: avatarLabel(profile.nickname),
                 age: profile.age || '',
                 genderIndex: profile.gender === 'male' ? 0 : profile.gender === 'female' ? 1 : 2,
+                avatarGender: profile.gender === 'female' ? 'female' : profile.gender === 'male' ? 'male' : 'unknown',
             });
             wx.showToast({ title: '资料已保存', icon: 'success' });
         }

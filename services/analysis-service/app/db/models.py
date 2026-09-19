@@ -89,6 +89,8 @@ class AnalysisTask(Base):
     provider_task_id = Column(String(64))
     analysis_run_id = Column(String(36))
     task_status = Column(String(30), default='pending')
+    # 当前执行中的细分步骤，与主服务 Prisma schema 的 progress_stage 对齐。
+    progress_stage = Column(String(30))
     # 自动补偿入队失败的次数；管理员主动重试在 manual_retry_count 单独计数。
     retry_count = Column(Integer, default=0)
     manual_retry_count = Column(Integer, default=0)

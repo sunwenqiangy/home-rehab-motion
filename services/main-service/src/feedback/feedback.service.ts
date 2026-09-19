@@ -29,12 +29,18 @@ export class FeedbackService {
     private readonly storage: StorageService,
   ) {}
 
-  async getFeedbackImageUploadTarget(userId: number): Promise<FeedbackImageUploadTargetDto> {
+  async getFeedbackImageUploadTarget(userId: number, fileName?: string): Promise<FeedbackImageUploadTargetDto> {
     const timestamp = Date.now();
-    const objectKey = `feedback/${userId}/${timestamp}.png`;
-    // 生产环境主服务为只读容器，反馈图片必须像训练视频一样直传私有 OSS，
-    // 不能再经过会写本地文件系统的 /feedback/upload-image 代理接口。
+    const extension = this.resolveFeedbackImageExtension(fileName);
+    const objectKey = `feedback/${userId}/${timestamp}${extension}`;
+    // 反馈图片限制为 5MB，可经 API 内存中转后由服务端写入私有 OSS。
+    // 这样避免小程序 multipart 表单直传在 OSS 上出现 403，且不依赖容器本地磁盘。
     return this.storage.createPrivateImageUploadTarget(objectKey);
+  }
+
+  private resolveFeedbackImageExtension(fileName?: string) {
+    const match = String(fileName || '').toLowerCase().match(/\.(png|jpe?g|gif|webp)$/);
+    return match ? `.${match[1] === 'jpeg' ? 'jpg' : match[1]}` : '.png';
   }
 
   async uploadFeedbackImage(userId: number, objectKey: string, file?: UploadedBinaryFile) {
@@ -42,7 +48,7 @@ export class FeedbackService {
     if (file.buffer.length > 5 * 1024 * 1024) throw new BadRequestException('单张图片不能超过 5 MB');
     if (!objectKey.startsWith(`feedback/${userId}/`)) throw new ForbiddenException('无权上传到他人的反馈目录');
 
-    const stored = await this.storage.saveAssetFile(objectKey, {
+    const stored = await this.storage.savePrivateImageFile(objectKey, {
       ...file,
       originalname: file.originalname || 'feedback.png',
     });

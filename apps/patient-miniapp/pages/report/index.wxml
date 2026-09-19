@@ -16,6 +16,7 @@
   <!-- 加载态 -->
   <view wx:if="{{loading}}" class="rp-loading">
     <view class="rp-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
+    <image class="rp-loading__icon" src="../../assets/icons/common/loading.svg" mode="aspectFit" />
     <view class="rp-loading__text">正在生成报告...</view>
     <view class="rp-loading__sub">请稍候，系统正在整理本次训练的分析结果。</view>
   </view>
@@ -85,6 +86,7 @@
           <text class="rp-stat-card__value rp-stat-card__value--green">{{validRepsText}}</text>
           <text class="rp-stat-card__label">有效次数</text>
         </view>
+        <!-- 连续旋转动作暂不计算静止保持时长，保留“待更新”避免摘要区域出现空位。 -->
         <view class="rp-stat-card">
           <text class="rp-stat-card__value rp-stat-card__value--teal">{{holdDurationText}}</text>
           <text class="rp-stat-card__label">平均保持</text>

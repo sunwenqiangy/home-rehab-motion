@@ -11,8 +11,12 @@
   <scroll-view scroll-y class="home-v4-screen" enable-back-to-top="true">
     <view class="home-v4-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
     <view class="home-v4-screen-inner">
-      <view wx:if="{{homeLoading}}" class="home-v4-loading-content">
-        <view class="v4-hero-card home-v4-skeleton-hero">
+    <view wx:if="{{homeLoading}}" class="home-v4-loading-content">
+      <view class="home-v4-loading-indicator" aria-label="正在加载首页内容">
+        <image class="home-v4-loading-indicator__icon" src="../../assets/icons/common/loading.svg" mode="aspectFit" />
+        <text>正在为您准备训练内容</text>
+      </view>
+      <view class="v4-hero-card home-v4-skeleton-hero">
           <view class="home-v4-skeleton home-v4-skeleton--badge"></view>
           <view class="home-v4-skeleton home-v4-skeleton--hero-title"></view>
           <view class="home-v4-skeleton home-v4-skeleton--hero-line"></view>
@@ -59,7 +63,7 @@
 
     <view class="v4-action-grid">
       <view class="v4-action-card" wx:for="{{quickActions}}" wx:key="actionType" data-action-type="{{item.actionType}}" bindtap="onOpenAction">
-        <view class="v4-action-icon">{{item.icon}}</view>
+        <image class="v4-action-icon" src="{{item.iconUrl}}" mode="aspectFit" />
         <view class="v4-action-title">{{item.label}}</view>
         <view class="v4-action-chip-wrap">
           <text class="v4-chip v4-chip-sm {{item.chipClass}}">{{item.chipText}}</text>
@@ -123,19 +127,19 @@
 
   <view class="home-v4-tabbar">
     <view class="home-v4-tab home-v4-tab-active">
-      <text class="home-v4-tab__icon">🏠</text>
+      <image class="home-v4-tab__icon" src="../../assets/icons/navigation/home.svg" mode="aspectFit" />
       <text class="home-v4-tab__label">首页</text>
     </view>
     <navigator class="home-v4-tab" url="/pages/guidance/index" open-type="redirect" hover-class="none">
-      <text class="home-v4-tab__icon">🏋️</text>
+      <image class="home-v4-tab__icon" src="../../assets/icons/navigation/training.svg" mode="aspectFit" />
       <text class="home-v4-tab__label">训练</text>
     </navigator>
     <navigator class="home-v4-tab" url="/pages/history/index" open-type="redirect" hover-class="none">
-      <text class="home-v4-tab__icon">📊</text>
+      <image class="home-v4-tab__icon" src="../../assets/icons/navigation/history.svg" mode="aspectFit" />
       <text class="home-v4-tab__label">历史</text>
     </navigator>
     <navigator class="home-v4-tab" url="/pages/mine/index" open-type="redirect" hover-class="none">
-      <text class="home-v4-tab__icon">👤</text>
+      <image class="home-v4-tab__icon" src="../../assets/icons/navigation/mine.svg" mode="aspectFit" />
       <text class="home-v4-tab__label">我的</text>
     </navigator>
   </view>

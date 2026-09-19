@@ -20,7 +20,11 @@
     <view class="v4-hero-card v4-hero-teal {{!isLoggedIn ? 'v4-guest-hero' : ''}}">
       <view wx:if="{{!isLoggedIn}}" class="v4-guest-hero__eyebrow">HOME REHAB MOTION · 游客模式</view>
       <view class="v4-profile-row">
-        <view class="v4-profile-avatar">{{isLoggedIn ? '👩' : '👤'}}</view>
+        <view class="v4-profile-avatar" aria-label="{{isLoggedIn ? (avatarGender === 'female' ? '女性头像' : avatarGender === 'male' ? '男性头像' : '默认头像') : '游客头像'}}">
+          <image wx:if="{{isLoggedIn && avatarGender === 'female'}}" class="v4-profile-avatar__image" src="../../assets/icons/mine/avatar-female.svg" mode="aspectFit" />
+          <image wx:elif="{{isLoggedIn && avatarGender === 'male'}}" class="v4-profile-avatar__image" src="../../assets/icons/mine/avatar-male.svg" mode="aspectFit" />
+          <image wx:else class="v4-profile-avatar__image" src="../../assets/icons/mine/avatar-default.svg" mode="aspectFit" />
+        </view>
         <view class="v4-profile-info">
           <view wx:if="{{isLoggedIn && profileLoading}}" class="v4-profile-skeleton">
             <view class="v4-skeleton-line v4-skeleton-line--name"></view>
@@ -116,19 +120,19 @@
   <!-- TabBar -->
   <view class="v4-tabbar">
     <view class="v4-tab-item" bindtap="onTabHome">
-      <text class="v4-tab-icon">🏠</text>
+      <image class="v4-tab-icon" src="../../assets/icons/navigation/home.svg" mode="aspectFit" />
       <text class="v4-tab-label">首页</text>
     </view>
     <view class="v4-tab-item" bindtap="onTabGuidance">
-      <text class="v4-tab-icon">🏋️</text>
+      <image class="v4-tab-icon" src="../../assets/icons/navigation/training.svg" mode="aspectFit" />
       <text class="v4-tab-label">训练</text>
     </view>
     <view class="v4-tab-item" bindtap="onTabHistory">
-      <text class="v4-tab-icon">📊</text>
+      <image class="v4-tab-icon" src="../../assets/icons/navigation/history.svg" mode="aspectFit" />
       <text class="v4-tab-label">历史</text>
     </view>
     <view class="v4-tab-item v4-tab-item--active">
-      <text class="v4-tab-icon">👤</text>
+      <image class="v4-tab-icon" src="../../assets/icons/navigation/mine.svg" mode="aspectFit" />
       <text class="v4-tab-label">我的</text>
     </view>
   </view>

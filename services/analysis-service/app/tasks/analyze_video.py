@@ -215,13 +215,15 @@ def analyze_video(
         bool(callback_url),
     )
 
-    from app.db.repository import AnalysisRepository
-    from app.db.session import sync_session_scope
-
     local_video_path: Optional[str] = None
     is_temp_file = False
 
     try:
+        # 数据库驱动和连接初始化也可能失败；必须纳入任务的重试与终态落库逻辑，
+        # 否则 Celery 已消费的消息会在数据库状态仍为 queued 时直接失败，患者端会无限等待。
+        from app.db.repository import AnalysisRepository
+        from app.db.session import sync_session_scope
+
         with sync_session_scope() as session:
             repo = AnalysisRepository(session)
             persisted_task = repo.create_analysis_task(video_id, str(task_id), analysis_run_id)
@@ -286,6 +288,10 @@ def analyze_video(
                 quality_status=quality_result.quality_status,
             )
             return {'video_id': video_id, 'status': 'quality_insufficient', 'reason': '视频基础质量不足'}
+
+        # 基础画面检查已完成；接下来逐帧解码并提取人体关键点，通常是视频处理中最耗时的步骤。
+        with sync_session_scope() as session:
+            AnalysisRepository(session).update_progress_stage(video_id, 'keypoint_extraction')
 
         from app.core.pose_estimator import PoseEstimator
 
@@ -364,6 +370,10 @@ def analyze_video(
             visualization_frames,
             effective_sample_fps=effective_sample_fps,
         )
+
+        # 姿态帧已成功读取，后续进入关键点校验与动作周期识别阶段。
+        with sync_session_scope() as session:
+            AnalysisRepository(session).update_progress_stage(video_id, 'motion_analysis')
 
         if len(frames) < 10:
             reason = '提取的关键点帧数不足'
@@ -624,8 +634,10 @@ def analyze_video(
         provenance_template_version = db_template.get('version') if db_template else None
         provenance_threshold_snapshot = db_template.get('threshold_config') if db_template else None
 
+        # 所有评分计算完成，正在将分析结果写入报告。
         with sync_session_scope() as session:
             repo = AnalysisRepository(session)
+            repo.update_progress_stage(video_id, 'report_generation')
             repo.save_full_analysis(
                 video_id=video_id,
                 video_score=video_score,

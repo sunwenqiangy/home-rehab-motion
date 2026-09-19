@@ -32,11 +32,18 @@
         <input class="profile-field-input" type="number" value="{{age}}" maxlength="3" placeholder="选填" bindinput="onAgeInput" />
         <text class="profile-field-unit">岁</text>
       </view>
-      <picker class="profile-field-row" range="{{genderOptions}}" value="{{genderIndex}}" bindchange="onGenderChange">
+      <view class="profile-field-row profile-gender-row">
         <text class="profile-field-label">性别</text>
-        <text class="profile-field-value">{{genderOptions[genderIndex]}}</text>
-        <text class="profile-field-arrow">›</text>
-      </picker>
+        <view class="profile-gender-control">
+          <view class="profile-gender-display">
+            <text class="profile-gender-value">{{genderOptions[genderIndex]}}</text>
+            <image class="profile-field-arrow" src="../../assets/icons/common/arrow-right.svg" mode="aspectFit" />
+          </view>
+          <picker class="profile-gender-picker" range="{{genderOptions}}" value="{{genderIndex}}" bindchange="onGenderChange">
+            <view class="profile-gender-picker__hit-area"></view>
+          </picker>
+        </view>
+      </view>
       <button class="profile-save" loading="{{saving}}" disabled="{{saving}}" bindtap="onSaveProfile">保存基础资料</button>
     </view>
 

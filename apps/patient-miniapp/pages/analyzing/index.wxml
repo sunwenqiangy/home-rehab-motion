@@ -24,16 +24,20 @@
       <!-- 旋转环 -->
       <view class="ring-wrap">
         <view class="ring"></view>
-        <text class="ring-wrap__title">正在分析您的动作…</text>
-        <text class="ring-wrap__sub">预计 1~2 分钟</text>
+        <text class="ring-wrap__eyebrow">当前步骤 · {{statusLabel}}</text>
+        <text class="ring-wrap__title">{{title}}</text>
+        <text class="ring-wrap__sub">{{tip}}</text>
       </view>
 
       <!-- 当前进度面板 -->
       <view class="info-panel">
-        <view class="info-title">📋 当前进度</view>
+        <view class="info-title">当前进度</view>
         <view class="az-check-list">
           <view class="az-check-item" wx:for="{{statusSteps}}" wx:key="label">
-            <text class="az-check-item__icon az-check-item__icon--{{item.state}}">{{item.state === 'done' ? '✓' : item.state === 'active' ? '⏳' : '○'}}</text>
+            <view class="az-check-item__marker az-check-item__marker--{{item.state}}">
+              <text wx:if="{{item.state === 'done'}}" class="az-check-item__check">✓</text>
+              <view wx:else class="az-check-item__dot"></view>
+            </view>
             <text class="az-check-item__text az-check-item__text--{{item.state}}">{{item.label}}</text>
           </view>
         </view>
@@ -47,17 +51,17 @@
 
       <!-- 提示面板 -->
       <view class="az-hint-panel">
-        <view class="az-hint-panel__title">💡 分析将在后台继续</view>
+        <view class="az-hint-panel__title">分析将在后台继续</view>
         <view class="az-hint-panel__desc">您可以返回首页等待通知，完成后会自动提醒您查看报告。</view>
       </view>
 
       <!-- 操作按钮 -->
       <view class="az-actions">
-        <button wx:if="{{canRetryConfirm}}" class="btn-big btn-teal" bindtap="onRetryConfirmUpload">🔄 重新创建分析任务</button>
-        <button wx:if="{{canRetryUpload}}" class="btn-big btn-teal" bindtap="onRetryUpload">🔄 重新上传训练视频</button>
-        <button wx:if="{{showHistoryAction}}" class="btn-big btn-outline" bindtap="onViewHistory">📋 去历史记录查看</button>
-        <button wx:if="{{!failed}}" class="btn-big btn-outline" bindtap="onBackHomeWait">🏠 返回首页等待</button>
-        <button wx:if="{{failed && !canRetryConfirm && !canRetryUpload}}" class="btn-big btn-outline" bindtap="onBackHomeWait">🏠 返回首页</button>
+        <button wx:if="{{canRetryConfirm}}" class="btn-big btn-teal" bindtap="onRetryConfirmUpload">重新创建分析任务</button>
+        <button wx:if="{{canRetryUpload}}" class="btn-big btn-teal" bindtap="onRetryUpload">重新上传训练视频</button>
+        <button wx:if="{{showHistoryAction}}" class="btn-big btn-outline" bindtap="onViewHistory">去历史记录查看</button>
+        <button wx:if="{{!failed}}" class="btn-big btn-outline" bindtap="onBackHomeWait">返回首页等待</button>
+        <button wx:if="{{failed && !canRetryConfirm && !canRetryUpload}}" class="btn-big btn-outline" bindtap="onBackHomeWait">返回首页</button>
       </view>
 
     </view>

@@ -27,13 +27,13 @@ export class FeedbackController {
   ) {}
 
   @Get('feedback/presign-upload')
-  async getFeedbackImageUploadTarget(@Req() req: Request) {
+  async getFeedbackImageUploadTarget(@Req() req: Request, @Query('fileName') fileName?: string) {
     const user = this.authService.requireUser(req, ['patient']);
-    return this.feedbackService.getFeedbackImageUploadTarget(user.userId);
+    return this.feedbackService.getFeedbackImageUploadTarget(user.userId, fileName);
   }
 
   @Post('feedback/upload-image')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   uploadFeedbackImage(
     @Req() req: Request,
     @Body() payload: { objectKey?: string },

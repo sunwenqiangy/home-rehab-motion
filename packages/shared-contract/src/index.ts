@@ -1,4 +1,5 @@
 import type {
+  AnalysisProgressStage,
   AnalysisStatus,
   FeedbackStatus,
   FeedbackType,
@@ -159,6 +160,8 @@ export interface ConfirmUploadResponseDto {
 export interface VideoStatusDto {
   videoId: number;
   status: AnalysisStatus;
+  /** 当前所在分析步骤；用于将排队、质量检查、动作分析与报告生成清晰区分。 */
+  progressStage?: AnalysisProgressStage;
   reportReady: boolean;
   /** 预计等待秒数 */
   estimatedWaitSeconds?: number;

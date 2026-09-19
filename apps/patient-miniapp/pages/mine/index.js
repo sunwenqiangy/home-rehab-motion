@@ -21,6 +21,10 @@ function resolveBadgeColor(title) {
         return 'green';
     return 'teal';
 }
+function avatarLabel(nickname) {
+    const label = String(nickname || '').trim();
+    return label ? Array.from(label)[0] : '训';
+}
 Page({
     data: {
         statusBarHeight: 20,
@@ -28,6 +32,8 @@ Page({
         isLoggedIn: false,
         isPreviewMode: false,
         nickname: '',
+        avatarLabel: '训',
+        avatarGender: 'unknown',
         profileLine: '',
         profileLoading: false,
         statsItems: [
@@ -54,6 +60,8 @@ Page({
         if (!isLoggedIn) {
             this.setData({
                 nickname: '',
+                avatarLabel: '训',
+                avatarGender: 'unknown',
                 profileLine: '',
                 profileLoading: false,
                 statsItems: [
@@ -72,6 +80,8 @@ Page({
         this.setData({
             profileLoading: true,
             nickname: '',
+            avatarLabel: '训',
+            avatarGender: 'unknown',
             profileLine: '',
             statsItems: [
                 { label: '总训练次数', value: '--', color: 'teal' },
@@ -117,6 +127,8 @@ Page({
             this.setData({
                 profileLoading: false,
                 nickname: profile.nickname,
+                avatarLabel: avatarLabel(profile.nickname),
+                avatarGender: profile.gender === 'female' ? 'female' : profile.gender === 'male' ? 'male' : 'unknown',
                 profileLine,
                 statsItems: [
                     { label: '总训练次数', value: totalCount, color: 'teal' },
@@ -134,6 +146,8 @@ Page({
             this.setData({
                 profileLoading: false,
                 nickname: '资料加载失败',
+                avatarLabel: '训',
+                avatarGender: 'unknown',
                 profileLine: '请下拉刷新后重试',
                 statsItems: [
                     { label: '总训练次数', value: '--', color: 'teal' },

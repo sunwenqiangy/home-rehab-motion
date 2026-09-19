@@ -16,7 +16,7 @@ function parseActionType(value) {
         ? value
         : '';
 }
-function getStatusLabel(status, failed, timeoutReached, confirming) {
+function getStatusLabel(status, progressStage, failed, timeoutReached, confirming) {
     if (confirming) {
         return '确认视频中';
     }
@@ -26,19 +26,45 @@ function getStatusLabel(status, failed, timeoutReached, confirming) {
     if (status === 'review_required') {
         return '结果待复核';
     }
-    if (status === 'processing') {
-        return '分析中';
-    }
-    if (status === 'queued') {
-        return '排队中';
-    }
     if (timeoutReached) {
         return '等待较久';
     }
     if (failed) {
         return '需要重新提交';
     }
-    return '准备中';
+    const stageLabels = {
+        waiting_for_worker: '等待分析资源',
+        quality_check: '检查视频质量',
+        keypoint_extraction: '分析动作',
+        motion_analysis: '分析动作',
+        report_generation: '生成报告',
+    };
+    return stageLabels[progressStage] || (status === 'queued' ? '等待分析资源' : '准备中');
+}
+function getProgressPresentation(status, progressStage, failed, timeoutReached, confirming) {
+    if (confirming) {
+        return { title: '正在确认您的视频', subtitle: '正在核对上传文件并创建分析任务。' };
+    }
+    if (status === 'completed') {
+        return { title: '本次训练分析完成', subtitle: '报告已生成，正在为您打开。' };
+    }
+    if (status === 'review_required') {
+        return { title: '正在复核本次训练结果', subtitle: '报告已生成，系统正在确认拍摄和动作信息。' };
+    }
+    if (failed) {
+        return { title: '本次分析未完成', subtitle: '请查看下方原因，并按提示重新提交。' };
+    }
+    if (timeoutReached) {
+        return { title: '分析时间比预期稍长', subtitle: '视频已保存，您可以稍后从历史记录查看结果。' };
+    }
+    const presentations = {
+        waiting_for_worker: { title: '正在等待分析资源', subtitle: '视频已收到，系统即将开始处理。' },
+        quality_check: { title: '正在检查视频质量', subtitle: '正在核对视频完整性、清晰度和入镜情况。' },
+        keypoint_extraction: { title: '正在分析您的动作', subtitle: '正在逐帧识别身体姿态、动作节奏、幅度与稳定性。' },
+        motion_analysis: { title: '正在分析您的动作', subtitle: '正在识别动作节奏、幅度与稳定性。' },
+        report_generation: { title: '正在生成训练报告', subtitle: '正在整理本次动作分析结果和训练建议。' },
+    };
+    return presentations[progressStage] || presentations.waiting_for_worker;
 }
 function failurePresentation(status, failReason) {
 const reason = `${failReason || ''}`.toLowerCase();
@@ -95,45 +121,41 @@ action: '请回到指导页确认拍摄角度、入镜范围和光线，再重�
         action: '建议先稍后查看训练记录；若仍未生成结果，再重新上传。',
     };
 }
-function buildStatusSteps(status) {
+function buildStatusSteps(status, progressStage) {
+    const steps = [
+        { label: '接收视频', state: 'done' },
+        { label: '等待分析资源', state: 'pending' },
+        { label: '检查视频质量', state: 'pending' },
+        { label: '分析动作', state: 'pending' },
+        { label: '生成报告', state: 'pending' },
+    ];
+    const activeIndexByStage = {
+        waiting_for_worker: 1,
+        quality_check: 2,
+        keypoint_extraction: 3,
+        motion_analysis: 3,
+        report_generation: 4,
+    };
+    if (status === 'completed') {
+        return steps.map((step) => ({ ...step, state: 'done' }));
+    }
     if (status === 'review_required') {
         return [
-            { label: '接收视频', state: 'done' },
-            { label: '质量检测', state: 'done' },
-            { label: '动作分析', state: 'done' },
+            ...steps.map((step) => ({ ...step, state: 'done' })),
             { label: '结果复核', state: 'active' },
         ];
     }
-    if (status === 'completed') {
-        return [
-            { label: '接收视频', state: 'done' },
-            { label: '质量检测', state: 'done' },
-            { label: '动作分析', state: 'done' },
-            { label: '生成报告', state: 'done' },
-        ];
+    if (status === 'quality_insufficient') {
+        return steps.map((step, index) => ({
+            ...step,
+            state: index < 2 ? 'done' : index === 2 ? 'warn' : 'pending',
+        }));
     }
-    if (status === 'processing') {
-        return [
-            { label: '接收视频', state: 'done' },
-            { label: '质量检测', state: 'done' },
-            { label: '动作分析', state: 'active' },
-            { label: '生成报告', state: 'pending' },
-        ];
-    }
-    if (status === 'quality_insufficient' || status === 'failed') {
-        return [
-            { label: '接收视频', state: 'done' },
-            { label: '质量检测', state: status === 'quality_insufficient' ? 'warn' : 'done' },
-            { label: '动作分析', state: status === 'failed' ? 'warn' : 'pending' },
-            { label: '生成报告', state: 'pending' },
-        ];
-    }
-    return [
-        { label: '接收视频', state: 'done' },
-        { label: '质量检测', state: 'active' },
-        { label: '动作分析', state: 'pending' },
-        { label: '生成报告', state: 'pending' },
-    ];
+    const activeIndex = activeIndexByStage[progressStage] ?? 1;
+    return steps.map((step, index) => ({
+        ...step,
+        state: index < activeIndex ? 'done' : index === activeIndex ? (status === 'failed' ? 'warn' : 'active') : 'pending',
+    }));
 }
 Page({
     data: {
@@ -145,22 +167,18 @@ Page({
         fileSizeBytes: 0,
         confirmingUpload: false,
         confirmStarted: false,
-        title: '系统正在分析您的动作',
-        tip: '通常需要 1~2 分钟，请耐心等待。',
+        title: '正在等待分析资源',
+        tip: '视频已收到，系统即将开始处理。',
         status: 'queued',
-        statusLabel: '排队中',
+        progressStage: 'waiting_for_worker',
+        statusLabel: '等待分析资源',
         failed: false,
         canRetryUpload: false,
         canRetryConfirm: false,
         timeoutReached: false,
         showHistoryAction: false,
         pollStartedAt: 0,
-        statusSteps: [
-            { label: '接收视频', state: 'done' },
-            { label: '质量检测', state: 'active' },
-            { label: '动作分析', state: 'pending' },
-            { label: '生成报告', state: 'pending' },
-        ],
+        statusSteps: buildStatusSteps('queued', 'waiting_for_worker'),
         failReasonTitle: '',
         failReasonDesc: '',
     },
@@ -191,15 +209,17 @@ Page({
             showHistoryAction: requiresReselect,
             title: requiresReselect
                 ? '需要重新选择视频'
-                : shouldConfirmUpload ? '正在确认您的视频' : '系统正在分析您的动作',
+                : shouldConfirmUpload ? '正在确认您的视频' : '正在等待分析资源',
             tip: requiresReselect
                 ? '无法确认原视频文件大小。为确保上传完整，请从相册重新选择原视频后再上传。'
                 : shouldConfirmUpload
                     ? '视频已上传，正在创建分析任务，请稍候。'
-                    : '通常需要 1~2 分钟，请耐心等待。',
+                    : '视频已收到，系统即将开始处理。',
             statusLabel: requiresReselect
                 ? '需要重新上传'
-                : getStatusLabel('queued', false, false, shouldConfirmUpload),
+                : getStatusLabel('queued', 'waiting_for_worker', false, false, shouldConfirmUpload),
+            progressStage: 'waiting_for_worker',
+            statusSteps: buildStatusSteps('queued', 'waiting_for_worker'),
             failReasonTitle: requiresReselect ? '无法校验视频完整性' : '',
             failReasonDesc: requiresReselect ? '请重新选择原视频并完成上传。' : '',
         });
@@ -248,12 +268,13 @@ Page({
             this.setData({
                 confirmingUpload: false,
                 canRetryConfirm: false,
-                title: confirmed.status === 'completed' ? '本次训练分析完成' : '系统正在分析您的动作',
+                title: confirmed.status === 'completed' ? '本次训练分析完成' : '正在等待分析资源',
                 tip: confirmed.status === 'completed'
                     ? '分析完成，正在打开报告页…'
-                    : '分析任务已创建，您可以留在此页查看进度，或返回首页等待。',
-                statusLabel: getStatusLabel(confirmed.status, false, false, false),
-                statusSteps: buildStatusSteps(confirmed.status),
+                    : '视频已收到，正在等待系统开始处理。',
+                progressStage: confirmed.status === 'completed' ? 'report_ready' : 'waiting_for_worker',
+                statusLabel: getStatusLabel(confirmed.status, confirmed.status === 'completed' ? 'report_ready' : 'waiting_for_worker', false, false, false),
+                statusSteps: buildStatusSteps(confirmed.status, confirmed.status === 'completed' ? 'report_ready' : 'waiting_for_worker'),
             });
             if (confirmed.status === 'completed') {
                 wx.redirectTo({ url: `/pages/report/index?videoId=${this.data.videoId}` });
@@ -271,32 +292,51 @@ Page({
             const uploadIntegrityFailed = message.includes('视频上传不完整')
                 || message.includes('视频文件信息不一致')
                 || message.includes('缺少原视频文件大小');
-            this.stopPolling();
+            const shouldKeepPolling = !isAuthError && !uploadIntegrityFailed;
+            if (!shouldKeepPolling) {
+                this.stopPolling();
+            }
             this.setData({
                 confirmingUpload: false,
                 confirmStarted: false,
-                failed: true,
+                // 确认接口的临时故障不会丢失视频，后台补偿可能已成功入队；不能把页面固定在失败态。
+                failed: !shouldKeepPolling,
                 canRetryUpload: uploadIntegrityFailed,
-                canRetryConfirm: !isAuthError && !uploadIntegrityFailed,
+                canRetryConfirm: false,
                 showHistoryAction: true,
+                status: shouldKeepPolling ? 'queued' : this.data.status,
+                progressStage: shouldKeepPolling ? 'waiting_for_worker' : this.data.progressStage,
                 title: isAuthError
                     ? '登录状态已过期'
-                    : uploadIntegrityFailed ? '视频上传不完整' : '暂时无法创建分析任务',
+                    : uploadIntegrityFailed
+                        ? '视频上传不完整'
+                        : '正在等待系统创建分析任务',
                 tip: isAuthError
                     ? '请重新登录后到训练记录查看此视频。'
                     : uploadIntegrityFailed
                         ? '为避免漏掉动作，系统没有开始分析。请从相册重新选择原视频后再次上传。'
-                        : '视频已经上传成功。请稍后到训练记录查看，系统会自动重试创建分析任务。',
-                statusLabel: isAuthError ? '需要重新登录' : uploadIntegrityFailed ? '需要重新上传' : '等待系统重试',
+                        : '视频已保存，系统正在后台恢复分析任务；页面会自动更新进度。',
+                statusLabel: isAuthError
+                    ? '需要重新登录'
+                    : uploadIntegrityFailed
+                        ? '需要重新上传'
+                        : '等待系统重试',
+                statusSteps: shouldKeepPolling
+                    ? buildStatusSteps('queued', 'waiting_for_worker')
+                    : this.data.statusSteps,
                 failReasonTitle: isAuthError
                     ? '登录状态已过期'
-                    : uploadIntegrityFailed ? '无法确认上传完整性' : '分析任务创建暂时不可用',
+                    : uploadIntegrityFailed ? '无法确认上传完整性' : '',
                 failReasonDesc: isAuthError
                     ? '请重新登录后重试。'
-                    : uploadIntegrityFailed
-                        ? '请重新选择原始相册视频并上传。'
-                        : '无需重新上传视频；系统会在后台尝试恢复任务。',
+                    : uploadIntegrityFailed ? '请重新选择原始相册视频并上传。' : '',
             });
+            if (shouldKeepPolling) {
+                this.pollStatus();
+                if (!pollTimer) {
+                    pollTimer = setInterval(() => this.pollStatus(), POLL_INTERVAL_MS);
+                }
+            }
         }
     },
     async pollStatus() {
@@ -313,7 +353,7 @@ Page({
                 showHistoryAction: true,
                 title: '分析时间比预期稍长',
                 tip: '您可以稍后到历史记录里继续查看结果，无需重复上传。',
-                statusLabel: getStatusLabel(this.data.status, false, true, false),
+                statusLabel: getStatusLabel(this.data.status, this.data.progressStage, false, true, false),
             });
             isPolling = false;
             return;
@@ -323,26 +363,13 @@ Page({
             const failed = result.status === 'failed' || result.status === 'quality_insufficient';
             const timeoutReached = this.data.timeoutReached;
             const failure = failed ? failurePresentation(result.status, result.failReason) : null;
-            const title = result.status === 'review_required'
-                ? '本次训练结果待复核'
-                : result.status === 'completed'
-                ? '本次训练分析完成'
-                : failed
-                    ? failure.title
-                    : timeoutReached
-                        ? '分析时间比预期稍长'
-                        : '系统正在分析您的动作';
-            const tip = result.status === 'review_required'
-                ? '系统正在复核拍摄和动作信息，正在为您打开说明。'
-                : result.status === 'completed'
-                ? '分析完成，正在跳转报告页...'
-                : failed
-                    ? failure.tip
-                    : timeoutReached
-                        ? '您可以稍后到历史记录里查看结果。'
-                        : '系统正在分析您的动作，请耐心等待。';
+            const progressStage = result.progressStage || (result.status === 'processing' ? 'quality_check' : 'waiting_for_worker');
+            const presentation = getProgressPresentation(result.status, progressStage, failed, timeoutReached, false);
+            const title = failed ? failure.title : presentation.title;
+            const tip = failed ? failure.tip : presentation.subtitle;
             this.setData({
                 status: result.status,
+                progressStage,
                 failed,
                 canRetryUpload: failed,
                 canRetryConfirm: false,
@@ -350,8 +377,8 @@ Page({
                 showHistoryAction: timeoutReached || failed,
                 title,
                 tip,
-                statusLabel: getStatusLabel(result.status, failed, timeoutReached, false),
-                statusSteps: buildStatusSteps(result.status),
+                statusLabel: getStatusLabel(result.status, progressStage, failed, timeoutReached, false),
+                statusSteps: buildStatusSteps(result.status, progressStage),
                 failReasonTitle: failed ? failure.title : '',
                 failReasonDesc: failed ? failure.action : '',
             });
@@ -416,7 +443,9 @@ Page({
             confirmingUpload: true,
             title: '正在确认您的视频',
             tip: '正在重新创建分析任务，请稍候。',
-            statusLabel: getStatusLabel('queued', false, false, true),
+            progressStage: 'waiting_for_worker',
+            statusLabel: getStatusLabel('queued', 'waiting_for_worker', false, false, true),
+            statusSteps: buildStatusSteps('queued', 'waiting_for_worker'),
         });
         void this.confirmUploadedVideo();
     },

@@ -218,32 +218,6 @@ page {
 
 .login-phone-button:active { background: #087e88; }
 
-.login-actions .login-mock-button {
-  width: 100% !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  min-height: 88rpx;
-  margin-top: 20rpx;
-  border: 2rpx solid #78c9c5;
-  border-radius: 24rpx;
-  color: #087f89;
-  background: #ffffff;
-  font-size: 28rpx;
-  font-weight: 800;
-  line-height: 80rpx;
-}
-
-.login-mock-button::after { border: none; }
-
-.login-mock-hint {
-  margin-top: 12rpx;
-  padding: 0 16rpx;
-  color: #6f898f;
-  font-size: 20rpx;
-  line-height: 1.5;
-  text-align: center;
-}
-
 .login-phone-button__icon {
   margin-right: 14rpx;
   font-size: 38rpx;

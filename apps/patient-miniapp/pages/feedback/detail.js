@@ -24,6 +24,11 @@ function getNotificationService() {
   return require('../../services/notification');
 }
 
+function isUserCancelled(error) {
+  const message = `${error?.errMsg || error?.message || error || ''}`.toLowerCase();
+  return message.includes('cancel') || message.includes('canceled') || message.includes('取消');
+}
+
 function formatTime(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -214,13 +219,16 @@ Page({
       }
       this.setData({ followUpUploading: true });
       const feedbackService = getFeedbackService();
-      const target = await feedbackService.getFeedbackImageUploadTarget();
+      const target = await feedbackService.getFeedbackImageUploadTarget(file.tempFilePath);
       const uploaded = await feedbackService.uploadFeedbackImage(target, file.tempFilePath);
       this.setData({
         followUpImages: [...this.data.followUpImages, { objectKey: uploaded.objectKey, previewUrl: uploaded.assetUrl || file.tempFilePath }],
       });
-    } catch (_error) {
-      wx.showToast({ title: '图片上传失败，请重试', icon: 'none' });
+    } catch (error) {
+      // 用户取消选择图片时保持当前输入内容，不提示上传错误。
+      if (!isUserCancelled(error)) {
+        wx.showToast({ title: '图片上传失败，请重试', icon: 'none' });
+      }
     } finally {
       this.setData({ followUpUploading: false });
     }

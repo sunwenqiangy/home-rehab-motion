@@ -145,6 +145,18 @@ page {
   text-align: center;
 }
 
+.rp-loading__icon {
+  display: block;
+  width: 88rpx;
+  height: 88rpx;
+  margin: 84rpx auto 24rpx;
+  animation: report-loading-spin 1.15s linear infinite;
+}
+
+@keyframes report-loading-spin {
+  to { transform: rotate(360deg); }
+}
+
 .rp-loading__text {
   font-size: 32rpx;
   font-weight: 700;
@@ -323,6 +335,10 @@ box-sizing: border-box;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16rpx;
+}
+
+.rp-stat-grid--single {
+  grid-template-columns: 1fr;
 }
 
 .rp-stat-card {

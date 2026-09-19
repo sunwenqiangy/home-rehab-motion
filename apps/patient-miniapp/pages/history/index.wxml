@@ -57,7 +57,7 @@
 
     <!-- 加载状态 -->
     <view wx:if="{{loading}}" class="v4-empty-state">
-      <view class="v4-empty-icon">⏳</view>
+      <image class="v4-loading-icon" src="../../assets/icons/common/loading.svg" mode="aspectFit" />
       <view class="v4-empty-title">正在加载历史记录...</view>
     </view>
 
@@ -105,19 +105,19 @@
   <!-- TabBar -->
   <view class="v4-tabbar">
     <view class="v4-tab-item" bindtap="onTabHome">
-      <text class="v4-tab-icon">🏠</text>
+      <image class="v4-tab-icon" src="../../assets/icons/navigation/home.svg" mode="aspectFit" />
       <text class="v4-tab-label">首页</text>
     </view>
     <view class="v4-tab-item" bindtap="onTabGuidance">
-      <text class="v4-tab-icon">🏋️</text>
+      <image class="v4-tab-icon" src="../../assets/icons/navigation/training.svg" mode="aspectFit" />
       <text class="v4-tab-label">训练</text>
     </view>
     <view class="v4-tab-item v4-tab-item--active">
-      <text class="v4-tab-icon">📊</text>
+      <image class="v4-tab-icon" src="../../assets/icons/navigation/history.svg" mode="aspectFit" />
       <text class="v4-tab-label">历史</text>
     </view>
     <view class="v4-tab-item" bindtap="onTabMine">
-      <text class="v4-tab-icon">👤</text>
+      <image class="v4-tab-icon" src="../../assets/icons/navigation/mine.svg" mode="aspectFit" />
       <text class="v4-tab-label">我的</text>
     </view>
   </view>

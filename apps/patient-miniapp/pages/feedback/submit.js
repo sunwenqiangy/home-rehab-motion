@@ -12,6 +12,11 @@ function getFeedbackService() {
   return require('../../services/feedback');
 }
 
+function isUserCancelled(error) {
+  const message = `${error?.errMsg || error?.message || error || ''}`.toLowerCase();
+  return message.includes('cancel') || message.includes('canceled') || message.includes('取消');
+}
+
 Page({
   data: {
     statusBarHeight: 20,
@@ -84,7 +89,7 @@ Page({
 
       this.setData({ feedbackUploading: true });
       const feedbackService = getFeedbackService();
-      const target = await feedbackService.getFeedbackImageUploadTarget();
+      const target = await feedbackService.getFeedbackImageUploadTarget(file.tempFilePath);
       const uploaded = await feedbackService.uploadFeedbackImage(target, file.tempFilePath);
       this.setData({
         feedbackImages: [
@@ -93,6 +98,8 @@ Page({
         ],
       });
     } catch (error) {
+      // 用户在系统图片选择器中返回不属于上传失败，不应打断填写反馈。
+      if (isUserCancelled(error)) return;
       console.error('[反馈图片上传失败]', error);
       const message = error instanceof Error ? error.message : '图片上传失败，请稍后重试。';
       wx.showToast({ title: message.slice(0, 20), icon: 'none' });

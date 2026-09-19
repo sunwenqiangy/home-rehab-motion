@@ -76,7 +76,9 @@ export class StorageService {
       ? normalizedKey
       : `${normalizedKey}.png`;
 
-    if (this.isS3PostEnabled()) {
+    // 阿里云 OSS 的浏览器/小程序直传策略会因表单编码、Content-Type 与签名算法差异频繁返回 403。
+    // 反馈图片限制为 5MB，安全地通过 API 内存中转，再由服务端写入私有 Bucket。
+    if (this.isS3PostEnabled() && !this.isAliyunOssEndpoint()) {
       return {
         uploadType: 's3_post' as const,
         uploadUrl: this.buildDirectUploadUrl(),
@@ -183,32 +185,51 @@ export class StorageService {
   }
 
   async saveAssetFile(objectKey: string, file?: UploadedBinaryFile) {
-    if (!file?.buffer || !file.buffer.length) {
-      throw new BadRequestException('未接收到文件');
-    }
-    const isVideo = ['.mp4', '.mov', '.m4v'].includes(path.extname(file.originalname || '').toLowerCase());
-    if (isVideo ? !this.isSupportedVideo(file.originalname, file.buffer) : !this.isSupportedImage(file.originalname, file.buffer)) {
-      throw new BadRequestException(isVideo ? '教学视频格式无效' : '仅支持有效的 PNG、JPG、GIF 或 WebP 图片');
-    }
-    const maxBytes = isVideo ? this.videoUploadMaxBytes : this.assetUploadMaxBytes;
-    if ((file.size || file.buffer.length) > maxBytes) {
-      throw new BadRequestException(isVideo ? '教学视频不能超过 200MB' : '图片或动图不能超过 20MB');
-    }
-
+    const { buffer } = this.validateAssetFile(file);
     const sanitizedKey = this.normalizeObjectKey(objectKey);
     const finalObjectKey = path.posix.extname(sanitizedKey)
       ? sanitizedKey
-      : `${sanitizedKey}${this.resolveAssetExtension(file.originalname)}`;
+      : `${sanitizedKey}${this.resolveAssetExtension(file?.originalname)}`;
     const absolutePath = this.resolveObjectPath(finalObjectKey);
 
     await mkdir(path.dirname(absolutePath), { recursive: true });
-    await writeFile(absolutePath, file.buffer);
+    await writeFile(absolutePath, buffer);
 
     return {
       objectKey: finalObjectKey,
       absolutePath,
-      size: file.size || file.buffer.length,
+      size: file?.size || buffer.length,
       assetUrl: `/oss-assets/${finalObjectKey}`,
+    };
+  }
+
+  /**
+   * 反馈图片经 API 上传时：本地模式写入本地存储；阿里云生产模式直接由服务端 PUT 到私有 OSS。
+   * FileInterceptor 默认使用内存存储，因此不会违反生产容器的只读文件系统约束。
+   */
+  async savePrivateImageFile(objectKey: string, file?: UploadedBinaryFile) {
+    const { buffer, isVideo } = this.validateAssetFile(file);
+    if (isVideo) {
+      throw new BadRequestException('反馈仅支持图片文件');
+    }
+
+    const normalizedKey = this.normalizeObjectKey(objectKey);
+    const finalObjectKey = path.posix.extname(normalizedKey)
+      ? normalizedKey
+      : `${normalizedKey}${this.resolveAssetExtension(file?.originalname)}`;
+
+    if (this.isS3PostEnabled() && this.isAliyunOssEndpoint()) {
+      await this.putAliyunObject(finalObjectKey, buffer, this.resolveContentType(file?.originalname || finalObjectKey));
+      return {
+        objectKey: finalObjectKey,
+        size: file?.size || buffer.length,
+      };
+    }
+
+    const stored = await this.saveAssetFile(finalObjectKey, file);
+    return {
+      objectKey: stored.objectKey,
+      size: stored.size,
     };
   }
 
@@ -275,6 +296,14 @@ export class StorageService {
       && Boolean(this.secretAccessKey);
   }
 
+  private isAliyunOssEndpoint() {
+    try {
+      return new URL(this.endpoint).hostname.toLowerCase().endsWith('.aliyuncs.com');
+    } catch (_error) {
+      return false;
+    }
+  }
+
   private buildDirectUploadUrl(bucketName = this.bucketName) {
     if (!this.endpoint) {
       throw new BadRequestException('未配置 OSS_ENDPOINT');
@@ -289,6 +318,73 @@ export class StorageService {
       : `${bucketName}.${endpointInfo.host}`;
 
     return `${endpointInfo.protocol}//${host}${bucketPath}`.replace(/\/+$/, '');
+  }
+
+  private async putAliyunObject(objectKey: string, content: Buffer, contentType?: string) {
+    const endpoint = new URL(this.endpoint);
+    const normalizedKey = this.normalizeObjectKey(objectKey);
+    const encodedKey = this.encodeUriPath(normalizedKey);
+    const host = `${this.bucketName}.${endpoint.host}`;
+    const requestPath = this.joinUrlPath(endpoint.pathname === '/' ? '' : endpoint.pathname, encodedKey);
+    const canonicalResource = `/${this.bucketName}/${encodedKey}`;
+    const date = new Date().toUTCString();
+    const ossHeaders = this.sessionToken
+      ? `x-oss-security-token:${this.sessionToken}\n`
+      : '';
+    const stringToSign = [
+      'PUT',
+      '',
+      contentType || '',
+      date,
+      `${ossHeaders}${canonicalResource}`,
+    ].join('\n');
+    const signature = createHmac('sha1', this.secretAccessKey).update(stringToSign).digest('base64');
+    const requester = endpoint.protocol === 'https:' ? httpsRequest : httpRequest;
+
+    await new Promise<void>((resolve, reject) => {
+      const request = requester(
+        {
+          protocol: endpoint.protocol,
+          hostname: `${this.bucketName}.${endpoint.hostname}`,
+          port: endpoint.port,
+          method: 'PUT',
+          path: requestPath,
+          headers: {
+            Host: host,
+            Date: date,
+            ...(contentType ? { 'Content-Type': contentType } : {}),
+            'Content-Length': content.length,
+            Authorization: `OSS ${this.accessKeyId}:${signature}`,
+            ...(this.sessionToken ? { 'x-oss-security-token': this.sessionToken } : {}),
+          },
+          timeout: this.objectCheckTimeoutMs,
+        },
+        (response) => {
+          const chunks: Buffer[] = [];
+          let responseLength = 0;
+          response.on('data', (chunk: Buffer) => {
+            if (responseLength >= 8 * 1024) return;
+            const remaining = 8 * 1024 - responseLength;
+            const retained = chunk.subarray(0, remaining);
+            chunks.push(retained);
+            responseLength += retained.length;
+          });
+          response.on('end', () => {
+            const statusCode = response.statusCode || 500;
+            if (statusCode >= 200 && statusCode < 300) {
+              resolve();
+              return;
+            }
+            const responseText = Buffer.concat(chunks).toString('utf8');
+            const ossCode = responseText.match(/<Code>([^<]+)<\/Code>/i)?.[1];
+            reject(new BadRequestException(`OSS 写入反馈图片失败（${ossCode || `HTTP ${statusCode}`}）`));
+          });
+        },
+      );
+      request.on('timeout', () => request.destroy(new Error('OSS upload timeout')));
+      request.on('error', reject);
+      request.end(content);
+    });
   }
 
   private buildGuidancePublicUrl(objectKey: string) {
@@ -343,7 +439,6 @@ export class StorageService {
     ).toString('base64');
 
     const signature = this.signPolicy(policy, dateStamp);
-
     const fields: Record<string, string> = {
       key: objectKey,
       policy,
@@ -602,6 +697,24 @@ export class StorageService {
       case '.m4v': return 'video/x-m4v';
       default: return undefined;
     }
+  }
+
+  private validateAssetFile(file?: UploadedBinaryFile) {
+    if (!file?.buffer || !file.buffer.length) {
+      throw new BadRequestException('未接收到文件');
+    }
+
+    const isVideo = ['.mp4', '.mov', '.m4v'].includes(path.extname(file.originalname || '').toLowerCase());
+    if (isVideo ? !this.isSupportedVideo(file.originalname, file.buffer) : !this.isSupportedImage(file.originalname, file.buffer)) {
+      throw new BadRequestException(isVideo ? '教学视频格式无效' : '仅支持有效的 PNG、JPG、GIF 或 WebP 图片');
+    }
+
+    const maxBytes = isVideo ? this.videoUploadMaxBytes : this.assetUploadMaxBytes;
+    if ((file.size || file.buffer.length) > maxBytes) {
+      throw new BadRequestException(isVideo ? '教学视频不能超过 200MB' : '图片或动图不能超过 20MB');
+    }
+
+    return { buffer: file.buffer, isVideo };
   }
 
   private isSupportedVideo(fileName: string | undefined, content: Buffer) {

@@ -107,7 +107,6 @@ export class MeService {
       gender: user.gender === 1 ? 'male' : user.gender === 2 ? 'female' : 'unknown',
     };
   }
-
   async getDisplaySettings(userId: number) {
     const user = await this.prisma.userProfile.findUnique({ where: { user_id: BigInt(userId) } });
     if (!user) throw new NotFoundException(`用户不存在: ${userId}`);

@@ -35,7 +35,6 @@ Page({
         statusBarHeight: 20,
         loggingIn: false,
         agreed: false,
-        mockLoginEnabled: true,
     },
     onLoad() {
         if ((0, session_1.getToken)()) {
@@ -68,14 +67,6 @@ Page({
         finally {
             this.setData({ loggingIn: false });
         }
-    },
-    onMockLogin() {
-        if (!this.data.agreed) {
-            wx.showToast({ title: '请先阅读并同意隐私政策', icon: 'none' });
-            return;
-        }
-        (0, session_1.startPreviewSession)();
-        wx.reLaunch({ url: '/pages/index/index' });
     },
     onOpenPrivacy() {
         wx.navigateTo({ url: '/pages/mine/privacy' });

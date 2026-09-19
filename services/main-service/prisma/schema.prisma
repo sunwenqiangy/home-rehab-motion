@@ -163,6 +163,8 @@ model AnalysisTask {
   provider_task_id  String?       @db.VarChar(64)
   analysis_run_id   String?       @db.Char(36)
   task_status       String        @default("pending") @db.VarChar(30)
+  // 当前执行中的细分步骤，用于患者端区分排队、质检、动作分析和报告生成。
+  progress_stage    String?       @db.VarChar(30)
   // 自动补偿“入队失败”次数，不包含管理员主动重新分析次数。
   retry_count       Int           @default(0)
   // 管理员显式点击“重新分析”的累计次数，跨 analysis run 保留。

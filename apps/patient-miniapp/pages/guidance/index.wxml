@@ -68,19 +68,19 @@
 
   <view class="guidance-v4-tabbar">
     <navigator class="guidance-v4-tab" url="/pages/index/index" open-type="redirect" hover-class="none">
-      <text class="guidance-v4-tab__icon">🏠</text>
+      <image class="guidance-v4-tab__icon" src="../../assets/icons/navigation/home.svg" mode="aspectFit" />
       <text class="guidance-v4-tab__label">首页</text>
     </navigator>
     <view class="guidance-v4-tab guidance-v4-tab--active">
-      <text class="guidance-v4-tab__icon">🏋️</text>
+      <image class="guidance-v4-tab__icon" src="../../assets/icons/navigation/training.svg" mode="aspectFit" />
       <text class="guidance-v4-tab__label">训练</text>
     </view>
     <navigator class="guidance-v4-tab" url="/pages/history/index" open-type="redirect" hover-class="none">
-      <text class="guidance-v4-tab__icon">📊</text>
+      <image class="guidance-v4-tab__icon" src="../../assets/icons/navigation/history.svg" mode="aspectFit" />
       <text class="guidance-v4-tab__label">历史</text>
     </navigator>
     <navigator class="guidance-v4-tab" url="/pages/mine/index" open-type="redirect" hover-class="none">
-      <text class="guidance-v4-tab__icon">👤</text>
+      <image class="guidance-v4-tab__icon" src="../../assets/icons/navigation/mine.svg" mode="aspectFit" />
       <text class="guidance-v4-tab__label">我的</text>
     </navigator>
   </view>
