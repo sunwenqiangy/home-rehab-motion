@@ -460,6 +460,8 @@ Page({
         wx.redirectTo({ url: '/pages/history/index' });
     },
     onBackHomeWait() {
-        wx.redirectTo({ url: '/pages/index/index' });
+        // 返回首页表示暂时离开本次训练流程；清空“指导 → 上传 → 分析”的页面栈，
+        // 避免用户再侧滑返回到已完成上传的指导页而误以为需要继续该流程。
+        wx.reLaunch({ url: '/pages/index/index' });
     },
 });
