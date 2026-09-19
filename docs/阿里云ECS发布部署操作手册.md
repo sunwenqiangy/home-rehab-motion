@@ -215,11 +215,56 @@ curl -fsS https://sunwenqiang.cn/api/health/live
 
 ## 6. 日常发布
 
-1. 完成功能和测试后，推送代码。
-2. 创建 Git Tag 或手动触发 `publish-production-images`。
-3. 在 GitHub Actions 确认构建成功，在 ACR 确认三个业务镜像具有同一版本 Tag。
-4. ECS 修改 `.env.production` 中 `MAIN_SERVICE_IMAGE`、`ANALYSIS_SERVICE_IMAGE`、`ADMIN_WEB_IMAGE` 到新 Tag。
-5. 拉取并启动新版本：
+生产发布分为两步：先由 GitHub Actions 构建并推送三个业务镜像到 ACR，再由 ECS 拉取指定 Tag 并重建服务。镜像 Tag 必须在三个业务镜像中保持一致，建议只使用未曾发布过的新版本号，例如 `v0.1.21`。
+
+ECS 中的 `deploy-production.sh` 与 `.env.production` 均位于 `/opt/home-rehab-motion`。部署脚本会同步更新 `.env.production` 中的 `MAIN_SERVICE_IMAGE`、`ANALYSIS_SERVICE_IMAGE` 和 `ADMIN_WEB_IMAGE`，拉取镜像、重建服务、输出容器状态，并轮询主服务就绪接口。
+
+### 6.1 自动发布：推送 Git Tag
+
+适用于常规版本发布。推送以 `v` 开头的 Git Tag 会自动触发 GitHub Actions 的 `publish-production-images` 工作流，镜像 Tag 与 Git Tag 完全一致。
+
+1. 确认 `main` 已包含待发布代码且本地测试完成。
+2. 创建并推送新的版本 Tag：
+
+```bash
+git checkout main
+git pull --ff-only origin main
+git tag -a v0.1.21 -m "release v0.1.21"
+git push origin v0.1.21
+```
+
+3. 打开 GitHub Actions，等待 `publish-production-images` 工作流成功；确认 `main-service`、`analysis-service`、`admin-web` 三个构建任务均成功。
+4. 在 ECS 执行发布。无数据库迁移时：
+
+```bash
+cd /opt/home-rehab-motion
+chmod +x deploy-production.sh
+./deploy-production.sh v0.1.21
+```
+
+5. 如本次版本包含新的 Prisma migration，**先完成 MySQL 备份**，再执行：
+
+```bash
+cd /opt/home-rehab-motion
+./deploy-production.sh v0.1.21 --migrate
+```
+
+### 6.2 手动命名发布：指定镜像 Tag
+
+适用于补发镜像、修复构建产物，或不希望创建 Git Tag 的发布。此方式需要在 GitHub Actions 中手动填写镜像 Tag；请使用新的、可追溯的名称，例如 `v0.1.21-hotfix.1`。不要覆盖已用于生产的 Tag。
+
+1. 打开仓库的 **Actions** 页面，选择 `publish-production-images` 工作流。
+2. 点击 **Run workflow**，选择要构建的代码分支或提交所在分支。
+3. 在 **image_tag** 中显式填写镜像 Tag，例如 `v0.1.21-hotfix.1`，然后运行工作流。不要留空：留空时工作流会使用当前 Git 引用名称，可能得到 `main` 等不适合生产追溯的 Tag。
+4. 等待三个业务镜像构建并推送成功后，登录 ECS，编辑 `/opt/home-rehab-motion/.env.production`，将以下三个变量的 Tag 都改为相同的手动命名 Tag，例如 `v0.1.21-hotfix.1`：
+
+```bash
+MAIN_SERVICE_IMAGE=.../home-rehab-motion-main:v0.1.21-hotfix.1
+ANALYSIS_SERVICE_IMAGE=.../home-rehab-motion-analysis:v0.1.21-hotfix.1
+ADMIN_WEB_IMAGE=.../home-rehab-motion-admin:v0.1.21-hotfix.1
+```
+
+5. 手动拉取并启动新版本：
 
 ```bash
 cd /opt/home-rehab-motion
@@ -228,22 +273,28 @@ docker compose --env-file .env.production -f infra/docker-compose.production.yml
 docker compose --env-file .env.production -f infra/docker-compose.production.yml ps
 ```
 
-6. 如有新 Prisma migration，先备份数据库，再执行迁移：
+6. 如有新的 Prisma migration，**先完成 MySQL 备份**，再执行迁移：
 
 ```bash
+cd /opt/home-rehab-motion
 docker compose --env-file .env.production -f infra/docker-compose.production.yml run --rm main-service \
   node node_modules/prisma/build/index.js migrate deploy \
   --schema services/main-service/prisma/schema.prisma
 ```
 
-7. 检查健康接口、容器状态和日志：
+### 6.3 发布后的检查与失败处理
+
+脚本默认要求交互确认；自动化场景可附加 `--yes`。在服务重建前失败时，脚本会自动恢复 `.env.production` 的镜像配置；服务已重建但健康检查失败时，脚本会保留现场并输出关键日志，避免在存在数据库迁移时盲目回滚。原镜像配置会备份为 `.env.production.before-release.<时间戳>`。
+
+如需额外检查日志：
 
 ```bash
+cd /opt/home-rehab-motion
 docker compose --env-file .env.production -f infra/docker-compose.production.yml logs --tail=100 main-service analysis-service analysis-worker
 curl -fsS https://sunwenqiang.cn/api/health/ready
 ```
 
-### 6.1 仅修改主服务或环境变量
+### 6.4 仅修改主服务或环境变量
 
 例如调整 `OSS_PRESIGNED_EXPIRES_SECONDS` 后，仅重建主服务：
 
