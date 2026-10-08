@@ -49,7 +49,7 @@ export class AdminAccountController {
 
   @Get()
   async listAccounts(@Req() req: Request) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
 
     const accounts = await this.prisma.adminAccount.findMany({
       orderBy: { created_at: 'desc' },
@@ -78,7 +78,7 @@ export class AdminAccountController {
       displayName?: string;
     },
   ) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
 
     const username = String(payload.username || '').trim();
     const password = String(payload.password || '');
@@ -130,7 +130,7 @@ export class AdminAccountController {
       displayName?: string;
     },
   ) {
-    const operator = this.authService.requireUser(req, ['admin']);
+    const operator = this.authService.requireUser(req, ['admin', 'nurse']);
 
     const id = Number(accountId);
     if (!Number.isInteger(id) || id <= 0) {
@@ -195,7 +195,7 @@ export class AdminAccountController {
     @Param('accountId') accountId: string,
     @Body() payload: { password?: string },
   ) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
 
     const id = Number(accountId);
     if (!Number.isInteger(id) || id <= 0) {
@@ -222,7 +222,7 @@ export class AdminAccountController {
 
   @Delete(':accountId')
   async removeAccount(@Req() req: Request, @Param('accountId') accountId: string) {
-    const operator = this.authService.requireUser(req, ['admin']);
+    const operator = this.authService.requireUser(req, ['admin', 'nurse']);
 
     const id = Number(accountId);
     if (!Number.isInteger(id) || id <= 0) {

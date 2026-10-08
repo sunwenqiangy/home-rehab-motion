@@ -9,6 +9,7 @@ import type {
   TrainingActionType,
   UserRole,
   WeeklyProgressStatus,
+  VideoQualityStatus,
 } from '@home-rehab-motion/shared-types';
 
 export interface GuidanceAssetDto {
@@ -379,7 +380,7 @@ export interface FeedbackTrainingContextDto {
   actionType?: TrainingActionType;
   duration?: number;
   analysisStatus?: AnalysisStatus;
-  qualityStatus?: string;
+  qualityStatus?: VideoQualityStatus;
   uploadedAt?: string;
   averageScore?: number;
   grade?: string;

@@ -7,6 +7,9 @@ export type TrainingActionType =
 
 export type TrainingVideoSourceType = 'miniapp' | 'admin_flow_verify' | 'gold_template';
 
+/** 视频质检结果：通过、存在需复核的提醒、质量不足。 */
+export type VideoQualityStatus = 'passed' | 'warning' | 'insufficient';
+
 export type AnalysisStatus =
   | 'pending'
   | 'uploading'

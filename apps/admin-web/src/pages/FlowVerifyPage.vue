@@ -385,7 +385,7 @@ import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
 import { ANALYSIS_STATUS_LABELS } from '@home-rehab-motion/shared-constants';
-import type { AnalysisStatus, TrainingActionType } from '@home-rehab-motion/shared-types';
+import type { AnalysisStatus, TrainingActionType, VideoQualityStatus } from '@home-rehab-motion/shared-types';
 import type { KeypointsData } from '@/services/video';
 import SkeletonOverlay from '@/components/SkeletonOverlay.vue';
 
@@ -448,7 +448,7 @@ type AnalysisDetailData = {
   actionType: TrainingActionType;
   analysisStatus: AnalysisStatus;
   taskStatus: string;
-  qualityStatus: string | null;
+  qualityStatus: VideoQualityStatus | null;
   qualityScore: number | null;
   qualityIssues: Array<{
     code?: string;

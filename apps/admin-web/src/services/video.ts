@@ -1,6 +1,6 @@
 import { request } from '@/utils/request';
 import type { ManualVideoReviewDto, SaveManualVideoReviewRequestDto } from '@home-rehab-motion/shared-contract';
-import type { AnalysisStatus, TrainingActionType } from '@home-rehab-motion/shared-types';
+import type { AnalysisStatus, TrainingActionType, VideoQualityStatus } from '@home-rehab-motion/shared-types';
 
 export interface AdminVideoItem {
   videoId: number;
@@ -8,7 +8,7 @@ export interface AdminVideoItem {
   status: AnalysisStatus;
   uploadedAt?: string;
   patientName?: string;
-  qualityStatus?: string | null;
+  qualityStatus?: VideoQualityStatus | null;
 }
 
 export interface AdminAnalysisTaskItem {
@@ -26,7 +26,7 @@ export interface AdminAnalysisTaskItem {
   retryAt: string | null;
   callbackStatus: string | null;
   failReason: string | null;
-  qualityStatus: string | null;
+  qualityStatus: VideoQualityStatus | null;
   reportReady: boolean;
   createdAt: string;
   startedAt: string | null;
@@ -45,7 +45,7 @@ export interface AdminVideoDetail {
   videoId: number;
   actionType: TrainingActionType;
   status: AnalysisStatus;
-  qualityStatus: string;
+  qualityStatus: VideoQualityStatus | null;
   uploadedAt?: string;
   patientName?: string;
   qualityScore?: number | null;
@@ -102,7 +102,7 @@ export interface AdminVideoAnalysisDetail {
   videoId: number;
   analysisStatus: AnalysisStatus;
   taskStatus: string;
-  qualityStatus: string | null;
+  qualityStatus: VideoQualityStatus | null;
   qualityScore: number | null;
   reportReady: boolean;
   summary: {

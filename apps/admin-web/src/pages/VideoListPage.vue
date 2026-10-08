@@ -132,8 +132,8 @@ import { useRouter } from 'vue-router';
 import { Setting, TrendCharts, VideoCamera } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { getAdminVideoList, type AdminVideoItem } from '@/services/video';
-import type { AnalysisStatus, TrainingActionType } from '@home-rehab-motion/shared-types';
-import { ANALYSIS_STATUS_LABELS } from '@home-rehab-motion/shared-constants';
+import type { AnalysisStatus, TrainingActionType, VideoQualityStatus } from '@home-rehab-motion/shared-types';
+import { ANALYSIS_STATUS_LABELS, VIDEO_QUALITY_STATUS_LABELS } from '@home-rehab-motion/shared-constants';
 
 const router = useRouter();
 const videos = ref<AdminVideoItem[]>([]);
@@ -195,11 +195,8 @@ function tagClass(status: AnalysisStatus): string {
   return map[status] || 'soft-tag--info';
 }
 
-function qualityLabel(status?: string | null): string {
-  if (!status) return '待评估';
-  if (status === 'pass') return '质量通过';
-  if (status === 'insufficient') return '质量不足';
-  return '未知状态';
+function qualityLabel(status?: VideoQualityStatus | null): string {
+return status ? VIDEO_QUALITY_STATUS_LABELS[status] : '待评估';
 }
 
 function formatDateTime(value: string): string {

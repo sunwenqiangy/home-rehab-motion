@@ -7,13 +7,18 @@ import type {
   FeedbackMessageDto,
   FeedbackStatusLogDto,
 } from '@home-rehab-motion/shared-contract';
-import type { FeedbackStatus, FeedbackType } from '@home-rehab-motion/shared-types';
+import type { FeedbackStatus, FeedbackType, VideoQualityStatus } from '@home-rehab-motion/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService, type UploadedBinaryFile } from '../storage/storage.service';
 
 const SAFETY_NOTICE = '您提到训练中出现身体不适。请先暂停本次训练；若不适持续、加重或影响活动，请及时联系主治医生或前往医疗机构评估。本系统仅提供训练指导，不提供诊断、紧急医疗帮助或治疗建议。';
 const MAX_IMAGE_COUNT = 3;
 const MAX_CONTENT_LENGTH = 500;
+
+function normalizeVideoQualityStatus(status?: string | null): VideoQualityStatus | undefined {
+  if (status === 'passed' || status === 'warning' || status === 'insufficient') return status;
+  return status === 'pass' ? 'passed' : undefined;
+}
 
 const REPLY_TEMPLATES = [
   { code: 'report_unclear', label: '解释报告', content: '您的报告主要用于帮助您了解本次训练动作情况。建议先结合报告中的“系统建议”回看动作要点，再按建议放慢节奏练习。' },
@@ -346,7 +351,7 @@ export class FeedbackService {
         actionType: feedback.video.action_type,
         duration: feedback.video.duration ?? undefined,
         analysisStatus: feedback.video.analysis_status,
-        qualityStatus: feedback.video.quality_status ?? undefined,
+        qualityStatus: normalizeVideoQualityStatus(feedback.video.quality_status),
         uploadedAt: feedback.video.upload_time.toISOString(),
         averageScore: feedback.video.video_evaluation_result?.average_score ?? undefined,
         grade: feedback.video.video_evaluation_result?.grade ?? undefined,

@@ -20,7 +20,7 @@ export class ConfigController {
 
   @Get()
   listThresholds(@Req() req: Request) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.configService.listThresholds();
   }
 
@@ -41,7 +41,7 @@ export class ConfigController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
   ) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     const parsedStatus = status == null ? undefined : Number(status);
     const parsedPage = page == null ? undefined : Number(page);
     const parsedPageSize = pageSize == null ? undefined : Number(pageSize);
@@ -68,19 +68,19 @@ export class ConfigController {
 
   @Get('gold-templates/:templateId')
   getGoldTemplateVersion(@Req() req: Request, @Param('templateId') templateId: string) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.configService.getGoldTemplateVersion(Number(templateId));
   }
 
   @Put('gold-templates/:templateId/archive')
   archiveGoldTemplateVersion(@Req() req: Request, @Param('templateId') templateId: string) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.configService.archiveGoldTemplateVersion(Number(templateId));
   }
 
   @Delete('gold-templates/:templateId')
   deleteGoldTemplateVersion(@Req() req: Request, @Param('templateId') templateId: string) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.configService.deleteGoldTemplateVersion(Number(templateId));
   }
 
@@ -90,25 +90,25 @@ export class ConfigController {
     @Param('templateId') templateId: string,
     @Body() payload: GoldTemplateVersionStatusUpdateRequestDto,
   ) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.configService.updateGoldTemplateVersionStatus(Number(templateId), payload.status);
   }
 
   @Get('motivation-rules')
   getMotivationRules(@Req() req: Request): Promise<MotivationRulesDto> {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.configService.getMotivationRules();
   }
 
   @Put('motivation-rules')
   updateMotivationRules(@Req() req: Request, @Body() payload: Partial<MotivationRulesDto>): Promise<MotivationRulesDto> {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.configService.updateMotivationRules(payload);
   }
 
   @Get('patient-app-config')
   getPatientAppConfig(@Req() req: Request): Promise<PatientAppConfigDto> {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.configService.getPatientAppConfig();
   }
 
@@ -117,7 +117,7 @@ export class ConfigController {
     @Req() req: Request,
     @Body() payload: UpdatePatientAppConfigRequestDto,
   ): Promise<PatientAppConfigDto> {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.configService.updatePatientAppConfig(payload);
   }
 
@@ -127,8 +127,8 @@ export class ConfigController {
     @Param('actionType') actionType: string,
     @Body() payload: Record<string, unknown>,
   ) {
-    const user = this.authService.requireUser(req, ['admin']);
-    const operator = user.accountId ? `admin:${user.accountId}` : 'admin';
+    const user = this.authService.requireUser(req, ['admin', 'nurse']);
+    const operator = user.accountId ? `${user.role}:${user.accountId}` : user.role;
     return this.configService.createThresholdVersion({
       actionType: actionType as any,
       thresholdConfig: ((payload.thresholdConfig as Record<string, unknown> | undefined) || payload),

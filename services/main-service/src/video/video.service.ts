@@ -21,7 +21,14 @@ import type {
   AnalysisStatus,
   TrainingActionType,
   TrainingVideoSourceType,
+  VideoQualityStatus,
 } from '@home-rehab-motion/shared-types';
+
+function normalizeVideoQualityStatus(status?: string | null): VideoQualityStatus | null {
+  if (status === 'passed' || status === 'warning' || status === 'insufficient') return status;
+  // 兼容历史记录中的旧值；新写入统一使用 passed。
+  return status === 'pass' ? 'passed' : null;
+}
 
 function resolveProgressStage(
   status: AnalysisStatus,
@@ -856,7 +863,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
       videoId: Number(video.video_id),
       actionType: video.action_type,
       status: video.analysis_status,
-      qualityStatus: video.quality_status,
+      qualityStatus: normalizeVideoQualityStatus(video.quality_status),
       patientName: video.user?.name || '未命名患者',
       uploadedAt: video.created_at.toISOString(),
         createdAt: video.created_at.toISOString(),
@@ -910,7 +917,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
         retryAt: video.analysis_task?.callback_next_retry_at?.toISOString() || null,
         callbackStatus: video.analysis_task?.callback_status || null,
         failReason: video.fail_reason || video.analysis_task?.fail_reason || null,
-        qualityStatus: video.quality_status,
+        qualityStatus: normalizeVideoQualityStatus(video.quality_status),
         reportReady: Boolean(video.video_evaluation_result),
         createdAt: video.created_at.toISOString(),
         startedAt: video.analysis_task?.started_at?.toISOString() || null,
@@ -1013,7 +1020,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
       videoId,
       actionType: video.action_type,
       status: video.analysis_status,
-      qualityStatus: video.quality_status,
+      qualityStatus: normalizeVideoQualityStatus(video.quality_status),
       qualityScore: video.quality_score,
       qualityIssues: Array.isArray(video.quality_issues) ? video.quality_issues : [],
       failReason: video.fail_reason,
@@ -1223,7 +1230,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
       actionType: video.action_type,
       analysisStatus: video.analysis_status,
       taskStatus: video.analysis_task?.task_status || video.analysis_status,
-      qualityStatus: video.quality_status,
+      qualityStatus: normalizeVideoQualityStatus(video.quality_status),
       qualityScore: video.quality_score,
       qualityIssues: Array.isArray(video.quality_issues) ? video.quality_issues : [],
       failReason: video.fail_reason,
@@ -1295,6 +1302,10 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('无效的分析状态');
     }
 
+    const qualityStatus = normalizeVideoQualityStatus(payload.quality_status);
+    if (payload.quality_status && !qualityStatus) {
+      throw new BadRequestException('无效的视频质量状态');
+    }
     const videoId = BigInt(payload.video_id);
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[4-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.analysis_run_id)) {
       throw new BadRequestException('无效的分析运行 ID');
@@ -1348,7 +1359,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
         where: { video_id: videoId },
         data: {
           analysis_status: nextStatus,
-          quality_status: payload.quality_status,
+          quality_status: qualityStatus,
           quality_score: payload.quality_score,
           quality_issues: (payload.quality_issues as object | undefined) ?? undefined,
           fail_reason: nextStatus === 'completed' ? null : (payload.fail_reason ?? null),

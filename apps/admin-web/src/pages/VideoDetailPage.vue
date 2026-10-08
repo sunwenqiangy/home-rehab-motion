@@ -180,8 +180,8 @@ import { getAdminVideoAnalysisDetail, getAdminVideoDetail, getAdminVideoKeypoint
 import type { ManualVideoReviewDto, SaveManualVideoReviewRequestDto } from '@home-rehab-motion/shared-contract';
 import { ElMessage } from 'element-plus';
 import SkeletonOverlay from '@/components/SkeletonOverlay.vue';
-import type { AnalysisStatus, TrainingActionType } from '@home-rehab-motion/shared-types';
-import { ANALYSIS_STATUS_LABELS } from '@home-rehab-motion/shared-constants';
+import type { AnalysisStatus, TrainingActionType, VideoQualityStatus } from '@home-rehab-motion/shared-types';
+import { ANALYSIS_STATUS_LABELS, VIDEO_QUALITY_STATUS_LABELS } from '@home-rehab-motion/shared-constants';
 
 const route = useRoute();
 const router = useRouter();
@@ -274,7 +274,7 @@ const averageHoldText = computed(() => {
 function actionTypeLabel(type?: TrainingActionType) { return ({ abdominal_crunch: '缩腹运动', pelvic_tilt: '骨盆倾斜', knee_rotation: '膝关节旋转' } as Record<string, string>)[type || ''] || '-'; }
 function featureLabel(code: string) { return ({ pelvic_stability: '骨盆稳定性不足', hold_duration: '动作持续度不足', trunk_angle: '躯干角度偏差', knee_rotation_angle: '膝关节旋转幅度偏差' } as Record<string, string>)[code] || `动作特征异常（${code}）`; }
 function statusLabel(status?: AnalysisStatus) { return status ? (ANALYSIS_STATUS_LABELS as Record<string, string>)[status] || status : '-'; }
-function qualityLabel(status?: string | null) { return !status ? '待评估' : status === 'pass' ? '质量通过' : status === 'insufficient' ? '质量不足' : status; }
+function qualityLabel(status?: VideoQualityStatus | null) { return status ? VIDEO_QUALITY_STATUS_LABELS[status] : '待评估'; }
 function formatDateTime(value?: string | null) {
   if (!value) return '-';
   const date = new Date(value);

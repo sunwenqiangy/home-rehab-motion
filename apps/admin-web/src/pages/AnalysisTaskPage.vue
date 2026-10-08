@@ -91,7 +91,7 @@
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="router.push(`/videos/${row.videoId}`)">详情</el-button>
-            <el-tooltip v-if="row.canReanalyze" :disabled="canReanalyze" content="需要管理员权限才能重新分析" placement="top"><el-button link type="warning" :disabled="!canReanalyze" :loading="retryingId === row.videoId" @click="confirmReanalyze(row)">重新分析</el-button></el-tooltip>
+            <el-button v-if="row.canReanalyze" link type="warning" :loading="retryingId === row.videoId" @click="confirmReanalyze(row)">重新分析</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -116,7 +116,8 @@ import { computed, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { getAdminAnalysisHealth, getAdminAnalysisTasks, reanalyzeVideo, type AdminAnalysisHealth, type AdminAnalysisTaskItem, type AdminAnalysisTaskPage } from '@/services/video';
-import { isAdmin } from '@/utils/permission';
+import type { VideoQualityStatus } from '@home-rehab-motion/shared-types';
+import { VIDEO_QUALITY_STATUS_LABELS } from '@home-rehab-motion/shared-constants';
 
 const router = useRouter();
 const route = useRoute();
@@ -129,7 +130,6 @@ const keyword = ref(typeof route.query.keyword === 'string' ? route.query.keywor
 const retryingId = ref<number | null>(null);
 const selectedReanalyzeTask = ref<AdminAnalysisTaskItem | null>(null);
 const reanalyzeDialogVisible = ref(false);
-const canReanalyze = computed(() => isAdmin());
 const processingTaskCount = computed(() => Object.entries(analysisHealth.value?.tasks || {}).filter(([key]) => key.startsWith('processing:')).reduce((total, [, count]) => total + count, 0));
 const retryPendingTaskCount = computed(() => Object.entries(analysisHealth.value?.tasks || {}).filter(([key]) => key.endsWith(':enqueue_retry_pending')).reduce((total, [, count]) => total + count, 0));
 const oldestQueuedHint = computed(() => analysisHealth.value?.oldestQueued ? `最久等待 ${formatElapsed(analysisHealth.value.oldestQueued.waitSeconds)}（#${analysisHealth.value.oldestQueued.videoId}）` : '当前没有排队任务');
@@ -143,7 +143,7 @@ const statusOptions = [
 function statusLabel(value: string) { return statusOptions.find((item) => item.value === value)?.label || value; }
 function actionLabel(value: string) { return ({ abdominal_crunch: '缩腹运动', pelvic_tilt: '骨盆倾斜', knee_rotation: '膝关节旋转' } as Record<string, string>)[value] || value; }
 function sourceLabel(value: string) { return value === 'miniapp' ? '患者上传' : value === 'gold_template' ? '金标准样本' : '内部验证样本'; }
-function qualityLabel(value?: string | null) { return value === 'insufficient' ? '视频质量不足，请查看详情' : value === 'pass' ? '质量通过' : '—'; }
+function qualityLabel(value?: VideoQualityStatus | null) { return value ? VIDEO_QUALITY_STATUS_LABELS[value] : '—'; }
 function tagType(value: string) { return value === 'completed' ? 'success' : ['failed', 'quality_insufficient'].includes(value) ? 'danger' : value === 'review_required' ? 'warning' : 'info'; }
 function queueStatusLabel(row: AdminAnalysisTaskItem) {
   if (row.callbackStatus === 'retry_pending' || row.callbackStatus === 'enqueue_retry_pending') return '等待自动补偿入队';
@@ -197,8 +197,7 @@ function changePageSize(limit: number) {
   load(1);
 }
 function confirmReanalyze(row: AdminAnalysisTaskItem) {
-  if (!canReanalyze.value) { ElMessage.warning('需要管理员权限才能重新分析'); return; }
-  if (retryingId.value !== null) { ElMessage.info('已有重新分析任务正在提交，请稍候'); return; }
+    if (retryingId.value !== null) { ElMessage.info('已有重新分析任务正在提交，请稍候'); return; }
   selectedReanalyzeTask.value = row;
   reanalyzeDialogVisible.value = true;
 }

@@ -88,7 +88,7 @@
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="createdAt" label="创建时间" min-width="180" />
+          <el-table-column prop="createdAt" label="创建时间" min-width="180"><template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template></el-table-column>
           <el-table-column label="操作" min-width="320" fixed="right">
             <template #default="{ row }">
               <div class="toolbar-group">
@@ -230,6 +230,23 @@ const roleLabel = computed(() => {
 const hasToken = computed(() => !!localStorage.getItem('admin_token'));
 const adminCount = computed(() => accounts.value.filter((item) => item.role === 'admin').length);
 const nurseCount = computed(() => accounts.value.filter((item) => item.role === 'nurse').length);
+
+function formatDateTime(value?: string) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}年${values.month}月${values.day}日 ${values.hour}:${values.minute}`;
+}
 
 function resetCreateForm() {
   createForm.username = '';

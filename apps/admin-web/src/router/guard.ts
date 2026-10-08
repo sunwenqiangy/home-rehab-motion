@@ -7,11 +7,17 @@ const WHITE_LIST = ['/login'];
  * 菜单 key 映射：路径前缀 -> 权限 key
  */
 const PATH_PERMISSION_MAP: Record<string, string> = {
+  '/users': 'patients',
   '/videos': 'videos',
+  '/analysis-tasks': 'videos',
   '/flow-verify': 'flow-verify',
+  '/gold-templates': 'gold-templates',
   '/guidance': 'guidance',
   '/feedback': 'feedback',
   '/thresholds': 'thresholds',
+  '/template-versions': 'template-versions',
+  '/motivation-rules': 'motivation-rules',
+  '/patient-config': 'patient-config',
   '/accounts': 'accounts',
 };
 

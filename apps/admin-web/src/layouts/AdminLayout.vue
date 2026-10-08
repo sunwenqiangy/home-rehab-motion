@@ -65,7 +65,7 @@
             <template #title>账号管理</template>
           </el-menu-item>
 
-          <div class="menu-group" v-if="!isCollapse">开发工具</div>
+          <div class="menu-group" v-if="!isCollapse && hasPermission('flow-verify')">开发工具</div>
           <el-menu-item v-if="hasPermission('flow-verify')" index="/flow-verify">
             <el-icon><Promotion /></el-icon>
             <template #title>流程验证</template>

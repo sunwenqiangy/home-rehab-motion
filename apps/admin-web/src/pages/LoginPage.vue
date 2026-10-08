@@ -31,7 +31,7 @@
         <div class="login-form-panel__header">
           <div class="login-form-panel__badge">Secure Access</div>
           <h2>进入管理端工作台</h2>
-          <p>使用后台账号登录，查看训练分析、内容配置和运营反馈。</p>
+          <p>使用管理端账号登录，查看训练分析、内容配置和运营反馈。</p>
         </div>
 
         <el-form :model="form" :rules="rules" ref="formRef" label-width="0" @submit.prevent="handleLogin">
@@ -50,7 +50,7 @@
 
         <div class="login-form-panel__foot">
           <span class="page-pill page-pill--light">受控访问</span>
-          <span class="login-form-panel__foot-text">所有后台操作均在本地测试环境内完成。</span>
+          <!-- <span class="login-form-panel__foot-text">所有后台操作均在本地测试环境内完成。</span> -->
         </div>
       </section>
     </div>

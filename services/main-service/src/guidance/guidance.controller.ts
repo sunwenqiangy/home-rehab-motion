@@ -52,25 +52,25 @@ export class GuidanceController {
 
   @Get('admin/guidance')
   listAdminGuidance(@Req() req: Request) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.guidanceService.listAdminGuidance();
   }
 
   @Post('admin/guidance')
   createAdminGuidance(@Req() req: Request, @Body() payload: Record<string, unknown>) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.guidanceService.createAdminGuidance(payload);
   }
 
   @Get('admin/guidance/config-package')
   exportGuidanceConfigPackage(@Req() req: Request) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.guidanceService.exportGuidanceConfigPackage();
   }
 
   @Post('admin/guidance/config-package/import')
   importGuidanceConfigPackage(@Req() req: Request, @Body() payload: unknown) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.guidanceService.importGuidanceConfigPackage(payload);
   }
 
@@ -81,25 +81,25 @@ export class GuidanceController {
     @Query('mediaKind') mediaKind?: string,
     @Query('contentType') contentType?: string,
   ) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.guidanceService.getAdminPresignUpload(fileName, mediaKind === 'video' ? 'video' : 'image', contentType);
   }
 
   @Get('admin/guidance/:id')
   getAdminGuidance(@Req() req: Request, @Param('id') id: string) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.guidanceService.getAdminGuidance(Number(id));
   }
 
   @Post('admin/guidance/:id/enabled')
   setAdminGuidanceEnabled(@Req() req: Request, @Param('id') id: string, @Body() payload: { enabled?: boolean }) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.guidanceService.setAdminGuidanceEnabled(Number(id), payload.enabled === true);
   }
 
   @Post('admin/guidance/:id/copy')
   copyAdminGuidance(@Req() req: Request, @Param('id') id: string) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.guidanceService.copyAdminGuidance(Number(id));
   }
 
@@ -109,13 +109,13 @@ export class GuidanceController {
     @Param('id') id: string,
     @Body() payload: Record<string, unknown>,
   ) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.guidanceService.updateAdminGuidance(Number(id), payload);
   }
 
   @Delete('admin/guidance/:id')
   deleteAdminGuidance(@Req() req: Request, @Param('id') id: string) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.guidanceService.deleteAdminGuidance(Number(id));
   }
 
@@ -126,7 +126,7 @@ export class GuidanceController {
     @Body() payload: { objectKey?: string },
     @UploadedFile() file?: UploadedBinaryFile,
   ) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.guidanceService.uploadAsset(payload.objectKey || '', file);
   }
 }

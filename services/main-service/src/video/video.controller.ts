@@ -159,7 +159,7 @@ export class VideoController {
 
   @Post('admin/:videoId/reanalyze')
   reanalyzeVideo(@Req() req: Request, @Param('videoId') videoId: string) {
-    this.authService.requireUser(req, ['admin']);
+    this.authService.requireUser(req, ['admin', 'nurse']);
     return this.videoService.retryAnalysis(Number(videoId));
   }
 

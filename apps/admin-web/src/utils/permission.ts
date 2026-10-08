@@ -14,22 +14,22 @@ export function isNurse(): boolean {
 
 /**
  * 角色权限矩阵
- * admin: 全部功能
- * nurse: 视频记录、反馈管理（只读 + 回复）
+ * admin / nurse: 除开发工具外均可使用
+ * 开发工具（流程验证、金标准提取）仅管理员可用
  */
 export const PERMISSION_MAP: Record<string, UserRole[]> = {
   'dashboard': ['admin', 'nurse'],
   'videos': ['admin', 'nurse'],
   'patients': ['admin', 'nurse'],
-  'flow-verify': ['admin', 'nurse'],
-  'guidance': ['admin'],
+  'flow-verify': ['admin'],
+  'guidance': ['admin', 'nurse'],
   'feedback': ['admin', 'nurse'],
-  'thresholds': ['admin'],
+  'thresholds': ['admin', 'nurse'],
   'gold-templates': ['admin'],
-  'template-versions': ['admin'],
-  'motivation-rules': ['admin'],
-  'patient-config': ['admin'],
-  'accounts': ['admin'],
+  'template-versions': ['admin', 'nurse'],
+  'motivation-rules': ['admin', 'nurse'],
+  'patient-config': ['admin', 'nurse'],
+  'accounts': ['admin', 'nurse'],
 };
 
 export function hasPermission(menuKey: string): boolean {
