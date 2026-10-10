@@ -6,7 +6,7 @@
     <!-- 自定义导航栏 -->
     <view class="upload-v4-nav">
       <view class="upload-v4-nav__back {{submitting ? 'upload-v4-nav__back--disabled' : ''}}" bindtap="onGoBack">
-        <text class="upload-v4-nav__back-icon">‹</text>
+        <image class="upload-v4-nav__back-icon" src="../../assets/icons/common/arrow-left.svg" mode="aspectFit"/>
       </view>
       <text class="upload-v4-nav__title">上传确认</text>
       <view class="upload-v4-nav__capsule"></view>

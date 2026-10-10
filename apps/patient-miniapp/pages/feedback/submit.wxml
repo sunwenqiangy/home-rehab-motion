@@ -2,7 +2,7 @@
   <view class="submit-header">
     <view class="submit-statusbar" style="height: {{statusBarHeight}}px;"></view>
     <view class="submit-navbar">
-      <view class="submit-navbar__back" bindtap="onBack">‹</view>
+      <view class="submit-navbar__back" bindtap="onBack"><image class="submit-navbar__back-icon" src="../../assets/icons/common/arrow-left.svg" mode="aspectFit"/></view>
       <view class="submit-navbar__title">提交训练反馈</view>
       <view class="submit-navbar__placeholder"></view>
     </view>

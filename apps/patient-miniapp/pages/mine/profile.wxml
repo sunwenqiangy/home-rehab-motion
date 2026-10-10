@@ -1,7 +1,7 @@
 <view class="profile-page">
   <!-- 自定义导航固定在视口顶部，内容区预留相同高度避免被遮挡。 -->
   <view class="profile-nav" style="padding-top: {{statusBarHeight}}px;">
-    <view class="profile-back" bindtap="onBack" aria-label="返回">‹</view>
+    <view class="profile-back" bindtap="onBack" aria-label="返回"><image class="profile-back__icon" src="../../assets/icons/common/arrow-left.svg" mode="aspectFit"/></view>
     <view class="profile-nav__title">个人资料</view>
     <view class="profile-nav__placeholder"></view>
   </view>

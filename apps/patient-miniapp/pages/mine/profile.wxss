@@ -32,9 +32,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #0e9aa7;
-  font-size: 64rpx;
-  line-height: 1;
+}
+
+.profile-back__icon {
+  display: block;
+  width: 32rpx;
+  height: 32rpx;
 }
 
 .profile-nav__title {

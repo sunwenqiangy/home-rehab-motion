@@ -42,10 +42,9 @@
   flex-shrink: 0;
 }
 .v4-navbar-back {
-  font-size: 48rpx;
-  color: #2d3748;
-  font-weight: 300;
-  line-height: 1;
+  display: block;
+  width: 32rpx;
+  height: 32rpx;
 }
 .v4-navbar-title {
   flex: 1;

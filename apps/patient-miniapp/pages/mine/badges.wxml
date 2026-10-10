@@ -8,7 +8,7 @@
     <!-- 自定义导航栏 -->
     <view class="v4-navbar">
       <view class="v4-navbar-left" bindtap="onGoBack">
-        <text class="v4-navbar-back">‹</text>
+        <image class="v4-navbar-back" src="../../assets/icons/common/arrow-left.svg" mode="aspectFit"/>
       </view>
       <view class="v4-navbar-title">🏅 全部徽章</view>
       <view class="v4-navbar-capsule"></view>

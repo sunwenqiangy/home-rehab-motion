@@ -39,9 +39,10 @@ page {
   justify-content: center;
 }
 
-.submit-navbar__back {
-  font-size: 52rpx;
-  font-weight: 300;
+.submit-navbar__back-icon {
+  display: block;
+  width: 32rpx;
+  height: 32rpx;
 }
 
 .submit-navbar__title {

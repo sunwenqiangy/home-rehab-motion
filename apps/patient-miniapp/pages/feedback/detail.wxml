@@ -1,7 +1,7 @@
 <view class="feedback-page">
   <view class="feedback-header" style="padding-top: {{statusBarHeight}}px;">
     <view class="feedback-nav">
-      <view class="feedback-back" bindtap="onBackHistory">‹</view>
+      <view class="feedback-back" bindtap="onBackHistory"><image class="feedback-back__icon" src="../../assets/icons/common/arrow-left.svg" mode="aspectFit"/></view>
       <view class="feedback-title">训练反馈</view>
       <view class="feedback-nav-space"></view>
     </view>

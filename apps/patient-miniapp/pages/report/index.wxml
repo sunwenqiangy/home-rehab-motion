@@ -6,7 +6,7 @@
     <!-- 自定义导航栏 -->
     <view class="rp-nav">
       <view class="rp-nav__back" bindtap="onGoBack">
-        <text class="rp-nav__back-icon">‹</text>
+        <image class="rp-nav__back-icon" src="../../assets/icons/common/arrow-left.svg" mode="aspectFit"/>
       </view>
       <text class="rp-nav__title">训练报告</text>
       <view class="rp-nav__capsule"></view>

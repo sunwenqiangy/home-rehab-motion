@@ -114,10 +114,9 @@ page {
 }
 
 .rp-nav__back-icon {
-  font-size: 48rpx;
-  font-weight: 300;
-  color: #2d3748;
-  line-height: 1;
+  display: block;
+  width: 32rpx;
+  height: 32rpx;
 }
 
 .rp-nav__title {
