@@ -649,8 +649,12 @@ async function pollVideoStatus(videoId: number): Promise<void> {
       );
       const status = unwrap(res.data);
 
-       if (status.status === 'completed') {
-         uploadProgressText.value = '分析已完成';
+       // 缩腹旧模板与当前特征口径不兼容时，Worker 会以 review_required
+       // 终态返回；这类已通过质量校验的金标准样本仍可用于生成新版候选模板。
+       if (status.status === 'completed' || status.status === 'review_required') {
+         uploadProgressText.value = status.status === 'review_required'
+           ? '分析已完成，正在按当前特征口径提模'
+           : '分析已完成';
          return;
        }
        if (status.status === 'failed' || status.status === 'quality_insufficient') {
