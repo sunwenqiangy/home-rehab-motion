@@ -17,6 +17,7 @@ services:
     networks: [internal, host-access]
     restart: unless-stopped
     mem_limit: 256m
+    memswap_limit: 256m
     cpus: 0.25
     healthcheck:
       test: ['CMD-SHELL', 'redis-cli --no-auth-warning -a "$$REDIS_PASSWORD" ping | grep PONG']
@@ -79,6 +80,7 @@ services:
     read_only: true
     tmpfs: [/tmp]
     mem_limit: 512m
+    memswap_limit: 512m
     cpus: 0.5
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
@@ -120,6 +122,9 @@ services:
       OSS_PUBLIC_BASE_URL: ''
       # 与 Worker 共享持久卷：API 只读提供关键点骨架预览。
       LOCAL_STORAGE_ROOT: /var/lib/home-rehab-motion
+      # 显式透传姿态推理参数；否则 .env.production 的低内存设置不会进入容器。
+      SAMPLE_FPS: ${SAMPLE_FPS:-10}
+      MODEL_COMPLEXITY: ${MODEL_COMPLEXITY:-1}
       MAX_ANALYSIS_DURATION_SECONDS: ${MAX_ANALYSIS_DURATION_SECONDS:-300}
       MAX_ANALYSIS_FRAMES: ${MAX_ANALYSIS_FRAMES:-1200}
       MAX_POSE_FRAME_WIDTH: ${MAX_POSE_FRAME_WIDTH:-720}
@@ -144,6 +149,7 @@ services:
     read_only: true
     tmpfs: [/tmp]
     mem_limit: 512m
+    memswap_limit: 512m
     cpus: 0.5
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
@@ -179,6 +185,9 @@ services:
       OMP_NUM_THREADS: '1'
       MKL_NUM_THREADS: '1'
       # 2C2G 单机保护：单任务最多推理 1200 帧；骨盆倾斜固定 4fps 可完整覆盖最长 300 秒视频。
+      # 与 analysis-service 保持一致，避免 Worker 忽略生产环境的低内存推理配置。
+      SAMPLE_FPS: ${SAMPLE_FPS:-10}
+      MODEL_COMPLEXITY: ${MODEL_COMPLEXITY:-1}
       MAX_ANALYSIS_DURATION_SECONDS: ${MAX_ANALYSIS_DURATION_SECONDS:-300}
       MAX_ANALYSIS_FRAMES: ${MAX_ANALYSIS_FRAMES:-1200}
       MAX_POSE_FRAME_WIDTH: ${MAX_POSE_FRAME_WIDTH:-720}
@@ -204,8 +213,10 @@ services:
     restart: unless-stopped
     read_only: true
     tmpfs: [/tmp]
-    # 2C2G 宿主机还承载 MySQL 与业务服务；限制 Worker 防止单任务拖垮整机。
-    mem_limit: 1024m
+    # 低内存 ECS 的故障隔离：宁可让超限分析任务失败并由 Worker 重启，
+    # 也不允许其占用宿主机所有内存或 Swap 导致整机无响应。
+    mem_limit: 640m
+    memswap_limit: 640m
     cpus: 1.0
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
@@ -248,6 +259,7 @@ services:
     read_only: true
     tmpfs: [/tmp]
     mem_limit: 128m
+    memswap_limit: 128m
     cpus: 0.15
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
@@ -261,6 +273,7 @@ services:
     read_only: true
     tmpfs: [/tmp, /var/cache/nginx, /var/run]
     mem_limit: 128m
+    memswap_limit: 128m
     cpus: 0.25
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]

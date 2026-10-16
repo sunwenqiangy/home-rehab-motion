@@ -1062,6 +1062,9 @@ def analyze_video(
             analysis_run_id,
             task_id,
             final_status,
+            # review_required 也是终态；主服务需保存原因，以便缩腹金标准源视频
+            # 在模板不兼容时仍可作为“当前特征口径”的候选模板来源。
+            fail_reason=review_required_reason,
             quality_status=quality_result.quality_status,
             quality_score=quality_score,
             quality_issues=quality_issues,
