@@ -131,6 +131,7 @@ class ScoringEngine:
         video_id: int,
         rep_scores: List[RepScore],
         confidence_score: float = 0.8,
+        short_clip: bool = False,
     ) -> VideoScore:
         """
         视频级汇总
@@ -158,7 +159,7 @@ class ScoringEngine:
         grade = resolve_grade(average_score)
 
         # 生成建议
-        main_issues, advice_summary = generate_advice(rep_scores, confidence_score)
+        main_issues, advice_summary = generate_advice(rep_scores, confidence_score, short_clip=short_clip)
 
         return VideoScore(
             video_id=video_id,
@@ -188,7 +189,7 @@ def _is_recurrent_issue(issue_count: int, total_reps: int) -> bool:
 
 
 def generate_advice(rep_scores: List[RepScore],
-                     confidence_score: float) -> tuple:
+                    confidence_score: float, short_clip: bool = False) -> tuple:
     """根据视频级重复问题生成患者建议，最多呈现两个最常出现的专项问题。"""
     advice_summary = []
     total_reps = len(rep_scores)
@@ -197,14 +198,23 @@ def generate_advice(rep_scores: List[RepScore],
         for rep_score in rep_scores
         for issue in set(rep_score.compensation_types)
     )
-    recurrent_issues = [
-        issue
-        for issue, count in issue_counts.items()
-        if _is_recurrent_issue(count, total_reps)
-    ]
-    recurrent_issues.sort(key=lambda issue: (-issue_counts[issue], issue))
-    displayed_issues = recurrent_issues[:2]
-    main_issues = [{'feature': issue, 'label': 'warning'} for issue in displayed_issues]
+    if short_clip and total_reps == 1:
+        # 单次只能描述本次有证据的偏差；证据不足时不生成确定性建议。
+        eligible = {rule.get('trigger', {}).get('feature') for rule in ADVICE_RULES.values()}
+        displayed_issues = (
+            sorted(issue for issue in issue_counts if issue in eligible)[:1]
+            if confidence_score >= 0.75 and rep_scores[0].valid_flag else []
+        )
+        issue_label = 'single_observation'
+    else:
+        recurrent_issues = [
+            issue for issue, count in issue_counts.items()
+            if _is_recurrent_issue(count, total_reps)
+        ]
+        recurrent_issues.sort(key=lambda issue: (-issue_counts[issue], issue))
+        displayed_issues = recurrent_issues[:2]
+        issue_label = 'warning'
+    main_issues = [{'feature': issue, 'label': issue_label} for issue in displayed_issues]
 
     for rule_code, rule in ADVICE_RULES.items():
         trigger = rule.get('trigger', {})
@@ -214,6 +224,13 @@ def generate_advice(rep_scores: List[RepScore],
         feature = trigger.get('feature')
         if feature not in displayed_issues:
             continue
+        if issue_label == 'single_observation':
+            advice_summary.append({
+                'advice_code': rule_code,
+                'patient_text': f"本次动作观察到：{rule['patient_text']} 单次记录仅供参考。",
+                'nurse_text': f"单次观察到 {feature} 偏差，需结合后续训练复核，不推断频发。",
+            })
+            break
         advice_summary.append({
             'advice_code': rule_code,
             'patient_text': rule['patient_text'],

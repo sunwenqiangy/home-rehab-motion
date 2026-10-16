@@ -123,7 +123,9 @@ def _backfill_rep_segments(video_id: int, data: Dict[str, Any]) -> Dict[str, Any
         # 否则切换配置后历史预览会生成不同周期。
         segmentation_version = str(data.get('segmentation_version') or '')
         mode = 'cycle_state_machine' if segmentation_version in {'abdominal_cycle_v2', 'abdominal_cycle_v3'} else 'legacy_peak'
-        reps = segmenter.segment_with_diagnostics(frames, action_type, mode=mode).reps
+        reps = segmenter.segment_with_diagnostics(
+            frames, action_type, mode=mode, short_clip=data.get('short_clip') is True,
+        ).reps
         if not reps:
             return data
 

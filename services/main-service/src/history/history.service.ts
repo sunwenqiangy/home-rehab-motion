@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { HistoryVideoDto } from '@home-rehab-motion/shared-contract';
+import { getVisualEvidencePreviewScore } from '../common/visual-evidence-score';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -21,6 +22,8 @@ export class HistoryService {
           select: {
             average_score: true,
             grade: true,
+            total_reps: true,
+            segmentation_snapshot: true,
           },
         },
         manual_review: {
@@ -33,13 +36,27 @@ export class HistoryService {
       },
     });
 
-    return videos.map((video) => ({
+    return videos.map((video) => {
+      const snapshot = video.video_evaluation_result?.segmentation_snapshot;
+      const visualScoreType = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)
+        ? (snapshot as Record<string, unknown>).score_type : undefined;
+      const visualPractice = (visualScoreType === 'visual_practice' || visualScoreType === 'visual_evidence')
+        && !video.manual_review?.use_manual_result;
+      const scoreAvailable = !visualPractice || (snapshot as Record<string, unknown>).score_available === true;
+      const evidencePreviewScore = visualPractice && scoreAvailable && video.analysis_status === 'completed'
+        ? getVisualEvidencePreviewScore(snapshot as Record<string, unknown>, video.video_evaluation_result?.total_reps || 0)
+        : undefined;
+      const hasEvidenceScore = visualScoreType === 'visual_evidence' || evidencePreviewScore !== undefined;
+      return {
       videoId: Number(video.video_id),
       actionType: video.action_type as HistoryVideoDto['actionType'],
       status: video.analysis_status as HistoryVideoDto['status'],
       uploadedAt: video.upload_time.toISOString(),
       reportReady: video.analysis_status === 'completed' && Boolean(video.video_evaluation_result),
       averageScore:
+        !scoreAvailable ? undefined :
+        evidencePreviewScore !== undefined ? Math.round(evidencePreviewScore) :
+        visualPractice && !hasEvidenceScore ? undefined :
         video.manual_review?.use_manual_result && typeof video.manual_review.manual_score === 'number'
           ? Math.round(video.manual_review.manual_score)
           : typeof video.video_evaluation_result?.average_score === 'number'
@@ -47,10 +64,15 @@ export class HistoryService {
             : undefined,
       grade: video.manual_review?.use_manual_result
         ? video.manual_review.manual_grade || video.video_evaluation_result?.grade || undefined
+        : evidencePreviewScore !== undefined ? '本段完成'
         : video.video_evaluation_result?.grade || undefined,
+      scoreType: visualPractice
+        ? (hasEvidenceScore ? 'visual_evidence' : 'visual_practice') : 'pose',
+      scoreAvailable,
       duration: typeof video.duration === 'number' ? Math.round(video.duration) : undefined,
       failReason: this.resolvePatientFailReason(video.analysis_status, video.fail_reason),
-    }));
+      };
+    });
   }
 
   private resolvePatientFailReason(status: string, failReason: string | null): string | undefined {

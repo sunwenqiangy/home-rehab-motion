@@ -12,12 +12,17 @@ import { PrismaService } from '../prisma/prisma.service';
 const SHANGHAI_TIME_ZONE = 'Asia/Shanghai';
 type Evaluation = {
   video_id: bigint;
+  created_at: Date;
   average_score: number | null;
   stability_avg: number | null;
   avg_hold_duration: number | null;
   valid_reps: number;
   grade: string | null;
-  video: { action_type: string };
+  video: { action_type: string; short_clip: boolean; analysis_status: string; quality_status: string | null; manual_review?: { use_manual_result: boolean } | null };
+  analysis_version?: string | null;
+  template_version?: string | null;
+  segmentation_version?: string | null;
+  confidence_score?: number | null;
 };
 
 type Improvement = {
@@ -100,27 +105,30 @@ export class MotivationService {
 
   async recordConfirmedTraining(userId: number, videoId: number, confirmedAt = new Date()) {
     const trainingDate = shanghaiDateKey(confirmedAt);
-    const existing = await this.prisma.trainingAttendance.findUnique({
-      where: { video_id: BigInt(videoId) },
-    });
-    if (existing) return existing;
-
-    try {
-      return await this.prisma.trainingAttendance.create({
-        data: {
-          user_id: BigInt(userId),
-          video_id: BigInt(videoId),
-          training_date: utcDateForShanghaiKey(trainingDate),
-          counted_for_training_day: true,
-          counted_at: confirmedAt,
-        },
+    // Serialize confirmations for this patient even across service replicas; schema only has a video_id unique key.
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT user_id FROM user_profile WHERE user_id = ${BigInt(userId)} FOR UPDATE`;
+      const existing = await tx.trainingAttendance.findUnique({ where: { video_id: BigInt(videoId) } });
+      if (existing) return existing;
+      const countedToday = await tx.trainingAttendance.findFirst({
+        where: { user_id: BigInt(userId), training_date: utcDateForShanghaiKey(trainingDate), counted_for_training_day: true },
       });
-    } catch (error: unknown) {
-      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
-        return this.prisma.trainingAttendance.findUniqueOrThrow({ where: { video_id: BigInt(videoId) } });
-      }
-      throw error;
-    }
+      return tx.trainingAttendance.create({
+        data: { user_id: BigInt(userId), video_id: BigInt(videoId),
+          training_date: utcDateForShanghaiKey(trainingDate), counted_for_training_day: !countedToday, counted_at: confirmedAt },
+      });
+    });
+  }
+
+  async handleConfirmedTraining(userId: number, videoId: number, confirmedAt: Date) {
+    await this.recordConfirmedTraining(userId, videoId, confirmedAt);
+    const summary = await this.buildSummary(userId);
+    return this.badgeService.evaluateAndAwardBadges({
+      userId,
+      videoId,
+      totalTrainingDays: summary.totalTrainingDays,
+      consecutiveTrainingDays: summary.consecutiveTrainingDays,
+    });
   }
 
   async buildSummary(userId: number): Promise<MotivationSummaryDto> {
@@ -154,13 +162,13 @@ export class MotivationService {
       this.prisma.trainingAttendance.count({ where: { user_id: BigInt(userId) } }),
       this.prisma.videoEvaluationResult.count({
         where: {
-          video: { user_id: BigInt(userId), source_type: 'miniapp' },
+          video: { user_id: BigInt(userId), source_type: 'miniapp', short_clip: false },
           grade: { in: ['优秀', '合格'] },
         },
       }),
       this.prisma.videoEvaluationResult.findFirst({
         where: { video: { user_id: BigInt(userId), source_type: 'miniapp' } },
-        include: { video: true },
+        include: { video: { include: { manual_review: true } } },
         orderBy: { created_at: 'desc' },
       }),
       this.prisma.trainingVideo.findFirst({
@@ -178,7 +186,8 @@ export class MotivationService {
     const stage = resolveJourneyStage(totalTrainingCount, rehabilitationWeek);
     const latestBadge = badges[0];
     const nearestBadge = this.buildNearestBadge(badges, totalTrainingDays, consecutiveTrainingDays);
-    const latestGrade = latestEvaluation?.grade || undefined;
+    // 短片段是动作观察，不等同于整套训练达标评级。
+    const latestGrade = latestEvaluation?.video.short_clip ? undefined : latestEvaluation?.grade || undefined;
     const improvement = latestEvaluation
       ? await this.compareWithPrevious(userId, latestEvaluation)
       : { level: 'none' as const, message: '完成训练后，系统会持续记录您的变化。' };
@@ -227,7 +236,7 @@ export class MotivationService {
 
     const userId = Number(video.user_id);
     const summaryBeforeBadge = await this.buildSummary(userId);
-    const newlyUnlocked = await this.badgeService.evaluateAndAwardBadges({
+    const newlyUnlocked = video.short_clip ? [] : await this.badgeService.evaluateAndAwardBadges({
       userId,
       videoId,
       totalTrainingDays: summaryBeforeBadge.totalTrainingDays,
@@ -268,9 +277,8 @@ export class MotivationService {
     const codes = Array.isArray(snapshot?.newly_unlocked_badge_codes)
       ? snapshot.newly_unlocked_badge_codes.filter((item): item is string => typeof item === 'string')
       : [];
-    if (!codes.length) return [];
     const badges = await this.prisma.userBadge.findMany({
-      where: { source_video_id: BigInt(videoId), badge: { badge_code: { in: codes } } },
+      where: { source_video_id: BigInt(videoId), ...(codes.length ? { badge: { badge_code: { in: codes } } } : {}) },
       include: { badge: true },
       orderBy: { awarded_at: 'asc' },
     });
@@ -285,15 +293,35 @@ export class MotivationService {
   }
 
   private async compareWithPrevious(userId: number, latest: Evaluation): Promise<Improvement> {
+    if (latest.analysis_version === 'abdominal_visual_practice_v1'
+      || latest.analysis_version === 'abdominal_visual_evidence_v1') {
+      return { level: 'none', message: '本段动作已记录；连续练习天数会继续累计，不据此推断康复进步。' };
+    }
+    if (latest.video.short_clip && (!latest.analysis_version || !latest.template_version || !latest.segmentation_version
+      || latest.video.analysis_status !== 'completed' || latest.video.quality_status !== 'passed'
+      || latest.video.manual_review?.use_manual_result || (latest.confidence_score ?? 0) < 0.75
+      || latest.valid_reps < 1)) {
+      return { level: 'none', message: '本段观察已记录，暂无可靠的同版本视频可供比较。' };
+    }
     const previous = await this.prisma.videoEvaluationResult.findFirst({
       where: {
-        video: { user_id: BigInt(userId), source_type: 'miniapp', action_type: latest.video.action_type },
+        video: {
+          user_id: BigInt(userId), source_type: 'miniapp', action_type: latest.video.action_type,
+          short_clip: latest.video.short_clip,
+          ...(latest.video.short_clip ? { analysis_status: 'completed', quality_status: 'passed',
+            OR: [{ manual_review: { is: null } }, { manual_review: { is: { use_manual_result: false } } }] } : {}),
+        },
+        ...(latest.video.short_clip ? { analysis_version: latest.analysis_version!, template_version: latest.template_version!,
+          segmentation_version: latest.segmentation_version!, confidence_score: { gte: 0.75 },
+          valid_reps: { gte: 1 } } : {}),
         NOT: { video_id: latest.video_id },
+        created_at: { lt: latest.created_at },
       },
       include: { video: true },
       orderBy: { created_at: 'desc' },
     });
-    if (!previous) return { level: 'none', message: '这是一次新的练习记录，继续保持当前节奏。' };
+    if (!previous) return { level: 'none', message: latest.video.short_clip
+      ? '本段观察已记录，暂无可靠的同版本视频可供比较。' : '这是一次新的练习记录，继续保持当前节奏。' };
 
     const rules = await this.configService.getMotivationRules();
     const candidates: Array<{
@@ -326,7 +354,11 @@ export class MotivationService {
       },
     ];
 
-    const candidate = candidates.find((item) => item.delta >= item.slight);
+    const comparableCandidates = latest.video.short_clip
+      ? candidates.filter((item) => item.type !== 'duration' ||
+          (latest.avg_hold_duration != null && previous.avg_hold_duration != null))
+      : candidates;
+    const candidate = comparableCandidates.find((item) => item.delta >= item.slight);
     const level = candidate ? (candidate.delta >= candidate.clear ? 'clear' : 'slight') : 'none';
     const result: Improvement = {
       level,
@@ -335,7 +367,7 @@ export class MotivationService {
       scoreDelta: Math.round((numberOrNull(latest.average_score) ?? 0) - (numberOrNull(previous.average_score) ?? 0)),
       stabilityDelta: Math.round((numberOrNull(latest.stability_avg) ?? 0) - (numberOrNull(previous.stability_avg) ?? 0)),
       durationDelta: Math.round(((numberOrNull(latest.avg_hold_duration) ?? 0) - (numberOrNull(previous.avg_hold_duration) ?? 0)) * 10) / 10,
-      validRepsDelta: latest.valid_reps - previous.valid_reps,
+      validRepsDelta: latest.video.short_clip ? undefined : latest.valid_reps - previous.valid_reps,
     };
     return result;
   }

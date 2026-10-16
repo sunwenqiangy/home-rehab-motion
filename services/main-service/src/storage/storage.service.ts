@@ -2,7 +2,13 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { createHash, createHmac } from 'crypto';
 import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
-import { mkdir, stat, writeFile } from 'fs/promises';
+import { mkdir, mkdtemp, open, rm, stat, writeFile } from 'fs/promises';
+import { tmpdir } from 'os';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
+const PROBE_RANGE_BYTES = 4 * 1024 * 1024;
 import path from 'path';
 
 const REPO_ROOT = path.resolve(__dirname, '../../../..');
@@ -262,6 +268,85 @@ export class StorageService {
 
   getAbsoluteObjectPath(objectKey: string) {
     return this.resolveObjectPath(objectKey);
+  }
+
+  /** Only signed, server-generated object requests are used; ffprobe never receives a network URL. */
+  async probeVideoDuration(objectKey: string, size: number): Promise<number> {
+    if (!Number.isSafeInteger(size) || size <= 0 || size > this.videoUploadMaxBytes) {
+      throw new BadRequestException('视频文件大小无效');
+    }
+    let probePath: string;
+    let temporaryPath: string | undefined;
+    try {
+      if (!this.isS3PostEnabled()) {
+        probePath = this.resolveObjectPath(objectKey);
+      } else {
+        const directory = await mkdtemp(path.join(tmpdir(), 'rehab-probe-'));
+        temporaryPath = directory;
+        probePath = path.join(directory, 'video.mp4');
+        const file = await open(probePath, 'w+');
+        try {
+          await file.truncate(size);
+          const firstLength = Math.min(PROBE_RANGE_BYTES, size);
+          const first = await this.readObjectRange(objectKey, 0, firstLength - 1, size);
+          await file.write(first, 0, first.length, 0);
+          if (size > firstLength) {
+            const start = Math.max(firstLength, size - PROBE_RANGE_BYTES);
+            const last = await this.readObjectRange(objectKey, start, size - 1, size);
+            await file.write(last, 0, last.length, start);
+          }
+        } finally {
+          await file.close();
+        }
+      }
+      const { stdout } = await execFileAsync('ffprobe', [
+        '-v', 'error', '-show_entries', 'stream=codec_type,duration:format=duration',
+        '-of', 'json', probePath,
+      ], { timeout: 8000, maxBuffer: 64 * 1024 });
+      const info = JSON.parse(stdout) as { streams?: Array<{ codec_type?: string; duration?: string }>; format?: { duration?: string } };
+      if (!info.streams?.some((stream) => stream.codec_type === 'video')) throw new Error('Missing video stream');
+      const videoDuration = info.streams.find((stream) => stream.codec_type === 'video')?.duration;
+      const duration = Number(videoDuration ?? info.format?.duration);
+      if (!Number.isFinite(duration) || duration <= 0) throw new Error('Invalid video duration');
+      return duration;
+    } catch (_error) {
+      throw new BadRequestException('无法核验视频真实时长，请上传完整的 MP4 视频');
+    } finally {
+      if (temporaryPath) {
+        await rm(temporaryPath, { recursive: true, force: true });
+      }
+    }
+  }
+
+  private readObjectRange(objectKey: string, start: number, end: number, total: number): Promise<Buffer> {
+    const url = new URL(this.buildPresignedObjectUrl({ objectKey, method: 'GET', expiresSeconds: this.objectCheckExpiresSeconds }));
+    const requester = url.protocol === 'https:' ? httpsRequest : httpRequest;
+    return new Promise((resolve, reject) => {
+      const req = requester({
+        protocol: url.protocol, hostname: url.hostname, port: url.port,
+        path: `${url.pathname}${url.search}`, method: 'GET',
+        headers: { Range: `bytes=${start}-${end}` }, timeout: this.objectCheckTimeoutMs,
+      }, (res) => {
+        if (res.statusCode !== 206 || res.headers['content-range'] !== `bytes ${start}-${end}/${total}`) {
+          res.destroy();
+          reject(new Error('Object storage did not honor bounded range request'));
+          return;
+        }
+        const chunks: Buffer[] = [];
+        let received = 0;
+        res.on('data', (chunk: Buffer) => {
+          received += chunk.length;
+          if (received > end - start + 1) {
+            res.destroy(new Error('Oversized range response'));
+          } else chunks.push(chunk);
+        });
+        res.on('error', reject);
+        res.on('end', () => received === end - start + 1 ? resolve(Buffer.concat(chunks)) : reject(new Error('Incomplete range response')));
+      });
+      req.on('timeout', () => req.destroy(new Error('Object range timeout')));
+      req.on('error', reject);
+      req.end();
+    });
   }
 
   getGuidanceAssetDeliveryUrl(objectKey: string) {

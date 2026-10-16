@@ -25,7 +25,7 @@ FROM node:20-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y openssl ca-certificates \
+    && apt-get install --no-install-recommends -y openssl ca-certificates ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system home_rehab_motion \
     && useradd --system --gid home_rehab_motion --home-dir /app home_rehab_motion

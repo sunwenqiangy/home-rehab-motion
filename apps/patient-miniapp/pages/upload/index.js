@@ -41,26 +41,20 @@ function buildActionState(actionType, options) {
         selectedActionIndex: Math.max(getActionIndex(actionType, options), 0),
         actionLabel: actionOption?.label || '训练动作',
         actionHint: actionOption?.hint || '可切换其他动作。',
-        goalDesc: `本次先完成「${actionOption?.label || '训练动作'}」1 次，动作稳一点比做得快更重要。`,
+        goalDesc: actionOption?.value === 'abdominal_crunch'
+            ? '本段录制缩腹运动，至少留下一次完整的隆起与回落；按舒适节奏练习即可。'
+            : `本段录制「${actionOption?.label || '训练动作'}」1～2 个完整动作，动作稳一点比做得快更重要。`,
     };
 }
 const ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.mov', '.m4v', '.avi'];
-// wx.chooseVideo 的 maxDuration 仅支持 3~60 秒；业务侧的上传总时长仍由后续校验控制。
+// wx.chooseVideo 的 maxDuration 仅支持 3~60 秒；相册文件还需在确认页核对真实时长。
 const WX_CHOOSE_VIDEO_MAX_DURATION_SECONDS = 60;
 function getAppConfig() {
     const app = getApp();
     return app.globalData.appConfig || appConfig_1.DEFAULT_APP_CONFIG;
 }
 function formatDuration(seconds) {
-    if (!seconds) {
-        return '未选择';
-    }
-    if (seconds < 60) {
-        return `${seconds}s`;
-    }
-    const minutes = Math.floor(seconds / 60);
-    const remainSeconds = seconds % 60;
-    return remainSeconds ? `${minutes}分${remainSeconds}秒` : `${minutes}分`;
+    return (0, appConfig_1.formatVideoDuration)(seconds);
 }
 function getFileName(filePath) {
     const segments = filePath.split('/');
@@ -71,15 +65,11 @@ function getFileExtension(filePath) {
     const dotIndex = fileName.lastIndexOf('.');
     return dotIndex >= 0 ? fileName.slice(dotIndex) : '';
 }
-function getMaxDurationSeconds(source) {
-    const cfg = getAppConfig();
-    return source === 'camera' ? cfg.videoRecordMaxDurationSeconds : cfg.videoMaxDurationSeconds;
-}
-function chooseTrainingVideo(sourceType = ['album', 'camera']) {
-    const cfg = getAppConfig();
+function chooseTrainingVideo(actionType, sourceType = ['album', 'camera']) {
+    const limits = (0, appConfig_1.getVideoLimits)(actionType, getAppConfig());
     const configuredMaxDuration = sourceType.length === 1 && sourceType[0] === 'camera'
-        ? cfg.videoRecordMaxDurationSeconds
-        : cfg.videoMaxDurationSeconds;
+        ? limits.recordMaxDuration
+        : limits.maxDuration;
     // 传入 60 以上会让微信直接拒绝打开选择器。
     const maxDuration = Math.max(3, Math.min(configuredMaxDuration, WX_CHOOSE_VIDEO_MAX_DURATION_SECONDS));
     return new Promise((resolve, reject) => {
@@ -120,7 +110,7 @@ Page({
         selectedActionIndex: 0,
         actionLabel: '缩腹运动',
         actionHint: '也可以切换为骨盆倾斜或膝关节旋转。',
-        statusText: '上传前 30 秒自查：先看预览与检查结果，再提交可减少重复上传。',
+        statusText: '上传前请确认：腹部轮廓清晰，至少拍到一次完整隆起与回落。',
         filePath: '',
         fileName: '',
         duration: 0,
@@ -131,7 +121,8 @@ Page({
         submittingText: '正在准备上传…',
         validationMessage: '',
         actionOptions: [],
-        goalDesc: '本次先完成「缩腹运动」1 次，动作稳一点比做得快更重要。',
+        goalDesc: '本段录制缩腹运动，至少留下一次完整的隆起与回落；按舒适节奏练习即可。',
+        durationHint: '至少一次完整隆起与回落，时长不超过 30 秒。',
         previewPoster: '',
     },
     onReady() {
@@ -160,6 +151,7 @@ Page({
         this.setData({
             actionOptions,
             ...buildActionState(actionType, actionOptions),
+            durationHint: this.getDurationHint(actionType),
             statusBarHeight,
         });
         this.updateTopPlaceholderHeight();
@@ -169,13 +161,19 @@ Page({
             const nextActionType = actionOptions.some((item) => item.value === draftActionType)
                 ? draftActionType
                 : fallbackActionType;
-            this.setData({ ...buildActionState(nextActionType, actionOptions) });
+            this.setData({ ...buildActionState(nextActionType, actionOptions), durationHint: this.getDurationHint(nextActionType) });
             this.applySelectedVideo({
                 tempFilePath: draft.tempFilePath,
                 duration: Number(draft.duration || 0),
                 size: Number(draft.size || 0),
             }, draft.source);
         }
+    },
+    getDurationHint(actionType) {
+        const limits = (0, appConfig_1.getVideoLimits)(actionType, getAppConfig());
+        return actionType === 'abdominal_crunch'
+            ? `至少拍到一次完整隆起与回落，视频不超过 ${formatDuration(limits.maxDuration)}。`
+            : `每段录制 1～2 个完整动作，视频不超过 ${formatDuration(limits.maxDuration)}。`;
     },
     updateTopPlaceholderHeight() {
         wx.nextTick(() => {
@@ -226,6 +224,7 @@ Page({
         const hasSelectedVideo = Boolean(this.data.filePath);
         this.setData({
             ...actionState,
+            durationHint: this.getDurationHint(nextValue),
             filePath: hasSelectedVideo ? '' : this.data.filePath,
             fileName: hasSelectedVideo ? '' : this.data.fileName,
             duration: hasSelectedVideo ? 0 : this.data.duration,
@@ -242,9 +241,9 @@ Page({
     applySelectedVideo(res, sourceLabel) {
         const extension = getFileExtension(res.tempFilePath);
         const size = Number(res.size || 0);
-        const cfg = getAppConfig();
-        const maxBytes = cfg.videoMaxSizeMB * 1024 * 1024;
-        const maxDuration = getMaxDurationSeconds(sourceLabel);
+        const limits = (0, appConfig_1.getVideoLimits)(this.data.actionType, getAppConfig());
+        const maxBytes = limits.maxSizeMB * 1024 * 1024;
+        const maxDuration = sourceLabel === 'camera' ? limits.recordMaxDuration : limits.maxDuration;
         if (!ALLOWED_VIDEO_EXTENSIONS.includes(extension)) {
             this.setData({
                 validationMessage: '当前仅支持 mp4、mov、m4v、avi 格式的视频。',
@@ -253,9 +252,9 @@ Page({
             });
             return;
         }
-        if (res.duration < cfg.videoMinDurationSeconds) {
+        if (!Number.isFinite(res.duration) || res.duration < limits.minDuration) {
             this.setData({
-                validationMessage: `视频时长过短，请至少保留 ${cfg.videoMinDurationSeconds} 秒完整动作。`,
+                validationMessage: `视频时长过短，请至少保留 ${formatDuration(limits.minDuration)}，录下完整动作。`,
                 canSubmit: false,
                 statusText: '当前视频时长不足，请重新选择。',
             });
@@ -263,7 +262,7 @@ Page({
         }
         if (res.duration > maxDuration) {
             this.setData({
-                validationMessage: `视频时长超过 ${Math.floor(maxDuration / 60)} 分钟，请裁剪后再上传。`,
+                validationMessage: `视频时长超过 ${formatDuration(maxDuration)}，请裁剪到时长限制内再上传。`,
                 canSubmit: false,
                 statusText: '当前视频时长过长，请裁剪或重新选择。',
             });
@@ -271,7 +270,7 @@ Page({
         }
         if (size > maxBytes) {
             this.setData({
-                validationMessage: `视频文件超过 ${cfg.videoMaxSizeMB}MB，请裁剪后再上传。`,
+                validationMessage: `视频文件超过 ${limits.maxSizeMB}MB，请裁剪后再上传。`,
                 canSubmit: false,
                 statusText: '当前视频文件过大，请裁剪或重新选择。',
             });
@@ -294,7 +293,7 @@ Page({
             return;
         }
         this.setData({ statusText: '正在打开视频选择，请稍候...' });
-        chooseTrainingVideo()
+        chooseTrainingVideo(this.data.actionType)
             .then((res) => {
             this.applySelectedVideo(res);
         })

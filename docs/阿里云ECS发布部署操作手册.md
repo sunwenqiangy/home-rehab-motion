@@ -2,7 +2,7 @@
 
 > 适用环境：单台阿里云 ECS、宝塔 Nginx/MySQL、Docker Compose、阿里云 ACR 和私有 OSS Bucket。
 >
-> 生产域名为 `sunwenqiang.cn`：`/` 为管理端，`/api/` 为业务 API。
+> 生产域名为 `admin.bjrpxx.cn`：`/rehab/` 为管理端，`/api/` 为业务 API。
 
 ## 1. 架构
 
@@ -21,9 +21,9 @@
 
 ### 2.1 网络、HTTPS 与 MySQL
 
-1. 将 `sunwenqiang.cn` A 记录解析到 ECS 公网 IP。
+1. 将 `admin.bjrpxx.cn` A 记录解析到 ECS 公网 IP。
 2. 阿里云安全组只对公网开放 `22`、`80`、`443`；不能开放 `3000`、`8080`、`3306`、`6379`。
-3. 在宝塔创建 `sunwenqiang.cn` 网站，申请证书并启用 HTTP 跳转 HTTPS。
+3. 在宝塔创建 `admin.bjrpxx.cn` 网站，申请证书并启用 HTTP 跳转 HTTPS。
 4. 若使用 UFW，MySQL `3306` 仅允许 Docker 实际网段访问：
 
 ```bash
@@ -51,7 +51,7 @@ FLUSH PRIVILEGES;
 
 1. 创建北京地域 Bucket，例如 `home-rehab-motion-assets-prod`，ACL 设为**私有**。
 2. 创建 RAM 子账号 AccessKey，仅授予该 Bucket 必要读写权限；不要用阿里云主账号 AccessKey。
-3. 配置 CORS：来源 `https://sunwenqiang.cn`，方法 `POST`、`GET`、`HEAD`，Allowed Headers 为 `*`，Expose Headers 为 `ETag`。
+3. 配置 CORS：来源 `https://admin.bjrpxx.cn`，方法 `POST`、`GET`、`HEAD`，Allowed Headers 为 `*`，Expose Headers 为 `ETag`。
 
 Bucket 私有是预期配置：数据库仅保存对象 `objectKey`；主服务读取数据时生成有时效的签名 URL。`OSS_PRESIGNED_EXPIRES_SECONDS=3600` 表示链接有效一小时。OSS 自定义域名/CDN 是可选优化，不是上传或访问前置条件。
 
@@ -118,8 +118,8 @@ REDIS_PASSWORD=<至少32位随机密码>
 
 AUTH_TOKEN_SECRET=<至少32位随机密钥>
 ANALYSIS_INTERNAL_TOKEN=<至少32位随机密钥>
-PUBLIC_API_BASE_URL=https://sunwenqiang.cn/api
-ANALYSIS_CALLBACK_URL=https://sunwenqiang.cn/api/videos/internal/analysis-callback
+PUBLIC_API_BASE_URL=https://admin.bjrpxx.cn/api
+ANALYSIS_CALLBACK_URL=https://admin.bjrpxx.cn/api/videos/internal/analysis-callback
 
 OSS_ENDPOINT=https://oss-cn-beijing.aliyuncs.com
 OSS_BUCKET=home-rehab-motion-assets-prod
@@ -141,7 +141,7 @@ ADMIN_WEB_IMAGE=crpi-xxx.cn-beijing.personal.cr.aliyuncs.com/<namespace>/home-re
 
 ## 4. 宝塔 Nginx
 
-在宝塔网站 `sunwenqiang.cn` 创建根路径反向代理，目标：
+在宝塔网站 `admin.bjrpxx.cn` 创建根路径反向代理，目标：
 
 ```text
 http://127.0.0.1:8080
@@ -207,8 +207,8 @@ docker compose --env-file .env.production -f infra/docker-compose.production.yml
 ```bash
 curl -fsS http://127.0.0.1:3000/api/health/live
 curl -fsS http://127.0.0.1:3000/api/health/ready
-curl -I https://sunwenqiang.cn/
-curl -fsS https://sunwenqiang.cn/api/health/live
+curl -I https://admin.bjrpxx.cn/rehab/
+curl -fsS https://admin.bjrpxx.cn/api/health/live
 ```
 
 在浏览器验证：管理员登录、指导图片/视频上传与预览、指导内容发布、小程序授权上传、分析完成与报告查看。并检查 `analysis-worker` 无持续报错。
@@ -291,7 +291,7 @@ docker compose --env-file .env.production -f infra/docker-compose.production.yml
 ```bash
 cd /opt/home-rehab-motion
 docker compose --env-file .env.production -f infra/docker-compose.production.yml logs --tail=100 main-service analysis-service analysis-worker
-curl -fsS https://sunwenqiang.cn/api/health/ready
+curl -fsS https://admin.bjrpxx.cn/api/health/ready
 ```
 
 ### 6.4 仅修改主服务或环境变量

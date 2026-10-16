@@ -14,9 +14,14 @@ start_api() {
 # ─── 启动 Celery Worker ───────────────────────────────
 start_worker() {
     echo "Starting Celery worker..."
+    local -a worker_pool_args=(--concurrency=2)
+    if [ "$(uname -s)" = "Darwin" ]; then
+        # macOS prefork 子进程初始化 MediaPipe/CoreAudio 时会被 Objective-C 安全机制终止。
+        worker_pool_args=(--pool=solo --concurrency=1)
+    fi
     celery -A app.tasks.celery_app:celery_app worker \
         --loglevel=info \
-        --concurrency=2 \
+        "${worker_pool_args[@]}" \
         --queues=analysis \
         --hostname=analysis-worker@%h
 }

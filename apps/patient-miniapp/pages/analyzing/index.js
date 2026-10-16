@@ -24,7 +24,7 @@ function getStatusLabel(status, progressStage, failed, timeoutReached, confirmin
         return '分析完成';
     }
     if (status === 'review_required') {
-        return '结果待复核';
+        return '训练已记录，观察待复核';
     }
     if (timeoutReached) {
         return '等待较久';
@@ -49,10 +49,10 @@ function getProgressPresentation(status, progressStage, failed, timeoutReached, 
         return { title: '本次训练分析完成', subtitle: '报告已生成，正在为您打开。' };
     }
     if (status === 'review_required') {
-        return { title: '正在复核本次训练结果', subtitle: '报告已生成，系统正在确认拍摄和动作信息。' };
+        return { title: '本次训练已记录', subtitle: '动作观察尚不确定，正在复核；无需重复拍摄或勉强增大动作幅度。' };
     }
     if (failed) {
-        return { title: '本次分析未完成', subtitle: '请查看下方原因，并按提示重新提交。' };
+        return { title: '本次训练已记录', subtitle: '视频观察暂不可用，不影响训练记录；您可稍后再看。' };
     }
     if (timeoutReached) {
         return { title: '分析时间比预期稍长', subtitle: '视频已保存，您可以稍后从历史记录查看结果。' };
@@ -116,9 +116,9 @@ action: '请回到指导页确认拍摄角度、入镜范围和光线，再重�
         };
     }
     return {
-        title: '本次分析未成功',
-        tip: '视频已经保存，但本次分析没有完成。您可以稍后在训练记录中查看或重新上传。',
-        action: '建议先稍后查看训练记录；若仍未生成结果，再重新上传。',
+        title: '本次训练已记录',
+        tip: '视频已经保存，但本次动作观察没有完成；不影响您的训练记录。',
+        action: '可先查看训练记录，不必为了评分重新练习；有需要时再上传清晰视频。',
     };
 }
 function buildStatusSteps(status, progressStage) {
@@ -291,7 +291,10 @@ Page({
             const isAuthError = message.includes('401') || message.includes('Unauthorized');
             const uploadIntegrityFailed = message.includes('视频上传不完整')
                 || message.includes('视频文件信息不一致')
-                || message.includes('缺少原视频文件大小');
+                || message.includes('缺少原视频文件大小')
+                || message.includes('视频真实时长')
+                || message.includes('无法核验视频真实时长')
+                || message.includes('视频时长需在');
             const shouldKeepPolling = !isAuthError && !uploadIntegrityFailed;
             if (!shouldKeepPolling) {
                 this.stopPolling();
@@ -374,7 +377,7 @@ Page({
                 canRetryUpload: failed,
                 canRetryConfirm: false,
                 timeoutReached,
-                showHistoryAction: timeoutReached || failed,
+                showHistoryAction: timeoutReached || failed || result.status === 'review_required',
                 title,
                 tip,
                 statusLabel: getStatusLabel(result.status, progressStage, failed, timeoutReached, false),
