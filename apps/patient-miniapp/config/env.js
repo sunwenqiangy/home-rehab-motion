@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getRuntimeDiagnostics = exports.REQUEST_TIMEOUT = exports.API_BASE_URL = void 0;
 const LOCAL_API_BASE_URL = 'http://127.0.0.1:3000/api';
-const PRODUCTION_API_BASE_URL = 'https://sunwenqiang.cn/api';
+const PRODUCTION_API_BASE_URL = 'https://admin.bjrpxx.cn/api';
 function getRuntimeInfo() {
     try {
         const envVersion = wx.getAccountInfoSync?.().miniProgram?.envVersion || 'unknown';

@@ -120,7 +120,7 @@
           {
             "id": "reference-pelvic-1",
             "image": {
-              "url": "blob:https://sunwenqiang.cn/df644c69-5294-4d6b-87d5-99fcc87c39f4",
+              "url": "blob:https://admin.bjrpxx.cn/df644c69-5294-4d6b-87d5-99fcc87c39f4",
               "mimeType": "image/png",
               "objectKey": "guidance/1785483158348-01.准备.png",
               "sizeBytes": 1148214
@@ -133,7 +133,7 @@
           {
             "id": "reference-pelvic-2",
             "image": {
-              "url": "blob:https://sunwenqiang.cn/0904e2d5-db41-4754-a348-aea6309d0e80",
+              "url": "blob:https://admin.bjrpxx.cn/0904e2d5-db41-4754-a348-aea6309d0e80",
               "mimeType": "image/png",
               "objectKey": "guidance/1785483198798-02.吸气1.png",
               "sizeBytes": 697799
@@ -146,7 +146,7 @@
           {
             "id": "reference-pelvic-3",
             "image": {
-              "url": "blob:https://sunwenqiang.cn/6eaa88c0-dafc-4af5-bf29-5e0555d2027e",
+              "url": "blob:https://admin.bjrpxx.cn/6eaa88c0-dafc-4af5-bf29-5e0555d2027e",
               "mimeType": "image/png",
               "objectKey": "guidance/1785483223967-03.缓慢吐气.png",
               "sizeBytes": 787485
@@ -159,7 +159,7 @@
           {
             "id": "step-1784970437044-9elo1",
             "image": {
-              "url": "blob:https://sunwenqiang.cn/2fb831f6-b2d4-4f81-ae33-ffc1dda0b0f0",
+              "url": "blob:https://admin.bjrpxx.cn/2fb831f6-b2d4-4f81-ae33-ffc1dda0b0f0",
               "mimeType": "image/png",
               "objectKey": "guidance/1785483233596-04.恢复正常.png",
               "sizeBytes": 1153216
@@ -173,7 +173,7 @@
         "title": "骨盆倾斜运动",
         "video": {
           "asset": {
-            "url": "blob:https://sunwenqiang.cn/05c13a89-7c4e-4061-ad3d-4b7bb8b84516",
+            "url": "blob:https://admin.bjrpxx.cn/05c13a89-7c4e-4061-ad3d-4b7bb8b84516",
             "mimeType": "video/mp4",
             "objectKey": "guidance/1785483116434-教学视频_骨盆倾斜_0080-0140.mp4",
             "sizeBytes": 2836574
@@ -182,7 +182,7 @@
         },
         "actionType": "pelvic_tilt",
         "coverImage": {
-          "url": "blob:https://sunwenqiang.cn/473824d7-89c7-47a6-8778-822bdbf67991",
+          "url": "blob:https://admin.bjrpxx.cn/473824d7-89c7-47a6-8778-822bdbf67991",
           "mimeType": "image/png",
           "objectKey": "guidance/1785483144430-cover-pelvic-tilt.png",
           "sizeBytes": 38878
@@ -242,7 +242,7 @@
           {
             "id": "reference-knee-1",
             "image": {
-              "url": "blob:https://sunwenqiang.cn/cd3cad2f-eeb9-4a48-8299-e07679bd436b",
+              "url": "blob:https://admin.bjrpxx.cn/cd3cad2f-eeb9-4a48-8299-e07679bd436b",
               "mimeType": "image/png",
               "objectKey": "guidance/1785482527433-00.准备.png",
               "sizeBytes": 1115785
@@ -255,7 +255,7 @@
           {
             "id": "reference-knee-2",
             "image": {
-              "url": "blob:https://sunwenqiang.cn/b8e972da-5a62-4ebd-9112-7a283ec41de8",
+              "url": "blob:https://admin.bjrpxx.cn/b8e972da-5a62-4ebd-9112-7a283ec41de8",
               "mimeType": "image/png",
               "objectKey": "guidance/1785482535878-01.向左倾倒.png",
               "sizeBytes": 1145044
@@ -268,7 +268,7 @@
           {
             "id": "reference-knee-3",
             "image": {
-              "url": "blob:https://sunwenqiang.cn/303c9152-36c6-43b9-8c2a-72924b043db4",
+              "url": "blob:https://admin.bjrpxx.cn/303c9152-36c6-43b9-8c2a-72924b043db4",
               "mimeType": "image/png",
               "objectKey": "guidance/1785482543964-02回正-文.png",
               "sizeBytes": 1009468
@@ -281,7 +281,7 @@
           {
             "id": "step-1785261553973-2ax9i",
             "image": {
-              "url": "blob:https://sunwenqiang.cn/f7c8b86e-9e94-41be-818e-4fffe94054a5",
+              "url": "blob:https://admin.bjrpxx.cn/f7c8b86e-9e94-41be-818e-4fffe94054a5",
               "mimeType": "image/png",
               "objectKey": "guidance/1785482550450-03向右倾斜-文.png",
               "sizeBytes": 1368060
@@ -294,7 +294,7 @@
           {
             "id": "step-1785261554498-hflop",
             "image": {
-              "url": "blob:https://sunwenqiang.cn/04c7688a-c4e5-4d9a-9cc5-98d6e544ef1c",
+              "url": "blob:https://admin.bjrpxx.cn/04c7688a-c4e5-4d9a-9cc5-98d6e544ef1c",
               "mimeType": "image/png",
               "objectKey": "guidance/1785482557316-02.回正.png",
               "sizeBytes": 1041255
@@ -308,7 +308,7 @@
         "title": "膝关节旋转",
         "video": {
           "asset": {
-            "url": "blob:https://sunwenqiang.cn/ffcd5fec-d4d5-46af-a704-4e8abf1d87ce",
+            "url": "blob:https://admin.bjrpxx.cn/ffcd5fec-d4d5-46af-a704-4e8abf1d87ce",
             "mimeType": "video/mp4",
             "objectKey": "guidance/1785482584826-教学视频_膝关节旋转_0140-0218.mp4",
             "sizeBytes": 4344853
@@ -317,7 +317,7 @@
         },
         "actionType": "knee_rotation",
         "coverImage": {
-          "url": "blob:https://sunwenqiang.cn/7440871c-d4ee-4e68-9b4f-4ef96a5cf2b6",
+          "url": "blob:https://admin.bjrpxx.cn/7440871c-d4ee-4e68-9b4f-4ef96a5cf2b6",
           "mimeType": "image/png",
           "objectKey": "guidance/1785482499570-cover-knee-rotation.png",
           "sizeBytes": 36938
