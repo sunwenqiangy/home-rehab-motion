@@ -132,12 +132,13 @@ model TrainingVideo {
   resolution             String?                @db.VarChar(20)
   upload_time            DateTime               @default(now())
   confirmed_at           DateTime?
+  short_clip             Boolean                @default(false)
   analysis_status        String                 @default("pending") @db.VarChar(30)
   quality_status         String?                @db.VarChar(20)
   quality_score          Float?
   quality_issues         Json?
   fail_reason            String?                @db.VarChar(255)
-  model_version          String?                @db.VarChar(20)
+  model_version          String?                @db.VarChar(64)
   created_at             DateTime               @default(now())
   updated_at             DateTime               @updatedAt
   user                   UserProfile            @relation(fields: [user_id], references: [user_id])
@@ -280,7 +281,7 @@ model VideoEvaluationResult {
   main_issues        Json?
   advice_summary     Json?
   confidence_score   Float?
-  analysis_version   String?       @db.VarChar(20)
+  analysis_version   String?       @db.VarChar(64)
   template_id        BigInt?       @db.UnsignedBigInt
   template_version   String?       @db.VarChar(64)
   threshold_snapshot Json?

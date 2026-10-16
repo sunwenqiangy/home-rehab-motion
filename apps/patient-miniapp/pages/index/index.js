@@ -109,7 +109,8 @@ function buildRecentItems(items) {
             rightClass: 'v4-chip-teal',
         };
         if (item.status === 'completed') {
-            const score = typeof item.averageScore === 'number' ? Math.round(item.averageScore) : 0;
+            const score = item.scoreType !== 'visual_practice' && typeof item.averageScore === 'number'
+                ? Math.round(item.averageScore) : 0;
             return {
                 ...base,
                 rightType: 'score',
@@ -344,6 +345,7 @@ Page({
                 status: item.status,
                 uploadedAt: item.uploadedAt,
                 averageScore: item.averageScore,
+                scoreType: item.scoreType,
             })));
             this.setData({
                 homeLoadFailed: false,

@@ -234,7 +234,13 @@ start_analysis() {
 
   log "── Celery Worker ──"
   prepare_service analysis-worker || true
-  start_bg analysis-worker bash -c "cd \"$ROOT_DIR/services/analysis-service\" && DATABASE_URL=\"$ANALYSIS_DATABASE_URL\" CELERY_BROKER_URL=\"$CELERY_BROKER_URL\" CELERY_RESULT_BACKEND=\"$CELERY_RESULT_BACKEND\" ANALYSIS_CALLBACK_URL=\"$ANALYSIS_CALLBACK_URL\" ANALYSIS_INTERNAL_TOKEN=\"$ANALYSIS_INTERNAL_TOKEN\" \"$venv_bin/celery\" -A app.tasks.celery_app:celery_app worker --loglevel=info --concurrency=2 --queues=analysis --hostname=analysis-worker@%h"
+  local worker_pool_args="--concurrency=2"
+  if [ "$(uname -s)" = "Darwin" ]; then
+    # MediaPipe 间接初始化 CoreAudio；macOS prefork 子进程会触发 Objective-C fork 安全崩溃。
+    worker_pool_args="--pool=solo --concurrency=1"
+    log "macOS 分析 Worker 使用 solo 池，避免 fork 后原生库崩溃"
+  fi
+  start_bg analysis-worker bash -c "cd \"$ROOT_DIR/services/analysis-service\" && DATABASE_URL=\"$ANALYSIS_DATABASE_URL\" CELERY_BROKER_URL=\"$CELERY_BROKER_URL\" CELERY_RESULT_BACKEND=\"$CELERY_RESULT_BACKEND\" ANALYSIS_CALLBACK_URL=\"$ANALYSIS_CALLBACK_URL\" ANALYSIS_INTERNAL_TOKEN=\"$ANALYSIS_INTERNAL_TOKEN\" \"$venv_bin/celery\" -A app.tasks.celery_app:celery_app worker --loglevel=info $worker_pool_args --queues=analysis --hostname=analysis-worker@%h"
   sleep 2
   log "Celery Worker 已启动"
 

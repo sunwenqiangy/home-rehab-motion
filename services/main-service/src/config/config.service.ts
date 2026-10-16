@@ -24,10 +24,9 @@ const DEFAULT_MOTIVATION_RULES: MotivationRulesDto = {
 };
 
 const DEFAULT_APP_CONFIG: PatientAppConfigDto = {
-  videoMinDurationSeconds: 10,
-  // 与分析服务的 MAX_ANALYSIS_DURATION_SECONDS 保持一致；长视频仍由 Worker 帧预算限制计算量。
-  videoMaxDurationSeconds: 300,
-  videoRecordMaxDurationSeconds: 120,
+  videoMinDurationSeconds: 8,
+  videoMaxDurationSeconds: 60,
+  videoRecordMaxDurationSeconds: 60,
   videoMaxSizeMB: 200,
   weeklyTarget: 7,
   analyzingMinWaitSeconds: 20,
@@ -217,14 +216,14 @@ function sanitizeSupportedActionTypes(value: unknown): TrainingActionType[] {
 }
 
 function normalizePatientAppConfig(raw: Partial<PatientAppConfigDto>): PatientAppConfigDto {
-  const minDuration = pickNumber(raw.videoMinDurationSeconds, DEFAULT_APP_CONFIG.videoMinDurationSeconds, 1, 300);
-  const maxDurationRaw = pickNumber(raw.videoMaxDurationSeconds, DEFAULT_APP_CONFIG.videoMaxDurationSeconds, 1, 300);
+  const minDuration = pickNumber(raw.videoMinDurationSeconds, DEFAULT_APP_CONFIG.videoMinDurationSeconds, 1, 30);
+  const maxDurationRaw = pickNumber(raw.videoMaxDurationSeconds, DEFAULT_APP_CONFIG.videoMaxDurationSeconds, 30, 60);
   const maxDuration = Math.max(minDuration, maxDurationRaw);
   const recordMaxDurationRaw = pickNumber(
     raw.videoRecordMaxDurationSeconds,
     DEFAULT_APP_CONFIG.videoRecordMaxDurationSeconds,
     1,
-    300,
+    60,
   );
   const recordMaxDuration = Math.max(minDuration, Math.min(maxDuration, recordMaxDurationRaw));
 
@@ -232,7 +231,7 @@ function normalizePatientAppConfig(raw: Partial<PatientAppConfigDto>): PatientAp
     videoMinDurationSeconds: minDuration,
     videoMaxDurationSeconds: maxDuration,
     videoRecordMaxDurationSeconds: recordMaxDuration,
-    videoMaxSizeMB: pickNumber(raw.videoMaxSizeMB, DEFAULT_APP_CONFIG.videoMaxSizeMB, 10, 1024),
+    videoMaxSizeMB: pickNumber(raw.videoMaxSizeMB, DEFAULT_APP_CONFIG.videoMaxSizeMB, 10, 200),
     weeklyTarget: pickNumber(raw.weeklyTarget, DEFAULT_APP_CONFIG.weeklyTarget, 1, 7),
     analyzingMinWaitSeconds: pickNumber(raw.analyzingMinWaitSeconds, DEFAULT_APP_CONFIG.analyzingMinWaitSeconds, 0, 180),
     supportedActionTypes: sanitizeSupportedActionTypes(raw.supportedActionTypes),
@@ -316,6 +315,55 @@ export class ConfigService {
     return actionType as TrainingActionType;
   }
 
+  private assertAbdominalTemplateContract(
+    thresholdConfig: unknown,
+    referenceStats: unknown,
+  ) {
+    const config = thresholdConfig && typeof thresholdConfig === 'object' && !Array.isArray(thresholdConfig)
+      ? thresholdConfig as Record<string, unknown> : {};
+    const meta = config._meta && typeof config._meta === 'object' && !Array.isArray(config._meta)
+      ? config._meta as Record<string, unknown> : {};
+    const stats = referenceStats && typeof referenceStats === 'object' && !Array.isArray(referenceStats)
+      ? referenceStats as Record<string, unknown> : {};
+    const unitsMatch = Object.entries(FEATURE_META.abdominal_crunch).every(([code, featureMeta]) => {
+      const feature = config[code];
+      const featureStats = stats[code];
+      return feature && typeof feature === 'object' && !Array.isArray(feature)
+        && (feature as Record<string, unknown>).unit === featureMeta.unit
+        && featureStats && typeof featureStats === 'object' && !Array.isArray(featureStats)
+        && Number.isFinite((featureStats as Record<string, unknown>).mean)
+        && Number.isFinite((featureStats as Record<string, unknown>).std);
+    });
+    if (meta.feature_schema_version !== 'abdominal_pose_v2' || !unitsMatch) {
+      throw new BadRequestException('缩腹模板特征版本或单位不兼容；请用当前分析服务重新分析金标准视频，重新生成候选模板');
+    }
+  }
+
+  private isEligibleGoldSource(video: {
+    source_type: string | null;
+    action_type: string;
+    analysis_status: string;
+    fail_reason: string | null;
+    quality_status: string | null;
+    video_evaluation_result?: {
+      total_reps: number;
+      confidence_score: number | null;
+      segmentation_snapshot: unknown;
+    } | null;
+  }): boolean {
+    if (video.source_type !== 'gold_template') return false;
+    if (video.analysis_status === 'completed') return true;
+    if (video.action_type !== 'abdominal_crunch' || video.analysis_status !== 'review_required') return false;
+    const snapshot = video.video_evaluation_result?.segmentation_snapshot;
+    const featureSchema = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)
+      ? (snapshot as Record<string, unknown>).feature_schema_version : undefined;
+    return Boolean(video.fail_reason?.startsWith('当前缩腹金标准模板与本次分析的特征版本或单位不兼容'))
+      && video.quality_status === 'passed'
+      && (video.video_evaluation_result?.confidence_score ?? 0) >= 0.75
+      && (video.video_evaluation_result?.total_reps ?? 0) > 0
+      && featureSchema === 'abdominal_pose_v2';
+  }
+
   private buildFeatureStats(values: number[]): GoldFeatureStats {
     const sorted = [...values].sort((a, b) => a - b);
     const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
@@ -347,6 +395,7 @@ export class ConfigService {
       _meta: {
         action_type: actionType,
         sigma_multiplier: safeSigma,
+        ...(actionType === 'abdominal_crunch' ? { feature_schema_version: 'abdominal_pose_v2' } : {}),
         note: `基于 ${safeSigma}σ 自动生成单向/双向门限，建议先在流程验证页抽样复核`,
       },
       confidence_min: 0.6,
@@ -484,11 +533,15 @@ export class ConfigService {
       throw new BadRequestException('请选择同一动作且未归档的版本作为调优基准');
     }
 
+    const activate = payload.activate !== false;
+    if (actionType === 'abdominal_crunch' && activate) {
+      this.assertAbdominalTemplateContract(payload.thresholdConfig, parent.reference_stats);
+    }
+
     const changeDiff = this.buildChangeDiff(
       (parent.threshold_config as Record<string, unknown>) || {},
       payload.thresholdConfig,
     );
-    const activate = payload.activate !== false;
     const row = await this.prisma.$transaction(async (tx) => {
       if (activate) {
         await tx.standardActionTemplate.updateMany({
@@ -518,7 +571,7 @@ export class ConfigService {
 
   async listGoldTemplateSourceVideos(actionType?: string): Promise<{ items: GoldTemplateSourceVideo[] }> {
     const whereClause: Prisma.TrainingVideoWhereInput = {
-      analysis_status: 'completed',
+      analysis_status: { in: ['completed', 'review_required'] },
       source_type: 'gold_template',
     };
 
@@ -532,11 +585,11 @@ export class ConfigService {
         video_evaluation_result: true,
       },
       orderBy: { created_at: 'desc' },
-      take: 50,
+      take: 100,
     });
 
     return {
-      items: rows.map((row) => ({
+      items: rows.filter((row) => this.isEligibleGoldSource(row)).slice(0, 50).map((row) => ({
         videoId: Number(row.video_id),
         actionType: row.action_type as TrainingActionType,
         status: (row.analysis_status as AnalysisStatus) || 'completed',
@@ -567,15 +620,25 @@ export class ConfigService {
       throw new NotFoundException(`未找到视频: ${payload.sourceVideoId}`);
     }
 
-    if (video.analysis_status !== 'completed') {
-      throw new BadRequestException('该视频尚未完成分析，无法提取金标准');
-    }
     if (video.source_type !== 'gold_template') {
       throw new BadRequestException('仅金标准内部样本可用于提取模板');
+    }
+    if (!this.isEligibleGoldSource(video)) {
+      throw new BadRequestException('该视频尚未完成分析或不满足提模条件，无法提取金标准');
     }
 
     if ((video.action_type as TrainingActionType) !== actionType) {
       throw new BadRequestException(`视频动作类型为 ${video.action_type}，与当前选择 ${actionType} 不一致`);
+    }
+
+    if (actionType === 'abdominal_crunch') {
+      const snapshot = video.video_evaluation_result?.segmentation_snapshot;
+      const sourceSchema = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)
+        ? (snapshot as Record<string, unknown>).feature_schema_version
+        : undefined;
+      if (sourceSchema !== 'abdominal_pose_v2') {
+        throw new BadRequestException('缩腹金标准源视频缺少同口径特征版本；请用当前分析服务重新分析后再生成模板');
+      }
     }
 
     const featureValues: Record<string, number[]> = {};
@@ -700,6 +763,9 @@ export class ConfigService {
     if (!version) {
       throw new BadRequestException('版本号不能为空');
     }
+    if (actionType === 'abdominal_crunch') {
+      this.assertAbdominalTemplateContract(payload.thresholdConfig, payload.referenceStats);
+    }
 
     const row = await this.prisma.standardActionTemplate.create({
       data: {
@@ -799,6 +865,9 @@ export class ConfigService {
     const normalizedStatus = status === 1 ? 1 : 0;
 
     if (normalizedStatus === 1) {
+      if (target.action_type === 'abdominal_crunch' && !target.ever_activated) {
+        this.assertAbdominalTemplateContract(target.threshold_config, target.reference_stats);
+      }
       await this.prisma.$transaction([
         this.prisma.standardActionTemplate.updateMany({
           where: {
@@ -939,10 +1008,18 @@ export class ConfigService {
   }
 
   async updatePatientAppConfig(payload: UpdatePatientAppConfigRequestDto): Promise<PatientAppConfigDto> {
+    for (const [key, limit] of [
+      ['videoMinDurationSeconds', 30], ['videoMaxDurationSeconds', 60], ['videoRecordMaxDurationSeconds', 60],
+    ] as const) {
+      const value = payload[key];
+      if (value !== undefined && (!Number.isInteger(value) || value < (key === 'videoMaxDurationSeconds' ? 30 : 1) || value > limit)) {
+        throw new BadRequestException(`${key} 超出短片段时长限制`);
+      }
+    }
     const current = await this.getPatientAppConfig(true);
     const merged = normalizePatientAppConfig({
       videoMinDurationSeconds: payload.videoMinDurationSeconds ?? current.videoMinDurationSeconds,
-    videoMaxDurationSeconds: payload.videoMaxDurationSeconds ?? current.videoMaxDurationSeconds,
+      videoMaxDurationSeconds: payload.videoMaxDurationSeconds ?? current.videoMaxDurationSeconds,
       videoRecordMaxDurationSeconds:
         payload.videoRecordMaxDurationSeconds ?? current.videoRecordMaxDurationSeconds,
       videoMaxSizeMB: payload.videoMaxSizeMB ?? current.videoMaxSizeMB,

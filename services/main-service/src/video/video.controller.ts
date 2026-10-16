@@ -240,6 +240,7 @@ export class VideoController {
               analysis_version?: string;
               template_id?: number;
               template_version?: string;
+              segmentation_version?: string;
               threshold_snapshot?: unknown;
             })
           : undefined,

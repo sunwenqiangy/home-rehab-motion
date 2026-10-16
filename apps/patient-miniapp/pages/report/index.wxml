@@ -8,7 +8,7 @@
       <view class="rp-nav__back" bindtap="onGoBack">
         <image class="rp-nav__back-icon" src="../../assets/icons/common/arrow-left.svg" mode="aspectFit"/>
       </view>
-      <text class="rp-nav__title">训练报告</text>
+      <text class="rp-nav__title">本段动作报告</text>
       <view class="rp-nav__capsule"></view>
     </view>
   </view>
@@ -18,7 +18,7 @@
     <view class="rp-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
     <image class="rp-loading__icon" src="../../assets/icons/common/loading.svg" mode="aspectFit" />
     <view class="rp-loading__text">正在生成报告...</view>
-    <view class="rp-loading__sub">请稍候，系统正在整理本次训练的分析结果。</view>
+    <view class="rp-loading__sub">请稍候，系统正在整理本段动作的观察结果。</view>
   </view>
 
   <!-- 分析失败结果 -->
@@ -27,10 +27,10 @@
     <view class="rp-failure-result__icon">!</view>
     <view class="rp-loading__text">{{failureTitle}}</view>
     <view class="rp-loading__sub">{{failureReason}}</view>
-    <view class="rp-failure-result__tip">本次未生成评分或训练建议，不影响您之前的训练记录。重新拍摄时请保持画面稳定、光线充足，并确保完整动作始终在画面内。</view>
+    <view class="rp-failure-result__tip">本次训练已计入训练日。视频分析是否成功不影响您的练习记录；如想再次拍摄，可在方便时尝试，不必勉强调整动作幅度。</view>
     <view class="rp-loading__actions">
-      <button class="btn-big btn-teal" bindtap="onRetryUpload">重新上传训练视频</button>
-      <button class="btn-big btn-outline" bindtap="onViewHistory">查看训练记录</button>
+      <button class="btn-big btn-teal" bindtap="onViewHistory">查看训练记录</button>
+      <button class="btn-big btn-outline" bindtap="onRetryUpload">有需要时重新上传</button>
     </view>
   </view>
 
@@ -60,42 +60,58 @@
 
       <view wx:if="{{requiresManualReview}}" class="rp-review-notice">
         <view class="rp-review-notice__badge">结果处理中</view>
-        <view class="rp-review-notice__title">本次训练结果待复核</view>
+        <view class="rp-review-notice__title">{{observedReps > 0 ? '已识别动作，评分待复核' : '本段动作结果待复核'}}</view>
+        <view wx:if="{{observedReps > 0}}" class="rp-review-notice__count">系统识别动作 <text>{{observedReps}}</text> 次</view>
         <view class="rp-review-notice__desc">{{reviewMessage}}</view>
         <view wx:if="{{showSafetyNotice}}" class="rp-review-notice__tip">本次身体不适反馈已记录。复核完成前请先暂停训练，并以医生或医疗机构的建议为准。</view>
         <view wx:else class="rp-review-notice__tip">复核完成前，请先按动作指导练习；本次暂不展示分数和问题判断。</view>
       </view>
 
-      <!-- 评级 Hero -->
-      <view wx:if="{{!requiresManualReview}}" class="rp-hero">
+      <view wx:if="{{!requiresManualReview && isVisualPractice && !scoreAvailable}}" class="rp-review-notice">
+        <view class="rp-review-notice__badge">暂不评分</view>
+        <view class="rp-review-notice__title">本次训练已记录</view>
+        <view class="rp-review-notice__desc">视频里暂时看不清完整动作。下次拍摄时，请把开始准备和最后放松的过程都拍进去。</view>
+      </view>
+
+      <!-- 同一报告骨架，指标名称由实际分析来源决定。 -->
+      <view wx:if="{{!requiresManualReview && scoreAvailable}}" class="rp-hero">
         <view class="rp-hero__row">
           <view class="rp-score-circle">
-            <text class="rp-score-circle__num">{{averageScore}}</text>
-            <text class="rp-score-circle__label">{{grade}}</text>
+            <text class="rp-score-circle__num">{{isVisualPractice && !showVisualScore ? '已' : averageScore}}</text>
+            <text class="rp-score-circle__label">{{isVisualPractice && !showVisualScore ? '记录' : '本段评分'}}</text>
           </view>
           <view class="rp-hero__info">
             <text class="rp-hero__title">{{actionLabel}}</text>
-            <text wx:if="{{compareToLastText && !showSafetyNotice}}" class="rp-hero__compare">{{compareToLastText}}</text>
+            <text class="rp-hero__method">{{isVisualPractice ? '依据腹部起伏观察' : '依据身体姿态观察'}}<text wx:if="{{!isVisualPractice}}"> · {{grade}}</text></text>
           </view>
         </view>
       </view>
 
       <!-- 概要数据 2列 -->
-      <view wx:if="{{!requiresManualReview}}" class="rp-stat-grid">
+      <view wx:if="{{!requiresManualReview && scoreAvailable}}" class="rp-stat-grid">
         <view class="rp-stat-card">
-          <text class="rp-stat-card__value rp-stat-card__value--green">{{validRepsText}}</text>
-          <text class="rp-stat-card__label">有效次数</text>
+          <text class="rp-stat-card__value rp-stat-card__value--green">{{isVisualPractice ? practiceCountText : validRepsText}}</text>
+          <text class="rp-stat-card__label">{{isVisualPractice ? '完整动作' : '本段有效次数'}}</text>
         </view>
-        <!-- 连续旋转动作暂不计算静止保持时长，保留“待更新”避免摘要区域出现空位。 -->
         <view class="rp-stat-card">
-          <text class="rp-stat-card__value rp-stat-card__value--teal">{{holdDurationText}}</text>
-          <text class="rp-stat-card__label">平均保持</text>
+          <text class="rp-stat-card__value rp-stat-card__value--teal">{{isVisualPractice ? cycleDurationText : holdDurationText}}</text>
+          <text class="rp-stat-card__label">{{isVisualPractice ? '每次动作时长' : '平均保持'}}</text>
         </view>
       </view>
 
+      <view wx:if="{{!requiresManualReview && isVisualPractice && scoreAvailable}}" class="info-panel rp-phase-panel">
+        <view class="info-title">动作阶段（平均每次）</view>
+        <view wx:if="{{visualPhaseMetricsAvailable}}" class="rp-phase-grid">
+          <view class="rp-phase-cell"><text class="rp-phase-cell__label">逐渐隆起</text><text class="rp-phase-cell__value">{{riseTimeText}}</text></view>
+          <view class="rp-phase-cell"><text class="rp-phase-cell__label">最高处保持</text><text class="rp-phase-cell__value">{{peakTimeText}}</text></view>
+          <view class="rp-phase-cell"><text class="rp-phase-cell__label">放松回位</text><text class="rp-phase-cell__value">{{returnTimeText}}</text></view>
+        </view>
+        <view wx:if="{{!visualPhaseMetricsAvailable}}" class="rp-phase-unavailable">本段阶段时间暂不可用</view>
+      </view>
+
       <!-- 动作评分摘要：仅展示当前动作具备独立计算依据的维度。 -->
-      <view wx:if="{{!requiresManualReview}}" class="info-panel">
-        <view class="info-title">📊 动作评分摘要</view>
+      <view wx:if="{{!requiresManualReview && !isVisualPractice}}" class="info-panel">
+        <view class="info-title">本段动作观察</view>
         <view class="rp-metric-list">
           <view class="rp-metric-line">
             <text class="rp-metric-key">准确性</text>
@@ -118,14 +134,14 @@
             <text class="rp-metric-val rp-metric-val--orange">{{durationMetricText}}</text>
           </view>
         </view>
-        <view wx:if="{{showSafetyNotice}}" class="rp-metric-summary">本次指标仅用于回顾训练结果。请先暂停训练，并以医生或医疗机构的建议为准。</view>
-        <view wx:else class="rp-metric-summary">本次指标基于视频分析生成，可结合下方建议继续练习。</view>
+        <view wx:if="{{showSafetyNotice}}" class="rp-metric-summary">本段指标仅用于回顾视频中的动作。请先暂停训练，并以医生或医疗机构的建议为准。</view>
+        <view wx:else class="rp-metric-summary">本段指标仅基于所上传的 1～2 个动作生成，不代表整套训练效果。</view>
       </view>
 
       <!-- 身体不适安全态不展示训练重点和动作建议，避免与“暂停训练”冲突。 -->
       <view wx:if="{{!requiresManualReview && !showSafetyNotice}}" class="info-panel rp-next-step-panel">
-        <view class="rp-next-step-panel__eyebrow">本次重点</view>
-        <view class="info-title">🎯 {{reportFocusTitle}}</view>
+        <view class="rp-next-step-panel__eyebrow">本段动作提示</view>
+        <view class="info-title">{{reportFocusTitle}}</view>
         <view class="rp-next-step-panel__summary">{{reportFocusText}}</view>
         <view wx:if="{{adviceSummary.length}}" class="rp-advice-list">
           <block wx:for="{{adviceSummary}}" wx:key="adviceCode">
@@ -138,8 +154,8 @@
       <view wx:if="{{videoReview}}" class="rp-video-review">
         <view class="rp-video-review__header" bindtap="onToggleVideo">
           <view>
-            <view class="rp-video-review__title">本次训练视频</view>
-            <view class="rp-video-review__hint">{{videoReview.privacyHint}}</view>
+            <view class="rp-video-review__title">查看本次视频</view>
+            <view class="rp-video-review__hint">仅本人可看</view>
           </view>
           <text class="rp-video-review__toggle">{{videoExpanded ? '收起' : '查看回放'}}</text>
         </view>
@@ -147,16 +163,14 @@
         <view wx:if="{{videoLoadFailed}}" class="rp-video-review__error">视频暂时无法播放，请稍后从训练记录中查看。</view>
       </view>
 
-      <!-- 身体不适安全态不展示正向训练激励，避免形成继续训练导向。 -->
-      <view wx:if="{{!requiresManualReview && !showSafetyNotice && (improvementMessage || newlyUnlockedBadges.length)}}" class="rp-motivation-panel">
-        <view wx:if="{{improvementMessage}}" class="rp-motivation-panel__message">{{improvementMessage}}</view>
+      <!-- 保留训练日徽章，但不展示旧接口返回的整套训练进步结论。 -->
+      <view wx:if="{{!requiresManualReview && !showSafetyNotice && newlyUnlockedBadges.length}}" class="rp-motivation-panel">
         <view wx:for="{{newlyUnlockedBadges}}" wx:key="badgeCode" class="rp-motivation-panel__badge">🏅 解锁「{{item.title}}」</view>
       </view>
 
       <!-- 反馈入口 -->
-      <view class="rp-feedback-panel">
-        <view class="rp-feedback-panel__title">对本次训练有疑问？</view>
-        <view class="rp-feedback-panel__desc">可提交与本次训练相关的问题，处理结果会通过消息中心通知您。</view>
+      <view class="rp-feedback-panel rp-feedback-panel--compact">
+        <view class="rp-feedback-panel__title">有疑问？</view>
         <button class="btn-big rp-feedback-panel__btn" bindtap="onToggleFeedback">{{feedbackEntryLabel}}</button>
       </view>
 

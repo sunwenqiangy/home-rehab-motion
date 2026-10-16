@@ -56,6 +56,8 @@ class SegmentationCandidate:
     stable_frame: Optional[int] = None
     reason: str = ''
     amplitude: float = 0.0
+    peak_start_frame: Optional[int] = None
+    peak_end_frame: Optional[int] = None
 
 
 @dataclass

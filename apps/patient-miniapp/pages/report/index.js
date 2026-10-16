@@ -16,6 +16,9 @@ function getNetworkType() {
         });
     });
 }
+function formatPhaseSeconds(value) {
+    return `${Number(value).toFixed(1)} 秒`;
+}
 Page({
     data: {
         statusBarHeight: 20,
@@ -36,11 +39,20 @@ Page({
         averageScore: 0,
         requiresManualReview: false,
         reviewMessage: '',
-        actionLabel: '本次训练',
+        observedReps: 0,
+        isVisualPractice: false,
+        showVisualScore: false,
+        scoreAvailable: true,
+        practiceCountText: '0 次',
+        visualPhaseMetricsAvailable: false,
+        riseTimeText: '--',
+        peakTimeText: '--',
+        returnTimeText: '--',
+        cycleDurationText: '--',
+        actionLabel: '本段动作',
         actionType: 'abdominal_crunch',
-        reportFocusTitle: '本次先熟悉动作',
+        reportFocusTitle: '本段先熟悉动作',
         reportFocusText: '',
-        compareToLastText: '',
         validRepsText: '0 / 0',
         holdDurationText: '0 秒',
         accuracyText: '-',
@@ -51,7 +63,6 @@ Page({
         videoReview: null,
         videoExpanded: false,
         videoLoadFailed: false,
-        improvementMessage: '',
         newlyUnlockedBadges: [],
         showSafetyNotice: false,
     },
@@ -76,30 +87,52 @@ Page({
         });
         try {
             const report = await (0, report_1.getReport)(videoId);
-            const actionLabel = ACTION_LABEL_MAP[report.actionType] || '本次训练';
+            const actionLabel = ACTION_LABEL_MAP[report.actionType] || '本段动作';
+            const isVisualPractice = report.scoreType === 'visual_practice' || report.scoreType === 'visual_evidence';
+            const showVisualScore = report.scoreType === 'visual_evidence' && report.scoreAvailable !== false;
+            const visualMetrics = isVisualPractice ? report.visualPhaseMetrics : null;
+            const visualPhaseMetricsAvailable = Boolean(visualMetrics && [
+                visualMetrics.riseSeconds, visualMetrics.holdSeconds,
+                visualMetrics.returnSeconds, visualMetrics.smoothnessPercent,
+            ].every((value) => typeof value === 'number' && Number.isFinite(value) && value >= 0));
+            // 新旧报告可能都包含整套训练趋势/进步评价；短片段不能据此推断整套训练效果。
             const shouldShowControlMetric = report.actionType !== 'pelvic_tilt';
-            const reportFocusTitle = report.reportFocus === 'review_pending'
-                ? '本次结果待复核'
+            const reportFocusTitle = isVisualPractice
+                ? '本次练习已记录'
+                : report.reportFocus === 'review_pending'
+                ? '本段结果待复核'
                 : report.reportFocus === 'retake_recommended'
                     ? '建议重新拍摄'
                     : report.reportFocus === 'build_stability'
-                        ? '本次继续练稳定'
+                        ? '本段继续练稳定'
                         : report.reportFocus === 'maintain_rhythm'
-                            ? '这次完成得很稳'
-                            : '本次先熟悉动作';
+                            ? '本段动作较稳'
+                            : '本段先熟悉动作';
             this.setData({
                 loadFailed: false,
                 isAnalysisFailed: false,
                 errorMessage: '',
                 grade: report.grade,
-                averageScore: report.averageScore,
+                averageScore: showVisualScore ? Math.round(report.averageScore) : report.averageScore,
                 requiresManualReview: Boolean(report.requiresManualReview),
                 reviewMessage: report.reviewMessage || '',
+                observedReps: Number(report.observedReps) || 0,
+                isVisualPractice,
+                showVisualScore,
+                scoreAvailable: report.scoreAvailable !== false,
+                practiceCountText: `${Number(report.totalReps) || 0} 次`,
+                visualPhaseMetricsAvailable,
+                riseTimeText: visualPhaseMetricsAvailable ? formatPhaseSeconds(visualMetrics.riseSeconds) : '--',
+                peakTimeText: visualPhaseMetricsAvailable ? formatPhaseSeconds(visualMetrics.holdSeconds) : '--',
+                returnTimeText: visualPhaseMetricsAvailable ? formatPhaseSeconds(visualMetrics.returnSeconds) : '--',
+                cycleDurationText: visualPhaseMetricsAvailable
+                    ? formatPhaseSeconds(visualMetrics.riseSeconds + visualMetrics.holdSeconds + visualMetrics.returnSeconds) : '--',
                 actionLabel,
                 actionType: report.actionType,
                 reportFocusTitle,
-                reportFocusText: report.reportFocusText || '',
-                compareToLastText: report.compareToLast || '',
+                reportFocusText: isVisualPractice
+                    ? report.scoreAvailable === false ? '下次可拍下完整动作。' : '按舒适幅度，继续保持练习。'
+                    : report.reportFocusText ? `本段动作观察：${report.reportFocusText}` : '本段视频仅用于观察动作，不代表整套训练表现。',
                 validRepsText: `${report.validReps} / ${report.totalReps}`,
                 holdDurationText: report.avgHoldDuration ? `${Math.round(report.avgHoldDuration)} 秒` : '-',
                 accuracyText: report.accuracyAvg != null ? `${Math.round(report.accuracyAvg)}` : '-',
@@ -111,7 +144,6 @@ Page({
                 videoReview: report.videoReview || null,
                 videoExpanded: false,
                 videoLoadFailed: false,
-                improvementMessage: report.motivation?.improvementMessage || report.trendSummary || '',
                 newlyUnlockedBadges: report.newlyUnlockedBadges || [],
             });
         }
@@ -126,12 +158,12 @@ Page({
                         isAnalysisFailed: true,
                         failureTitle: status.status === 'quality_insufficient'
                             ? (trunkKeypointsUnstable ? '拍摄画面暂不适合评估' : '视频质量不足，暂未生成报告')
-                            : '本次训练暂未生成结果',
+                            : '本次训练已记录，动作观察暂不可用',
                         failureReason: status.status === 'quality_insufficient'
                             ? (trunkKeypointsUnstable
                                 ? '部分画面未能稳定识别到肩部或髋部。请将肩膀到髋部完整拍入画面，避免动作中移出镜头或被遮挡后重新上传。'
                                 : (status.failReason || '请确保动作完整入镜、画面清晰稳定后再重新上传。'))
-                            : '系统暂时无法完成本次视频分析。请重新上传一段完整、清晰的训练视频后再试。',
+                            : '视频已保存，不影响训练记录。系统暂时无法给出可靠的动作观察；您可以稍后查看记录，无需为了获得评分而重复训练。',
                     });
                 }
                 else {

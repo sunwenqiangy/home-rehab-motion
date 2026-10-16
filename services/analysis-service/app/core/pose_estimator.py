@@ -239,14 +239,15 @@ class PoseEstimator:
             (kp1.z + kp2.z) / 2,
         )
 
-    def compute_avg_visibility(self, frames: List[Frame]) -> float:
+    def compute_avg_visibility(self, frames: List[Frame], keypoint_names=None) -> float:
         """计算关键点平均可见性"""
         from app.core.constants import QUALITY_KEYPOINTS
 
+        names = keypoint_names or QUALITY_KEYPOINTS
         total_vis = 0.0
         count = 0
         for f in frames:
-            for name in QUALITY_KEYPOINTS:
+            for name in names:
                 kp = f.keypoints.get(name)
                 if kp:
                     total_vis += kp.visibility

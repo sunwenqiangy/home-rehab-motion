@@ -12,11 +12,10 @@ const SHOOTING_DEFAULTS = {
 };
 function getAppConfig() { const app = getApp(); return app.globalData.appConfig || appConfig_1.DEFAULT_APP_CONFIG; }
 function resolveAssetUrl(url) { if (!url || /^https?:\/\//.test(url) || url.startsWith('data:')) return url || ''; const origin = env_1.API_BASE_URL.replace(/\/api\/?$/, ''); return `${origin}${url.startsWith('/') ? url : `/${url}`}`; }
-function chooseTrainingVideo(source) {
-  const cfg = getAppConfig();
-  // wx.chooseVideo 的 maxDuration 仅支持 3~60 秒，超过上限会导致选择器无法打开。
-  const configuredMaxDuration = source === 'camera' ? cfg.videoRecordMaxDurationSeconds : cfg.videoMaxDurationSeconds;
-  const maxDuration = Math.max(3, Math.min(configuredMaxDuration, 60));
+function chooseTrainingVideo(source, actionType) {
+  const limits = (0, appConfig_1.getVideoLimits)(actionType, getAppConfig());
+  // wx.chooseVideo 的 maxDuration 仅支持 3~60 秒；相册视频仍需在上传确认页校验实际时长。
+  const maxDuration = Math.max(3, Math.min(source === 'camera' ? limits.recordMaxDuration : limits.maxDuration, 60));
   return new Promise((resolve, reject) => {
     const success = (res) => {
       if (!res?.tempFilePath) return reject(new Error('NO_VIDEO_SELECTED'));
@@ -27,7 +26,7 @@ function chooseTrainingVideo(source) {
   });
 }
 function toShootingViewModel(requirements) { const byType = (requirements || []).reduce((result, item) => ({ ...result, [item.type]: item }), {}); return Object.keys(SHOOTING_DEFAULTS).map((type) => { const fallback = SHOOTING_DEFAULTS[type]; const item = byType[type] || {}; return { ...fallback, ...item, order: fallback.order, typeLabel: fallback.typeLabel, title: item.title || fallback.title, description: item.description || fallback.description, altText: item.altText || fallback.altText, correctUrl: resolveAssetUrl(item.correctImage?.url) || fallback.correctUrl }; }); }
-function toViewModel(detail) { return { ...detail, coverUrl: resolveAssetUrl(detail.coverImage?.url) || resolveAssetUrl(DEFAULT_COVERS[detail.actionType]), videoUrl: resolveAssetUrl(detail.video?.asset?.url), videoFallbackText: detail.video?.fallbackText || '教学视频暂时无法播放，您可以先查看下面的图文步骤。', steps: (detail.steps || []).map((item, index) => ({ ...item, number: index + 1, imageUrl: resolveAssetUrl(item.image?.url) })), commonMistakes: (detail.commonMistakes || []).map((item) => ({ ...item, media: { ...item.media, url: resolveAssetUrl(item.media?.url) } })), hasCommonMistakes: (detail.commonMistakes || []).length > 0, shootingRequirements: toShootingViewModel(detail.shootingRequirements) }; }
+function toViewModel(detail) { return { ...detail, coverUrl: resolveAssetUrl(detail.coverImage?.url) || resolveAssetUrl(DEFAULT_COVERS[detail.actionType]), videoUrl: resolveAssetUrl(detail.video?.asset?.url), videoFallbackText: detail.video?.fallbackText || '教学视频暂时无法播放，您可以先查看下面的图文步骤。', steps: (detail.steps || []).map((item, index) => ({ ...item, number: index + 1, imageUrl: resolveAssetUrl(item.image?.url) })), commonMistakes: (detail.commonMistakes || []).map((item) => ({ ...item, media: { ...item.media, url: resolveAssetUrl(item.media?.url) } })), hasCommonMistakes: (detail.commonMistakes || []).length > 0, shootingRequirements: toShootingViewModel(detail.shootingRequirements), estimatedTimeLabel: Number(detail.estimatedMinutes) > 0 ? `约 ${detail.estimatedMinutes} 分钟` : '', clipHint: detail.actionType === 'abdominal_crunch' ? `跟随呼吸引导，以舒适幅度练习即可；练习后可拍摄一段收缩与放松过程（不超过 ${(0, appConfig_1.formatVideoDuration)((0, appConfig_1.getVideoLimits)(detail.actionType, getAppConfig()).maxDuration)}）。视频确认上传后会计入训练记录，识别结果不影响这次记录。` : `每段拍摄 1～2 个完整动作，视频不超过 ${(0, appConfig_1.formatVideoDuration)((0, appConfig_1.getVideoLimits)(detail.actionType, getAppConfig()).maxDuration)}。` }; }
 function getNetworkType() { return new Promise((resolve) => wx.getNetworkType({ success: (result) => resolve(result.networkType || 'unknown'), fail: () => resolve('unknown') })); }
 Page({
   data: { loading: true, failed: false, errorIcon: '⚠️', errorTitle: '', errorDesc: '', videoFailed: false, statusBarHeight: 20, navBarHeight: 44, topPlaceholderHeight: 128, detail: null, contentId: 0, actionType: '', loadedVersion: 0 },
@@ -38,6 +37,6 @@ Page({
   updateTopPlaceholderHeight() { wx.nextTick(() => wx.createSelectorQuery().select('.detail-top-sticky').boundingClientRect((rect) => { if (rect?.height) this.setData({ topPlaceholderHeight: Math.ceil(rect.height) }); }).exec()); },
   onGoBack() { wx.navigateBack({ delta: 1 }); }, onRetryLoad() { this.loadPublishedDetail(true); }, onVideoError() { this.setData({ videoFailed: true }); }, onPreviewImage(event) { const { url, urls } = event.currentTarget.dataset; if (url) wx.previewImage({ current: url, urls: urls || [url] }); },
   async onStartUpload() { await this.selectVideoAndGoUpload('camera'); }, async onChooseFromAlbum() { await this.selectVideoAndGoUpload('album'); },
-  async selectVideoAndGoUpload(source) { if (!(0, session_1.getToken)()) { wx.showToast({ title: '登录后可提交训练视频', icon: 'none' }); wx.navigateTo({ url: '/pages/auth/login' }); return; } const detail = this.data.detail; if (!detail) return; wx.showLoading({ title: source === 'camera' ? '正在打开摄像头...' : '正在打开相册...' }); try { const video = await chooseTrainingVideo(source); (0, session_1.savePendingUploadDraft)({ actionType: detail.actionType, contentId: detail.contentId, tempFilePath: video.tempFilePath, duration: video.duration, size: video.size, source, updatedAt: Date.now() }); // 保留动作详情作为上传确认页的返回目的地；后续上传、分析、报告会逐页替换，不会累积中间页。
+  async selectVideoAndGoUpload(source) { if (!(0, session_1.getToken)()) { wx.showToast({ title: '登录后可提交训练视频', icon: 'none' }); wx.navigateTo({ url: '/pages/auth/login' }); return; } const detail = this.data.detail; if (!detail) return; wx.showLoading({ title: source === 'camera' ? '正在打开摄像头...' : '正在打开相册...' }); try { const video = await chooseTrainingVideo(source, detail.actionType); (0, session_1.savePendingUploadDraft)({ actionType: detail.actionType, contentId: detail.contentId, tempFilePath: video.tempFilePath, duration: video.duration, size: video.size, source, updatedAt: Date.now() }); // 保留动作详情作为上传确认页的返回目的地；后续上传、分析、报告会逐页替换，不会累积中间页。
 wx.navigateTo({ url: `/pages/upload/index?actionType=${detail.actionType}&contentId=${detail.contentId}&source=${source}` }); } catch (error) { const text = `${error?.errMsg || error?.message || ''}`; wx.showToast({ title: text.includes('cancel') ? (source === 'camera' ? '已取消录制' : '已取消选择') : (source === 'camera' ? '无法打开摄像头' : '无法打开相册'), icon: 'none' }); } finally { wx.hideLoading(); } },
 });

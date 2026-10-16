@@ -59,8 +59,10 @@ class PhaseSegmenter:
         frames: List[Frame],
         action_type: str,
         mode: str = 'legacy_peak',
+        short_clip: bool = False,
+        require_complete_abdominal_cycle: Optional[bool] = None,
     ) -> SegmentationResult:
-        """按动作类型分发切分；只有缩腹可显式启用闭环状态机。"""
+        """按动作类型分发切分；缩腹可独立选择是否启用短片段回位过滤。"""
         if mode not in {'legacy_peak', 'cycle_state_machine'}:
             raise ValueError(f'Unsupported segmentation mode: {mode}')
         if not frames:
@@ -85,6 +87,12 @@ class PhaseSegmenter:
                 'Video may not match action type.',
                 action_type, robust_range, min_range,
             )
+            if action_type == 'abdominal_crunch' and short_clip:
+                # 小幅缩腹不能可靠计数，但也不能据此断言患者没有练习。
+                # 保留 0 次的真实观察结果，交由任务层转为待复核而非上传失败。
+                version = (ABDOMINAL_SEGMENTATION_VERSION_CYCLE if mode == 'cycle_state_machine'
+                           else ABDOMINAL_SEGMENTATION_VERSION_LEGACY)
+                return SegmentationResult(version=version, reps=[])
             raise SegmentationError(
                 f'动作信号幅度过低（实测 {robust_range:.1f}°，要求 ≥ {min_range:.1f}°），'
                 f'该视频的肢体运动幅度与「{self._ACTION_TYPE_NAMES.get(action_type, action_type)}」不匹配，'
@@ -95,7 +103,7 @@ class PhaseSegmenter:
         if action_type == 'pelvic_tilt':
             # 对骨盆动作先按真实时间戳归一；避免低配实例帧率下降后，固定帧数窗口
             # 代表更长物理时长，进而漏掉完整周期。返回边界仍映射回真实关键点帧。
-            reps = self._segment_pelvic_time_normalized(signal, frames)
+            reps = self._segment_pelvic_time_normalized(signal, frames, short_clip=short_clip)
             logger.info(
                 'Segmented %d reps for %s on %.1ffps logical timeline',
                 len(reps), action_type, self._PELVIC_SEGMENTATION_FPS,
@@ -106,8 +114,10 @@ class PhaseSegmenter:
         smoothed = self._moving_average(signal)
 
         if action_type == 'abdominal_crunch':
+            require_complete = (short_clip if require_complete_abdominal_cycle is None
+                                else require_complete_abdominal_cycle)
             if mode == 'cycle_state_machine':
-                return self._segment_abdominal_cycle_state_machine(smoothed)
+                return self._segment_abdominal_cycle_state_machine(smoothed, require_complete=require_complete)
             reps = self._segment_abdominal_reps(smoothed)
             if not reps:
                 # 严格完整周期切分失败时，回退到峰值切分，避免直接失败为“未检测到有效动作”。
@@ -140,6 +150,8 @@ class PhaseSegmenter:
                     len(reps),
                 )
 
+            if require_complete:
+                reps = self._filter_short_peak_reps(reps, smoothed, action_type)
             logger.info('Segmented %d reps for %s', len(reps), action_type)
             return SegmentationResult(
                 version=ABDOMINAL_SEGMENTATION_VERSION_LEGACY,
@@ -147,7 +159,7 @@ class PhaseSegmenter:
             )
 
         if action_type == 'knee_rotation':
-            reps = self._segment_knee_reps(smoothed)
+            reps = self._segment_knee_reps(smoothed, short_clip=short_clip)
             if not reps:
                 # 回退：放宽 min_distance 到 10s
                 signal_std = float(np.std(smoothed)) if len(smoothed) else 0.0
@@ -165,6 +177,8 @@ class PhaseSegmenter:
                     'Knee strict segmentation returned 0 reps, fallback peak-based reps=%d',
                     len(reps),
                 )
+            if short_clip:
+                reps = self._filter_short_peak_reps(reps, smoothed, action_type)
             logger.info('Segmented %d reps for %s', len(reps), action_type)
             return SegmentationResult(version='knee_rotation_legacy', reps=reps)
 
@@ -178,6 +192,36 @@ class PhaseSegmenter:
         reps = self._build_reps(peaks, smoothed, action_type)
         logger.info('Segmented %d reps for %s', len(reps), action_type)
         return SegmentationResult(version=f'{action_type}_legacy', reps=reps)
+
+    def _filter_short_peak_reps(self, reps: List[Rep], signal: np.ndarray, action_type: str) -> List[Rep]:
+        """短视频峰值两侧必须实际拍到回位，不能依靠推测边界计数。"""
+        filtered = []
+        stable_window = max(2, round(0.6 * self.sample_fps))
+        # 缩腹检查的是完整收缩-回位周期，不是静止保持时长；与闭环模式的 2.5 秒下限对齐。
+        min_seconds = 8.0 if action_type == 'knee_rotation' else 2.5
+        for rep in reps:
+            peak = rep.phases.get('hold', (rep.start_frame + rep.end_frame) // 2)
+            if not (rep.start_frame < peak < rep.end_frame):
+                continue
+            left = rep.start_frame + int(np.argmin(signal[rep.start_frame:peak]))
+            right = peak + 1 + int(np.argmin(signal[peak + 1:rep.end_frame + 1]))
+            amplitude = min(float(signal[peak] - signal[left]), float(signal[peak] - signal[right]))
+            min_amplitude = 2.0 if action_type == 'knee_rotation' else 0.25
+            if amplitude < min_amplitude or (right - left) / self.sample_fps < min_seconds:
+                continue
+            tolerance = max(min_amplitude * 0.5, amplitude * 0.2)
+            edge_tolerance = max(min_amplitude * 0.25, amplitude * 0.05)
+            # 贴边低点需要一段稳定基线；单帧在运动途中截断不算闭环。
+            if left == 0 and (len(signal) < stable_window or
+                              float(np.ptp(signal[:stable_window])) > edge_tolerance):
+                continue
+            if right == len(signal) - 1 and (len(signal) < stable_window or
+                                             float(np.ptp(signal[-stable_window:])) > edge_tolerance):
+                continue
+            if abs(float(signal[left] - signal[right])) > tolerance:
+                continue
+            filtered.append(self._make_rep(len(filtered) + 1, left, right, hold_frame=peak))
+        return filtered
 
     def _extract_signal(self, frames: List[Frame], action_type: str) -> Optional[np.ndarray]:
         """提取驱动信号"""
@@ -238,14 +282,15 @@ class PhaseSegmenter:
 
         return None
 
-    def _segment_pelvic_time_normalized(self, signal: np.ndarray, frames: List[Frame]) -> List[Rep]:
+    def _segment_pelvic_time_normalized(self, signal: np.ndarray, frames: List[Frame],
+                                        short_clip: bool = False) -> List[Rep]:
         """在固定 4fps 逻辑时间轴切分骨盆倾斜，再映射回真实关键点下标。"""
         timestamps = np.asarray([frame.timestamp for frame in frames], dtype=float)
         if len(timestamps) != len(signal) or len(timestamps) < 5:
             return []
         if not np.all(np.isfinite(timestamps)) or np.any(np.diff(timestamps) <= 0):
             # 异常时间戳不进行插值，保持向后兼容并避免虚构时间关系。
-            return self._segment_pelvic_reps(self._moving_average(signal))
+            return self._segment_pelvic_reps(self._moving_average(signal), short_clip=short_clip)
 
         step_seconds = 1.0 / self._PELVIC_SEGMENTATION_FPS
         source_intervals = np.diff(timestamps)
@@ -261,7 +306,7 @@ class PhaseSegmenter:
             np.isclose(source_effective_fps, self._PELVIC_SEGMENTATION_FPS, rtol=0.02)
             and bool(np.all(native_interval_band))
         ):
-            return self._segment_pelvic_reps(self._moving_average(signal))
+            return self._segment_pelvic_reps(self._moving_average(signal), short_clip=short_clip)
 
         normalized_times = np.arange(
             timestamps[0],
@@ -274,7 +319,7 @@ class PhaseSegmenter:
         normalized_signal = np.interp(normalized_times, timestamps, signal)
         normalized_segmenter = PhaseSegmenter(sample_fps=self._PELVIC_SEGMENTATION_FPS)
         normalized_reps = normalized_segmenter._segment_pelvic_reps(
-            normalized_segmenter._moving_average(normalized_signal),
+            normalized_segmenter._moving_average(normalized_signal), short_clip=short_clip,
         )
         return self._map_normalized_pelvic_reps(normalized_reps, normalized_times, timestamps)
 
@@ -563,7 +608,7 @@ class PhaseSegmenter:
             return None
         return left_bound + int(np.argmin(local))
 
-    def _segment_pelvic_reps(self, signal: np.ndarray) -> List[Rep]:
+    def _segment_pelvic_reps(self, signal: np.ndarray, short_clip: bool = False) -> List[Rep]:
         """以“稳定中立 → 后倾峰值 → 回到稳定中立”切分骨盆倾斜。
 
         信号是正侧方画面下的躯干—骨盆矢状面倾角。每次动作均要求峰值前后存在
@@ -572,6 +617,15 @@ class PhaseSegmenter:
         peaks = self._find_peaks(signal, 'pelvic_tilt')
         troughs = self._find_troughs(signal, 'pelvic_tilt')
 
+        if short_clip and peaks and not troughs:
+            # 单次闭环的末尾可能是一整段平坦中立位，scipy 不返回端点谷值。
+            # 只在首尾均稳定且回到同一基线时补充末帧；历史长视频保持原行为。
+            edge_frames = max(2, int(0.7 * self.sample_fps))
+            if (len(signal) >= edge_frames * 2 and
+                    float(np.ptp(signal[:edge_frames])) <= 0.2 and
+                    float(np.ptp(signal[-edge_frames:])) <= 0.2 and
+                    abs(float(signal[0] - signal[-1])) <= 0.5):
+                troughs = [len(signal) - 1]
         if not peaks or not troughs:
             return []
 
@@ -763,7 +817,7 @@ class PhaseSegmenter:
             return None
         return peak_idx + 1 + int(np.argmin(segment))
 
-    def _segment_knee_reps(self, signal: np.ndarray) -> List[Rep]:
+    def _segment_knee_reps(self, signal: np.ndarray, short_clip: bool = False) -> List[Rep]:
         """膝关节旋转专用切分：以"大周期谷-峰-谷"作为完整一次动作边界。
 
         驱动信号为左髋-左膝连线角度。每次完整动作包含：
@@ -799,7 +853,8 @@ class PhaseSegmenter:
             return []
 
         reps: List[Rep] = []
-        min_frames = int(20.0 * self.sample_fps)   # 最短 20 秒（双向旋转需要足够时间）
+        # 仅短片段放宽候选长度；最终仍须经过谷-峰-谷回位校验。
+        min_frames = int((8.0 if short_clip else 20.0) * self.sample_fps)
         max_frames = int(45.0 * self.sample_fps)   # 最长 45 秒
         signal_std = float(np.std(signal)) if len(signal) else 0.0
         signal_range = float(np.max(signal) - np.min(signal)) if len(signal) else 0.0
@@ -856,7 +911,8 @@ class PhaseSegmenter:
 
         return reps
 
-    def _segment_abdominal_cycle_state_machine(self, signal: np.ndarray) -> SegmentationResult:
+    def _segment_abdominal_cycle_state_machine(self, signal: np.ndarray,
+                                                require_complete: bool = False) -> SegmentationResult:
         """用"稳定→收缩→顶点→回落→稳定"闭环识别缩腹周期。
 
         该实现只依赖当前已预处理的同一条信号，所有窗口均按 effective_sample_fps
@@ -997,7 +1053,7 @@ class PhaseSegmenter:
                     or state == 'CONTRACTING'
                 )
             )
-            if tail_ok:
+            if tail_ok and not require_complete:
                 candidate = SegmentationCandidate('INCOMPLETE_TAIL', cycle_trough, peak, return_frame=end, reason='已收缩且充分回落，稳定窗口被视频结束截断', amplitude=amplitude)
                 accepted.append(candidate)
                 reps.append(self._make_rep(len(reps) + 1, cycle_trough, end, hold_frame=peak))

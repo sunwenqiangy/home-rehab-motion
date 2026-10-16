@@ -84,7 +84,7 @@ DEFAULT_TEMPLATES = {
     'abdominal_crunch': {
         'abdominal_displacement': {'mean': 1.5, 'std': 1.0, 'unit': 'deg'},
         'displacement_velocity': {'mean': 0.5, 'std': 0.5, 'unit': 'deg/s'},
-        'hold_duration': {'mean': 5.0, 'std': 1.5, 'unit': 's'},
+        'hold_duration': {'mean': 3.0, 'std': 1.5, 'unit': 's'},
         'trunk_angle_change': {'mean': 2.0, 'std': 1.5, 'unit': 'deg'},
     },
     'pelvic_tilt': {

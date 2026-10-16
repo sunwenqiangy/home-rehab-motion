@@ -112,8 +112,10 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
   ): Promise<PresignUploadResponseDto> {
     await this.privacyService.requireActiveConsent(userId);
     const appConfig = await this.configService.getPatientAppConfig();
-    if (!Number.isFinite(duration) || duration < appConfig.videoMinDurationSeconds || duration > appConfig.videoMaxDurationSeconds) {
-      throw new BadRequestException(`视频时长需在 ${appConfig.videoMinDurationSeconds} 至 ${appConfig.videoMaxDurationSeconds} 秒之间`);
+    const maxDuration = Math.min(appConfig.videoMaxDurationSeconds, actionType === 'knee_rotation' ? 60 : 30);
+    const minDuration = Math.max(appConfig.videoMinDurationSeconds, actionType === 'knee_rotation' ? 10 : 8);
+    if (!Number.isFinite(duration) || duration < minDuration || duration > maxDuration) {
+      throw new BadRequestException(`视频时长需在 ${minDuration} 至 ${maxDuration} 秒之间`);
     }
     if (userId <= 0) {
       throw new BadRequestException('无效的用户身份，无法创建上传任务');
@@ -234,6 +236,9 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
         )
         : this.storageService.buildVideoObjectKey(videoId, Number(video.user_id), video.action_type)
     );
+    if (video.analysis_status !== 'uploading' || video.confirmed_at) {
+      throw new BadRequestException('视频已确认，不能再次覆盖上传文件');
+    }
     const stored = await this.storageService.saveVideoFile(objectKey, file);
 
     await this.prisma.trainingVideo.update({
@@ -301,6 +306,21 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
           this.logger.warn(`Upload recovery skipped videoId=${video.video_id}, error=${reason}`);
         }
       }
+      // 确认已持久化，但训练日账本或发奖临时失败时，后台幂等补记，不依赖患者再点击确认。
+      const missingAttendance = await this.prisma.trainingVideo.findMany({
+        where: { source_type: 'miniapp', short_clip: true, confirmed_at: { not: null }, training_attendance: { is: null } },
+        select: { video_id: true, user_id: true, confirmed_at: true },
+        orderBy: { confirmed_at: 'asc' },
+        take: this.uploadRecoveryBatchSize,
+      });
+      for (const video of missingAttendance) {
+        if (!video.confirmed_at) continue;
+        try {
+          await this.publishConfirmedTraining(Number(video.user_id), Number(video.video_id), video.confirmed_at);
+        } catch (error) {
+          this.logger.warn(`Confirmed training recovery failed: videoId=${video.video_id}, error=${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
     } catch (error) {
       this.logger.error('Uploading video recovery scan failed', error instanceof Error ? error.stack : String(error));
     } finally {
@@ -313,8 +333,8 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
     reason: string,
     issueCode: 'UPLOAD_CLIENT_SIZE_MISMATCH' | 'UPLOAD_SIZE_METADATA_MISSING' | 'UPLOAD_SIZE_MISMATCH',
   ) {
-    await this.prisma.trainingVideo.update({
-      where: { video_id: BigInt(videoId) },
+    await this.prisma.trainingVideo.updateMany({
+      where: { video_id: BigInt(videoId), analysis_status: 'uploading', confirmed_at: null },
       data: {
         analysis_status: 'quality_insufficient',
         quality_status: 'insufficient',
@@ -348,6 +368,13 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
 
     if (video.analysis_status !== 'uploading') {
       if (video.confirmed_at) {
+        if (video.source_type === 'miniapp' && options.recordMotivation !== false) {
+          try {
+            await this.publishConfirmedTraining(userId, payload.videoId, video.confirmed_at);
+          } catch (error) {
+            this.logger.warn(`Confirmed training retry failed: videoId=${payload.videoId}, error=${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
         return {
           videoId: payload.videoId,
           status: video.analysis_status as ConfirmUploadResponseDto['status'],
@@ -361,11 +388,13 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
     }
 
     const appConfig = await this.configService.getPatientAppConfig();
-    if (!Number.isFinite(payload.duration) || payload.duration < appConfig.videoMinDurationSeconds) {
-      throw new BadRequestException(`视频时长不能少于 ${appConfig.videoMinDurationSeconds} 秒`);
-    }
-    if (payload.duration > appConfig.videoMaxDurationSeconds) {
-      throw new BadRequestException(`视频时长不能超过 ${appConfig.videoMaxDurationSeconds} 秒`);
+    const maxDuration = Math.min(appConfig.videoMaxDurationSeconds, video.action_type === 'knee_rotation' ? 60 : 30);
+    const minDuration = Math.max(appConfig.videoMinDurationSeconds, video.action_type === 'knee_rotation' ? 10 : 8);
+    if (video.source_type === 'miniapp' && (
+      !Number.isFinite(payload.duration) || payload.duration < minDuration || payload.duration > maxDuration
+      || video.duration == null || Math.abs(payload.duration - video.duration) > 1
+    )) {
+      throw new BadRequestException(`视频时长需在 ${minDuration} 至 ${maxDuration} 秒之间，且与上传任务一致`);
     }
 
     const objectKey = video.video_key || this.storageService.buildVideoObjectKey(payload.videoId, userId, video.action_type);
@@ -420,23 +449,42 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
         throw new BadRequestException(reason);
       }
     }
+    let verifiedDuration = payload.duration;
+    if (requiresClientSizeValidation) {
+      verifiedDuration = await this.storageService.probeVideoDuration(resolvedObjectKey, objectSizeBytes);
+      if (verifiedDuration < minDuration || verifiedDuration > maxDuration) {
+        throw new BadRequestException(`视频真实时长需在 ${minDuration} 至 ${maxDuration} 秒之间`);
+      }
+    }
     this.logger.log(
-      `Video object integrity verified: videoId=${payload.videoId}, sizeBytes=${objectSizeBytes}, `
-      + `clientSizeValidated=${requiresClientSizeValidation}`,
+      `Video object integrity verified: videoId=${payload.videoId}, sizeBytes=${objectSizeBytes}, duration=${verifiedDuration}`,
     );
 
     const confirmedAt = video.confirmed_at || new Date();
-    // 使用条件更新抢占确认权，避免小程序请求与后台恢复扫描同时创建多个 analysis run。
-    const claimed = await this.prisma.trainingVideo.updateMany({
-      where: { video_id: BigInt(payload.videoId), analysis_status: 'uploading' },
-      data: {
-        action_type: payload.actionType,
-        duration: payload.duration,
-        video_key: resolvedObjectKey,
-        confirmed_at: confirmedAt,
-        analysis_status: 'queued',
-        fail_reason: null,
-      },
+    const analysisRunId = randomUUID();
+    // 确认权、分析 run 与可补投的任务必须原子持久化；激励或入队失败都不能留下无任务的 queued 视频。
+    const claimed = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.trainingVideo.updateMany({
+        where: { video_id: BigInt(payload.videoId), analysis_status: 'uploading', confirmed_at: null },
+        data: {
+          duration: verifiedDuration,
+          short_clip: requiresClientSizeValidation,
+          video_key: resolvedObjectKey,
+          confirmed_at: confirmedAt,
+          analysis_status: 'queued',
+          fail_reason: null,
+        },
+      });
+      if (updated.count === 0) return updated;
+      await tx.analysisRun.create({
+        data: { analysis_run_id: analysisRunId, video_id: BigInt(payload.videoId), status: 'queued', request_snapshot: payload as object },
+      });
+      await tx.analysisTask.upsert({
+        where: { video_id: BigInt(payload.videoId) },
+        update: { analysis_run_id: analysisRunId, provider_task_id: null, task_status: 'queued', progress_stage: 'waiting_for_worker', callback_next_retry_at: new Date(Date.now() + 30_000) },
+        create: { video_id: BigInt(payload.videoId), analysis_run_id: analysisRunId, task_status: 'queued', progress_stage: 'waiting_for_worker', callback_next_retry_at: new Date(Date.now() + 30_000) },
+      });
+      return updated;
     });
     if (claimed.count === 0) {
       const current = await this.prisma.trainingVideo.findUniqueOrThrow({
@@ -444,24 +492,26 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
         select: { analysis_status: true, confirmed_at: true },
       });
       if (current.confirmed_at) {
+        if (video.source_type === 'miniapp' && options.recordMotivation !== false) {
+          try {
+            await this.publishConfirmedTraining(userId, payload.videoId, current.confirmed_at);
+          } catch (error) {
+            this.logger.warn(`Confirmed training retry failed: videoId=${payload.videoId}, error=${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
         return { videoId: payload.videoId, status: current.analysis_status as ConfirmUploadResponseDto['status'], estimatedWaitSeconds: 0 };
       }
       throw new BadRequestException('当前视频状态不允许确认上传');
     }
 
     if (options.recordMotivation !== false) {
-      await this.motivationService.recordConfirmedTraining(userId, payload.videoId, confirmedAt);
+      try {
+        await this.publishConfirmedTraining(userId, payload.videoId, confirmedAt);
+      } catch (error) {
+        // 训练日落账故障不阻断已确认视频的分析入队；重试确认会幂等补记。
+        this.logger.error(`Confirmed training recording failed: videoId=${payload.videoId}`, error instanceof Error ? error.stack : String(error));
+      }
     }
-
-    const analysisRunId = randomUUID();
-    await this.prisma.analysisRun.create({
-      data: {
-        analysis_run_id: analysisRunId,
-        video_id: BigInt(payload.videoId),
-        status: 'queued',
-        request_snapshot: payload as object,
-      },
-    });
 
     try {
       this.logger.log(`Enqueue requested from confirm upload: videoId=${payload.videoId}, runId=${analysisRunId}, actionType=${payload.actionType}`);
@@ -490,6 +540,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
           // Worker 已开始时不覆盖其已写入的细分步骤。
           progress_stage: task.status === 'completed' ? 'report_ready' : undefined,
           fail_reason: null,
+          callback_next_retry_at: null,
           finished_at: task.status === 'completed' ? new Date() : undefined,
         },
         create: {
@@ -523,38 +574,16 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
         + `retryAt=${retryAt.toISOString()}, elapsedMs=${Date.now() - startedAt}, error=${failReason}`,
         error instanceof Error ? error.stack : undefined,
       );
-      await this.prisma.$transaction([
-        this.prisma.trainingVideo.update({
-          where: { video_id: BigInt(payload.videoId) },
-          data: {
-            analysis_status: 'queued',
-            fail_reason: null,
-          },
-        }),
-        this.prisma.analysisTask.upsert({
-          where: { video_id: BigInt(payload.videoId) },
-          update: {
-            analysis_run_id: analysisRunId,
-            task_status: 'queued',
-            progress_stage: 'waiting_for_worker',
-            fail_reason: failReason.slice(0, 255),
-            callback_status: 'enqueue_retry_pending',
-            callback_last_error: failReason.slice(0, 255),
-            callback_next_retry_at: retryAt,
-            finished_at: null,
-          },
-          create: {
-            video_id: BigInt(payload.videoId),
-            analysis_run_id: analysisRunId,
-            task_status: 'queued',
-            progress_stage: 'waiting_for_worker',
-            fail_reason: failReason.slice(0, 255),
-            callback_status: 'enqueue_retry_pending',
-            callback_last_error: failReason.slice(0, 255),
-            callback_next_retry_at: retryAt,
-          },
-        }),
-      ]);
+      // 投递可能已被 Worker 接收；只标记尚未分配 provider id 的排队任务，不能回退 processing/completed。
+      await this.prisma.analysisTask.updateMany({
+        where: { video_id: BigInt(payload.videoId), analysis_run_id: analysisRunId, task_status: 'queued', provider_task_id: null },
+        data: {
+          fail_reason: failReason.slice(0, 255),
+          callback_status: 'enqueue_retry_pending',
+          callback_last_error: failReason.slice(0, 255),
+          callback_next_retry_at: retryAt,
+        },
+      });
       this.logger.warn(`Confirm upload deferred: videoId=${payload.videoId}, status=queued, retryScheduledAt=${retryAt.toISOString()}`);
       return {
         videoId: payload.videoId,
@@ -1291,6 +1320,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
       analysis_version?: string;
       template_id?: number;
       template_version?: string;
+      segmentation_version?: string;
       threshold_snapshot?: unknown;
     };
   }) {
@@ -1415,7 +1445,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
-    if (payload.analysis_status === 'completed' && payload.video_evaluation) {
+    if ((payload.analysis_status === 'completed' || payload.analysis_status === 'review_required') && payload.video_evaluation) {
       await this.prisma.videoEvaluationResult.upsert({
         where: { video_id: videoId },
         update: {
@@ -1437,6 +1467,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
             ? BigInt(payload.video_evaluation.template_id)
             : undefined,
           template_version: payload.video_evaluation.template_version ?? undefined,
+          segmentation_version: payload.video_evaluation.segmentation_version ?? undefined,
           threshold_snapshot: (payload.video_evaluation.threshold_snapshot as object | undefined) ?? undefined,
         },
         create: {
@@ -1459,6 +1490,7 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
             ? BigInt(payload.video_evaluation.template_id)
             : null,
           template_version: payload.video_evaluation.template_version ?? 'legacy_unknown',
+          segmentation_version: payload.video_evaluation.segmentation_version ?? null,
           threshold_snapshot: (payload.video_evaluation.threshold_snapshot as object | undefined) ?? undefined,
         },
       });
@@ -1473,6 +1505,25 @@ export class VideoService implements OnModuleInit, OnModuleDestroy {
       videoId: payload.video_id,
       status: payload.analysis_status,
     };
+  }
+
+  private async publishConfirmedTraining(userId: number, videoId: number, confirmedAt: Date) {
+    const badgeAwards = await this.motivationService.handleConfirmedTraining(userId, videoId, confirmedAt);
+    for (const badgeAward of badgeAwards) {
+      try {
+        await this.createDedupedNotification({
+          userId,
+          type: 'badge_earned',
+          title: '您获得了新徽章',
+          content: `恭喜获得“${badgeAward.title}”徽章，继续保持训练节奏。`,
+          relatedId: badgeAward.badgeCode,
+          dedupeKey: `badge:${userId}:${badgeAward.badgeCode}`,
+        });
+      } catch (error) {
+        // 视频确认和训练日落账已完成，通知故障不应阻断分析任务入队。
+        this.logger.warn(`Training badge notification failed: videoId=${videoId}, error=${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
   }
 
   private async publishCompletedMotivation(userId: number, videoId: number) {

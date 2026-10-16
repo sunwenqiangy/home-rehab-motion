@@ -146,6 +146,8 @@ apps/patient-miniapp
 - 分析服务 Worker `celery worker`
 - 管理端 `admin-web`，端口 `5173`
 
+macOS 本地 Worker 使用 Celery `solo` 单进程池：MediaPipe 间接加载的 CoreAudio/PortAudio 在 `prefork` 子进程中可能触发原生崩溃。Linux 部署仍使用原有并发配置。若分析曾卡在 `keypoint_extraction` 且服务已停止，重新启动本地分析服务后，Redis 中尚未确认的原任务会继续执行；不要在确认队列状态前重复创建分析记录。
+
 启动完成后默认访问地址：
 
 - 管理端：`http://127.0.0.1:5173`

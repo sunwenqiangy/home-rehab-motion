@@ -318,8 +318,21 @@ export interface ReportDto {
   averageScore: number;
   totalReps: number;
   validReps: number;
+  /** 仅当缩腹计次证据可靠但评分模板不兼容时展示；不是有效性或质量评分。 */
+  observedReps?: number;
   avgHoldDuration: number;
   confidenceScore: number;
+  /** 视觉规则分与历史姿态分不可直接比较；旧视觉分仅用于后台留痕。 */
+  scoreType?: 'pose' | 'visual_practice' | 'visual_evidence';
+  scoreAvailable?: boolean;
+  countSource?: 'pose' | 'visual';
+  /** 视觉完整周期的平均阶段时长和节奏指标；不等同于姿态评分维度。 */
+  visualPhaseMetrics?: {
+    riseSeconds: number;
+    holdSeconds: number;
+    returnSeconds: number;
+    smoothnessPercent: number;
+  };
   /** 结果因拍摄质量、置信度或模板完整性进入人工复核，患者端不得展示确定性评分。 */
   requiresManualReview?: boolean;
   reviewMessage?: string;
@@ -434,6 +447,8 @@ export interface HistoryVideoDto {
   uploadedAt: string;
   reportReady?: boolean;
   averageScore?: number;
+  scoreType?: 'pose' | 'visual_practice' | 'visual_evidence';
+  scoreAvailable?: boolean;
   grade?: string;
   duration?: number;
   failReason?: string;
@@ -622,9 +637,9 @@ export interface GoldTemplateSaveResponseDto {
 export interface PatientAppConfigDto {
   /** 视频最短时长（秒） */
   videoMinDurationSeconds: number;
-  /** 相册上传视频最长时长（秒） */
+  /** 相册上传全局最长时长（秒），不超过 60；缩腹/骨盆服务端另有 30 秒硬上限 */
   videoMaxDurationSeconds: number;
-  /** 小程序录制视频最长时长（秒） */
+  /** 小程序录制最长时长（秒），不超过 60；动作上限仍在服务端强制校验 */
   videoRecordMaxDurationSeconds: number;
   /** 视频大小上限（MB） */
   videoMaxSizeMB: number;

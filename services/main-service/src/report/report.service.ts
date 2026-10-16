@@ -5,19 +5,23 @@ import { ConfigService } from '../config/config.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { MotivationService } from '../motivation/motivation.service';
+import { getVisualEvidencePreviewScore } from '../common/visual-evidence-score';
 
 function getCurrentWeekStart() {
-  const now = new Date();
-  const day = now.getDay() || 7;
-  const monday = new Date(now);
-  monday.setHours(0, 0, 0, 0);
-  monday.setDate(now.getDate() - day + 1);
-  return monday;
+  // 训练日账本使用上海日历日期并以 UTC 零点保存。
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const today = new Date(`${values.year}-${values.month}-${values.day}T00:00:00.000Z`);
+  const weekday = today.getUTCDay() || 7;
+  today.setUTCDate(today.getUTCDate() - weekday + 1);
+  return today;
 }
 
 function getPreviousWeekStart(currentWeekStart: Date) {
   const previousWeekStart = new Date(currentWeekStart);
-  previousWeekStart.setDate(currentWeekStart.getDate() - 7);
+  previousWeekStart.setUTCDate(currentWeekStart.getUTCDate() - 7);
   return previousWeekStart;
 }
 
@@ -129,22 +133,18 @@ export class ReportService {
     const currentWeekStart = getCurrentWeekStart();
     const previousWeekStart = getPreviousWeekStart(currentWeekStart);
 
+    const shortClip = result.video.short_clip;
+    const reliableShortClip = shortClip && result.video.analysis_status === 'completed'
+      && result.video.quality_status === 'passed' && !result.video.manual_review?.use_manual_result
+      && (result.confidence_score ?? 0) >= 0.75 && result.valid_reps > 0
+      && Boolean(result.analysis_version && result.template_version && result.segmentation_version);
     const [currentWeekCompletedCount, previousWeekCompletedCount, latestBadges, previousCompletedResult] = await Promise.all([
-      this.prisma.trainingVideo.count({
-        where: {
-          user_id: BigInt(userId),
-          analysis_status: 'completed',
-          source_type: 'miniapp',
-          upload_time: { gte: currentWeekStart },
-        },
+      this.prisma.trainingAttendance.count({
+        where: { user_id: BigInt(userId), counted_for_training_day: true, training_date: { gte: currentWeekStart } },
       }),
-      this.prisma.trainingVideo.count({
-        where: {
-          user_id: BigInt(userId),
-          analysis_status: 'completed',
-          source_type: 'miniapp',
-          upload_time: { gte: previousWeekStart, lt: currentWeekStart },
-        },
+      this.prisma.trainingAttendance.count({
+        where: { user_id: BigInt(userId), counted_for_training_day: true,
+          training_date: { gte: previousWeekStart, lt: currentWeekStart } },
       }),
       this.prisma.userBadge.findMany({
         where: { user_id: BigInt(userId) },
@@ -155,12 +155,19 @@ export class ReportService {
       this.prisma.videoEvaluationResult.findFirst({
         where: {
           video: {
-            user_id: BigInt(userId),
-            source_type: 'miniapp',
+            user_id: BigInt(userId), source_type: 'miniapp', action_type: result.video.action_type,
+            short_clip: shortClip,
+            ...(shortClip ? { analysis_status: 'completed', quality_status: 'passed',
+              OR: [{ manual_review: { is: null } }, { manual_review: { is: { use_manual_result: false } } }] } : {}),
           },
+          ...(shortClip ? { analysis_version: result.analysis_version || '__unknown__',
+            template_version: result.template_version || '__unknown__',
+            segmentation_version: result.segmentation_version || '__unknown__', confidence_score: { gte: 0.75 },
+            valid_reps: { gte: 1 } } : {}),
           NOT: {
             video_id: BigInt(videoId),
           },
+          created_at: { lt: result.created_at },
         },
         orderBy: {
           created_at: 'desc',
@@ -177,8 +184,57 @@ export class ReportService {
 
     const review = result.video.manual_review;
     const requiresManualReview = result.video.analysis_status === 'review_required' && !review?.use_manual_result;
+    const uncertainAbdominalClip = requiresManualReview && shortClip
+      && result.video.action_type === 'abdominal_crunch' && result.total_reps === 0;
+    const overSegmentedAbdominalClip = requiresManualReview && shortClip
+      && result.video.action_type === 'abdominal_crunch' && result.total_reps > 2;
+    const snapshot = result.segmentation_snapshot;
+    const snapshotData = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)
+      ? snapshot as Record<string, unknown> : undefined;
+    const isVisualPractice = (snapshotData?.score_type === 'visual_practice'
+      || snapshotData?.score_type === 'visual_evidence') && !review?.use_manual_result;
+    const scoreAvailable = !isVisualPractice || snapshotData?.score_available === true;
+    const visualEvidencePreviewScore = isVisualPractice && scoreAvailable && !requiresManualReview
+      ? getVisualEvidencePreviewScore(snapshotData, result.total_reps || 0) : undefined;
+    const hasVisualEvidenceScore = snapshotData?.score_type === 'visual_evidence'
+      || visualEvidencePreviewScore !== undefined;
+    const visualCycles = Array.isArray(snapshotData?.visual_accepted_cycles)
+      ? snapshotData.visual_accepted_cycles : [];
+    const visualPhaseRows = isVisualPractice && scoreAvailable
+      ? visualCycles.flatMap((raw) => {
+          if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return [];
+          const cycle = raw as Record<string, unknown>;
+          const start = Number(cycle.start_time);
+          const peakStart = Number(cycle.peak_start_time);
+          const peakEnd = Number(cycle.peak_end_time);
+          const end = Number(cycle.return_time);
+          if (![start, peakStart, peakEnd, end].every(Number.isFinite)
+              || !(start < peakStart && peakStart <= peakEnd && peakEnd < end)) return [];
+          return [{ rise: peakStart - start, hold: peakEnd - peakStart, returning: end - peakEnd }];
+        }) : [];
+    const visualPhaseMetrics = visualPhaseRows.length
+      ? {
+          riseSeconds: Math.round(visualPhaseRows.reduce((sum, row) => sum + row.rise, 0) / visualPhaseRows.length * 10) / 10,
+          holdSeconds: Math.round(visualPhaseRows.reduce((sum, row) => sum + row.hold, 0) / visualPhaseRows.length * 10) / 10,
+          returnSeconds: Math.round(visualPhaseRows.reduce((sum, row) => sum + row.returning, 0) / visualPhaseRows.length * 10) / 10,
+          smoothnessPercent: Math.round(result.stability_avg || 0),
+        } : undefined;
+    const scoringContract = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)
+      ? (snapshot as Record<string, unknown>).scoring_contract : undefined;
+    const incompatibleTemplate = scoringContract && typeof scoringContract === 'object' && !Array.isArray(scoringContract)
+      && (scoringContract as Record<string, unknown>).compatible === false;
+    const observedReps = requiresManualReview && shortClip && result.video.action_type === 'abdominal_crunch'
+      && result.video.quality_status === 'passed' && (result.confidence_score ?? 0) >= 0.75
+      && result.total_reps >= 1 && result.total_reps <= 2 && incompatibleTemplate
+      ? result.total_reps : undefined;
     const reviewMessage = requiresManualReview
-      ? '本次训练记录已收到，系统正在复核拍摄和动作信息，请稍后查看结果。'
+      ? uncertainAbdominalClip
+        ? '已记录本次训练。缩腹幅度因人而异，视频暂时无法可靠判断动作周期；这不代表您没有完成练习。结果待复核，您无需为获得分数而勉强增大幅度。'
+        : overSegmentedAbdominalClip
+          ? '本段缩腹视频的动作切分结果不够可靠，暂不能确认次数或评分。本次训练记录已保留；如需重新拍摄，请录下 1～2 个完整动作，并保留开始准备和结束回位的画面。'
+        : observedReps
+          ? `系统在本次视频中识别到 ${observedReps} 次动作；评分模板与当前特征口径不一致，分数和动作问题判断暂不展示，待复核。`
+        : '本次训练记录已收到，系统正在复核拍摄和动作信息，请稍后查看结果。'
       : undefined;
     const usesManualResult = Boolean(review?.use_manual_result);
     const sourceIssues = requiresManualReview ? [] : (usesManualResult ? review?.manual_main_issues : result.main_issues);
@@ -204,13 +260,16 @@ export class ReportService {
         ? [{ adviceCode: 'manual_review', patientText: review.manual_advice }]
         : algorithmAdvice;
 
-    const grade = requiresManualReview ? '待复核' : (usesManualResult ? (review?.manual_grade || result.grade || '无效') : (result.grade || '无效'));
-    const averageScore = requiresManualReview ? 0 : (usesManualResult ? Number(review?.manual_score || 0) : (result.average_score || 0));
+    const grade = requiresManualReview ? '待复核' : !scoreAvailable ? '未评分'
+      : visualEvidencePreviewScore !== undefined ? '本段完成'
+      : (usesManualResult ? (review?.manual_grade || result.grade || '无效') : (result.grade || '无效'));
+    const averageScore = requiresManualReview || !scoreAvailable ? 0
+      : visualEvidencePreviewScore ?? (usesManualResult ? Number(review?.manual_score || 0) : (result.average_score || 0));
     const validReps = result.valid_reps || 0;
     const totalReps = result.total_reps || 0;
     // 患者的阶段统一来自激励服务的长期旅程规则；单次评分只影响 reportFocus，不再导致阶段跳变。
     const stage = motivation.stage;
-    const reportFocus = resolveReportFocus({
+    const standardReportFocus = resolveReportFocus({
       requiresManualReview,
       grade,
       averageScore,
@@ -218,8 +277,14 @@ export class ReportService {
       totalReps,
       adviceCount: adviceSummary.length,
     });
+    const reportFocus = isVisualPractice && !requiresManualReview
+      ? scoreAvailable
+        ? { focus: 'maintain_rhythm' as ReportFocus, text: '本段完整动作已记录。阶段时间仅供回顾视频，按舒适幅度继续练习即可。' }
+        : { focus: 'learn_motion' as ReportFocus, text: '本次训练已记录；视频暂时不足以可靠观察腹部完整周期，不影响训练日和连续练习。' }
+      : standardReportFocus;
 
-    const previousAverageScore = previousCompletedResult?.average_score ?? null;
+    const previousAverageScore = isVisualPractice || (shortClip && !reliableShortClip)
+      ? null : previousCompletedResult?.average_score ?? null;
     const scoreDelta =
       previousAverageScore != null && averageScore
         ? Math.round(averageScore - previousAverageScore)
@@ -249,22 +314,29 @@ export class ReportService {
       averageScore,
       totalReps,
       validReps,
+      observedReps,
       avgHoldDuration: result.avg_hold_duration || 0,
       confidenceScore: result.confidence_score || 0,
+      scoreType: isVisualPractice
+        ? (hasVisualEvidenceScore ? 'visual_evidence' : 'visual_practice') : 'pose',
+      scoreAvailable: !requiresManualReview && scoreAvailable,
+      countSource: isVisualPractice ? 'visual' : 'pose',
+      visualPhaseMetrics,
       requiresManualReview,
       reviewMessage,
-      accuracyAvg: requiresManualReview ? undefined : (result.accuracy_avg || 0),
-      stabilityAvg: requiresManualReview ? undefined : (result.stability_avg || 0),
+      accuracyAvg: requiresManualReview || isVisualPractice ? undefined : (result.accuracy_avg || 0),
+      stabilityAvg: requiresManualReview || isVisualPractice ? undefined : (result.stability_avg || 0),
       // 骨盆倾斜没有独立的“控制力”维度，持久化的 fallback 分数不能作为该指标对外展示。
-      controlAvg: requiresManualReview || result.video.action_type === 'pelvic_tilt' ? undefined : (result.control_avg || 0),
-      durationAvg: requiresManualReview ? undefined : (result.duration_avg || 0),
+      controlAvg: requiresManualReview || isVisualPractice || result.video.action_type === 'pelvic_tilt' ? undefined : (result.control_avg || 0),
+      durationAvg: requiresManualReview || isVisualPractice ? undefined : (result.duration_avg || 0),
       stage,
       reportFocus: reportFocus.focus,
       reportFocusText: reportFocus.text,
       compareToLast: requiresManualReview ? undefined : compareToLast,
       trendSummary: requiresManualReview
         ? '复核完成前，请先以动作指导中的拍摄要求为准。'
-        : reportFocus.focus === 'maintain_rhythm' ? '近几次训练节奏稳定，建议继续保持当前状态。' : '继续按当前节奏训练，系统会持续记录您的变化。',
+        : shortClip ? (compareToLast ? '本段观察仅与同动作、同版本的可靠短片段比较。' : '本段观察已记录，暂无可靠的同版本趋势。')
+          : reportFocus.focus === 'maintain_rhythm' ? '近几次训练节奏稳定，建议继续保持当前状态。' : '继续按当前节奏训练，系统会持续记录您的变化。',
       streakSummary: buildWeeklyProgress(currentWeekCompletedCount, previousWeekCompletedCount, badgeSummary, weeklyTarget),
       badgeSummary,
       motivation,

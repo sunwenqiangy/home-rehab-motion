@@ -7,11 +7,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.models import CompareResult, Frame, Keypoint, Rep, RepScore, SegmentationCandidate, SegmentationResult
-from app.core.phase_segmenter import PhaseSegmenter
+from app.core.phase_segmenter import PhaseSegmenter, SegmentationError
 from app.core.scoring import ScoringEngine, generate_advice
+from app.core.confidence import _compute_prs
+from app.core.video_quality import check_video_quality
 from app.core.preprocessor import DataPreprocessor, KeypointQualityError
 from app.core.config import Settings
-from app.tasks.analyze_video import _build_segmentation_snapshot, _resolve_pose_sampling
+from app.tasks.analyze_video import _build_segmentation_snapshot, _resolve_pose_sampling, _save_keypoints_json
 
 
 def _signal_from_cycles(fps, cycles, duration=32):
@@ -42,6 +44,43 @@ def _trunk_frame(index, visibility=1.0):
         for name in ('LEFT_SHOULDER', 'RIGHT_SHOULDER', 'LEFT_HIP', 'RIGHT_HIP')
     }
     return Frame(frame_index=index, timestamp=index / 5, keypoints=keypoints)
+
+
+@pytest.mark.parametrize('action_type,low,high', [
+    ('abdominal_crunch', 8, 30), ('pelvic_tilt', 8, 30), ('knee_rotation', 10, 60),
+])
+def test_short_clip_quality_uses_action_duration(monkeypatch, action_type, low, high):
+    from app.core import video_quality
+    monkeypatch.setattr(video_quality, '_inspect_visual_quality', lambda _: {
+        'available': True, 'brightness': 100, 'brightness_std': 0,
+    })
+    for duration, expected in [(low - 0.1, 'duration_too_short'), (low, None),
+                               (high, None), (high + 0.1, 'duration_too_long')]:
+        monkeypatch.setattr(video_quality, '_run_ffprobe', lambda _, d=duration: {
+            'streams': [{'codec_type': 'video', 'width': 720, 'height': 480, 'r_frame_rate': '30/1'}],
+            'format': {'duration': str(d)},
+        })
+        result = check_video_quality('unused', action_type=action_type)
+        assert (expected in result.details['issues']) if expected else result.quality_status == 'passed'
+
+
+def test_keypoint_snapshot_preserves_short_clip_mode_before_segmentation(tmp_path, monkeypatch):
+    import importlib
+    analysis_module = importlib.import_module('app.tasks.analyze_video')
+    monkeypatch.setattr(analysis_module.settings, 'local_storage_root', str(tmp_path))
+    monkeypatch.setattr(analysis_module.settings, 'oss_bucket', 'test-bucket')
+    _save_keypoints_json(17, [_trunk_frame(0)], effective_sample_fps=5, short_clip=True)
+    import json
+    payload = json.loads((tmp_path / 'test-bucket' / 'keypoints' / '17.json').read_text())
+    assert payload['short_clip'] is True
+    assert payload['segmentation_version'] is None
+    assert payload['rep_segments'] == []
+
+
+def test_short_clip_single_rep_confidence_not_divided_by_three():
+    assert _compute_prs(1, 1, short_clip=True) == 1
+    assert _compute_prs(1, 1) < 1
+    assert _compute_prs(0, 0, short_clip=True) == 0.2
 
 
 # ─── 姿态采样策略 ───────────────────────────────────────────────────────
@@ -234,6 +273,114 @@ def test_advice_surfaces_a_recurrent_warning_with_patient_friendly_copy():
         'patient_text': '上身有些晃动。下次可轻轻收紧腹部，让躯干尽量保持稳定。',
         'nurse_text': 'trunk_angle_change 在多次动作中偏高，可能存在躯干代偿',
     }]
+
+
+def test_single_short_clip_advice_is_specific_and_cautious():
+    scores = [_rep_score_with_issues(1, ['trunk_angle_change', 'unknown_feature'])]
+    issues, advice = generate_advice(scores, 0.9, short_clip=True)
+    assert issues == [{'feature': 'trunk_angle_change', 'label': 'single_observation'}]
+    assert len(advice) == 1
+    assert '单次记录仅供参考' in advice[0]['patient_text']
+    assert '频发' not in advice[0]['patient_text']
+    assert generate_advice(scores, 0.6, short_clip=True) == ([], [])
+    assert generate_advice(scores, 0.9) == ([], [])
+
+
+@pytest.mark.parametrize('fps', [4, 6, 10])
+def test_short_legacy_rejects_edge_half_cycles_and_counts_complete_one(fps):
+    segmenter = PhaseSegmenter(sample_fps=fps)
+    complete = _signal_from_cycles(fps, [(2, 6, 10, 3)], duration=14)
+    reps = segmenter._segment_abdominal_reps(complete)
+    assert len(segmenter._filter_short_peak_reps(reps, complete, 'abdominal_crunch')) == 1
+    for half in (complete[round(4 * fps):], complete[:round(8 * fps)]):
+        guessed = segmenter._segment_abdominal_reps(half)
+        assert segmenter._filter_short_peak_reps(guessed, half, 'abdominal_crunch') == []
+
+
+def test_short_abdominal_low_amplitude_is_uncertain_not_invalid():
+    frames = _pelvic_frames_from_signal(np.full(50, 0.1), fps=5)
+    segmenter = PhaseSegmenter(sample_fps=5)
+    for mode in ('legacy_peak', 'cycle_state_machine'):
+        result = segmenter.segment_with_diagnostics(frames, 'abdominal_crunch', mode=mode, short_clip=True)
+        assert result.reps == []
+        assert result.version.startswith('abdominal_')
+    with pytest.raises(SegmentationError):
+        segmenter.segment_with_diagnostics(frames, 'abdominal_crunch', short_clip=False)
+
+
+def test_miniapp_short_abdominal_uses_admin_peak_count_without_losing_low_amplitude_review():
+    fps = 5
+    complete = _signal_from_cycles(fps, [(2, 6, 10, 3)], duration=14)
+    edge_clip = complete[round(4 * fps):]
+    frames = _pelvic_frames_from_signal(edge_clip, fps)
+    segmenter = PhaseSegmenter(sample_fps=fps)
+    admin = segmenter.segment_with_diagnostics(frames, 'abdominal_crunch', short_clip=False)
+    patient = segmenter.segment_with_diagnostics(
+        frames, 'abdominal_crunch', short_clip=True, require_complete_abdominal_cycle=False,
+    )
+    assert len(admin.reps) == len(patient.reps) == 1
+    low_signal = _pelvic_frames_from_signal(np.full(50, 0.1), fps)
+    assert segmenter.segment_with_diagnostics(
+        low_signal, 'abdominal_crunch', short_clip=True, require_complete_abdominal_cycle=False,
+    ).reps == []
+
+
+@pytest.mark.parametrize('fps', [4, 6, 10])
+def test_short_abdominal_accepts_complete_cycle_under_four_seconds(fps):
+    segmenter = PhaseSegmenter(sample_fps=fps)
+    signal = _signal_from_cycles(fps, [(2, 3.5, 5.2, 3)], duration=9)
+    reps = segmenter._segment_abdominal_reps(signal)
+    assert len(segmenter._filter_short_peak_reps(reps, signal, 'abdominal_crunch')) == 1
+
+
+@pytest.mark.parametrize('fps', [4, 6, 10])
+def test_short_pelvic_one_or_two_complete_cycles_rejects_partial_edges(fps):
+    cycles = [(1, 5, 10, 4.0), (13, 17, 22, 4.0)]
+    signal = _signal_from_cycles(fps, cycles, duration=26)
+    segmenter = PhaseSegmenter(sample_fps=fps)
+    assert len(segmenter.segment_with_diagnostics(
+        _pelvic_frames_from_signal(signal, fps), 'pelvic_tilt', short_clip=True,
+    ).reps) == 2
+    one = signal[:round(12 * fps)]
+    assert len(segmenter.segment_with_diagnostics(
+        _pelvic_frames_from_signal(one, fps), 'pelvic_tilt', short_clip=True,
+    ).reps) == 1
+    partial = signal[round(3 * fps):round(12 * fps)]
+    assert segmenter.segment_with_diagnostics(
+        _pelvic_frames_from_signal(partial, fps), 'pelvic_tilt', short_clip=True,
+    ).reps == []
+
+
+def test_short_knee_requires_full_baseline_to_baseline_period():
+    fps = 5
+    segmenter = PhaseSegmenter(sample_fps=fps)
+    signal = _signal_from_cycles(fps, [(2, 15, 28, 40)], duration=31)
+    reps = segmenter._segment_knee_reps(segmenter._moving_average(signal))
+    assert len(segmenter._filter_short_peak_reps(reps, segmenter._moving_average(signal), 'knee_rotation')) == 1
+    partial = signal[round(7 * fps):]
+    reps = [segmenter._make_rep(1, 0, len(partial) - 1, hold_frame=8 * fps)]
+    assert segmenter._filter_short_peak_reps(reps, partial, 'knee_rotation') == []
+
+
+def test_short_knee_can_count_a_complete_ten_second_clip():
+    fps = 10
+    segmenter = PhaseSegmenter(sample_fps=fps)
+    signal = segmenter._moving_average(
+        _signal_from_cycles(fps, [(0.5, 4.5, 9.1, 40)], duration=10)
+    )
+    candidates = segmenter._segment_knee_reps(signal, short_clip=True)
+    reps = segmenter._filter_short_peak_reps(candidates, signal, 'knee_rotation')
+    assert len(reps) == 1
+    assert reps[0].start_frame < reps[0].phases['hold'] < reps[0].end_frame
+
+
+def test_short_cycle_does_not_accept_incomplete_tail_but_legacy_behavior_remains():
+    signal = _signal_from_cycles(5, [(2, 5, 8, 1.6), (11, 14, 16.5, 1.5)], duration=16.8)
+    segmenter = PhaseSegmenter(sample_fps=5)
+    assert len(segmenter._segment_abdominal_cycle_state_machine(signal).reps) == 2
+    short = segmenter._segment_abdominal_cycle_state_machine(signal, require_complete=True)
+    assert len(short.reps) == 1
+    assert any(item.state == 'INCOMPLETE_TAIL' for item in short.rejected_candidates)
 
 
 # ─── 关键点质量门禁 ─────────────────────────────────────────────────────

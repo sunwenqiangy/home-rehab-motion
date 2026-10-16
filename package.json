@@ -13,6 +13,7 @@
     "dev:admin": "npm run dev -w @home-rehab-motion/admin-web",
     "dev:main": "npm run start:dev -w @home-rehab-motion/main-service",
     "dev:analysis": "python3 -m uvicorn app.main:app --app-dir services/analysis-service --reload --host 0.0.0.0 --port 8000",
+    "prototype:pelvic-447": "PYTHONPATH=services/analysis-service services/analysis-service/.venv/bin/python services/analysis-service/scripts/prototype_pelvic_447.py",
     "typecheck": "npm run typecheck -ws --if-present",
     "db:generate": "npm run prisma:generate -w @home-rehab-motion/main-service"
   },

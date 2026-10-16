@@ -6,7 +6,7 @@
           <div class="page-hero__eyebrow">Patient App Config</div>
           <h1 class="page-hero__title">患者端应用配置</h1>
           <p class="page-hero__subtitle">
-            管理患者小程序的全局参数，包括视频限制、周目标、分析等待时长等，修改后即时生效。
+            短片段上传：缩腹、骨盆最多 30 秒，膝旋转最多 60 秒；管理周目标与分析等待时长。
           </p>
         </div>
       </div>
@@ -29,22 +29,22 @@
         <el-divider content-position="left">视频上传限制</el-divider>
 
         <el-form-item label="视频最短时长（秒）">
-          <el-input-number v-model="form.videoMinDurationSeconds" :min="1" :max="60" :step="1" />
+          <el-input-number v-model="form.videoMinDurationSeconds" :min="1" :max="30" :step="1" />
           <div class="form-hint">低于此时长的视频将无法上传</div>
         </el-form-item>
 
         <el-form-item label="相册视频最长时长（秒）">
-          <el-input-number v-model="form.videoMaxDurationSeconds" :min="10" :max="600" :step="10" />
-          <div class="form-hint">从相册选择的视频超过此时长将无法上传</div>
+          <el-input-number v-model="form.videoMaxDurationSeconds" :min="30" :max="60" :step="10" />
+          <div class="form-hint">全局上限不超过 60 秒；缩腹、骨盆始终最多 30 秒，不能通过配置放宽。</div>
         </el-form-item>
 
         <el-form-item label="录制视频最长时长（秒）">
-          <el-input-number v-model="form.videoRecordMaxDurationSeconds" :min="10" :max="600" :step="10" />
+          <el-input-number v-model="form.videoRecordMaxDurationSeconds" :min="1" :max="60" :step="10" />
           <div class="form-hint">小程序内录制的视频超过此时长将自动停止录制</div>
         </el-form-item>
 
         <el-form-item label="视频大小上限（MB）">
-          <el-input-number v-model="form.videoMaxSizeMB" :min="10" :max="1024" :step="10" />
+          <el-input-number v-model="form.videoMaxSizeMB" :min="10" :max="200" :step="10" />
           <div class="form-hint">超过此大小的视频将无法上传</div>
         </el-form-item>
 
@@ -89,10 +89,10 @@ const saving = ref(false);
 const saveState = ref<{ kind: 'idle' | 'saving' | 'success' | 'error'; title: string; detail: string; retry?: () => void }>({ kind: 'idle', title: '保存状态', detail: '修改配置后点击保存，变更将立即下发。' });
 
 const form = ref<UpdatePatientAppConfigRequestDto>({
-videoMinDurationSeconds: 10,
-videoMaxDurationSeconds: 300,
-videoRecordMaxDurationSeconds: 120,
-videoMaxSizeMB: 200,
+  videoMinDurationSeconds: 10,
+  videoMaxDurationSeconds: 60,
+  videoRecordMaxDurationSeconds: 60,
+  videoMaxSizeMB: 200,
   weeklyTarget: 7,
   analyzingMinWaitSeconds: 20,
   supportedActionTypes: ['abdominal_crunch', 'pelvic_tilt', 'knee_rotation'] as TrainingActionType[],
@@ -104,9 +104,9 @@ async function loadData() {
     const data = await getPatientAppConfig();
     form.value = {
       videoMinDurationSeconds: data.videoMinDurationSeconds,
-videoMaxDurationSeconds: data.videoMaxDurationSeconds,
-videoRecordMaxDurationSeconds: data.videoRecordMaxDurationSeconds,
-videoMaxSizeMB: data.videoMaxSizeMB,
+      videoMaxDurationSeconds: data.videoMaxDurationSeconds,
+      videoRecordMaxDurationSeconds: data.videoRecordMaxDurationSeconds,
+      videoMaxSizeMB: data.videoMaxSizeMB,
       weeklyTarget: data.weeklyTarget,
       analyzingMinWaitSeconds: data.analyzingMinWaitSeconds,
       supportedActionTypes: [...data.supportedActionTypes],

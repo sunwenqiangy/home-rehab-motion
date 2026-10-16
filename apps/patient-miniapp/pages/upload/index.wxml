@@ -33,7 +33,7 @@
           </view>
           <view class="upload-action-card__change {{submitting ? 'upload-action-card__change--disabled' : ''}}" bindtap="onChangeAction">切换动作</view>
         </view>
-        <view class="upload-action-card__tip">请只上传本次「{{actionLabel}}」的完整训练视频；上传其他动作会影响评分或导致分析失败。</view>
+        <view class="upload-action-card__tip">请只上传本次「{{actionLabel}}」的视频；{{durationHint}}上传其他动作会影响本段分析。</view>
       </view>
 
       <!-- 上传引导 hero -->

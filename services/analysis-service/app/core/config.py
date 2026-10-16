@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     allow_mock_keypoints_fallback: bool = Field(default=False, alias='ALLOW_MOCK_KEYPOINTS_FALLBACK')
     # 默认保持峰值切分正式生效；shadow 仅额外保存闭环差异诊断，确认样本覆盖后再切换。
     abdominal_segmentation_mode: str = Field(default='legacy_peak', alias='ABDOMINAL_SEGMENTATION_MODE')
+    # evidence 接管新上传的视觉分；legacy 与 evidence_shadow 保留为回退/诊断模式。
+    abdominal_visual_score_mode: str = Field(default='evidence', alias='ABDOMINAL_VISUAL_SCORE_MODE')
+    # bilateral 用双膝相对位移闭环正式计次并采用独立的本段激励分；legacy 可一键回退。
+    # shadow 只留诊断，仍沿用旧规则。所有来源共用同一设置，不设患者白名单。
+    knee_rotation_mode: str = Field(default='bilateral', alias='KNEE_ROTATION_MODE')
 
     @property
     def is_production(self) -> bool:
@@ -73,6 +78,10 @@ class Settings(BaseSettings):
             errors.append('生产环境禁止启用样例视频或 Mock 关键点回退')
         if self.abdominal_segmentation_mode not in {'legacy_peak', 'shadow', 'cycle_state_machine'}:
             errors.append('ABDOMINAL_SEGMENTATION_MODE 仅允许 legacy_peak、shadow 或 cycle_state_machine')
+        if self.abdominal_visual_score_mode not in {'legacy', 'evidence_shadow', 'evidence'}:
+            errors.append('ABDOMINAL_VISUAL_SCORE_MODE 仅允许 legacy、evidence_shadow 或 evidence')
+        if self.knee_rotation_mode not in {'legacy', 'shadow', 'bilateral'}:
+            errors.append('KNEE_ROTATION_MODE 仅允许 legacy、shadow 或 bilateral')
         if not self.analysis_callback_url.startswith('https://'):
             errors.append('ANALYSIS_CALLBACK_URL 必须使用 HTTPS')
         if not self.oss_endpoint.startswith('https://'):

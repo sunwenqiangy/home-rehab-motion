@@ -192,17 +192,20 @@
           />
           <div v-if="analysisDetail.summary" class="analysis-explain">
             <div class="analysis-explain__title">评分规则（当前服务配置）</div>
-            <div class="analysis-explain__line">
+            <div v-if="kneeBilateralDiagnostics?.mode === 'bilateral'" class="analysis-explain__line">
+              双侧闭环评分：可见幅度 8 分、双侧均衡 5 分、到位保持 4 分、节奏 3 分，基分 72，最高 94。此分数只反映视频中可观察的练习，不判断康复效果。
+            </div>
+            <div v-else class="analysis-explain__line">
               四维权重：准确度 {{ analysisDetail.scoringExplain.weights.accuracy }}，稳定性 {{ analysisDetail.scoringExplain.weights.stability }}，
               控制度 {{ analysisDetail.scoringExplain.weights.control }}，持续度 {{ analysisDetail.scoringExplain.weights.duration }}
             </div>
-            <div class="analysis-explain__line">
+            <div v-if="kneeBilateralDiagnostics?.mode !== 'bilateral'" class="analysis-explain__line">
               分级区间：
               <span v-for="item in analysisDetail.scoringExplain.gradeRanges" :key="item.grade" class="analysis-chip">
                 {{ item.grade }} {{ item.min }}-{{ item.max }}
               </span>
             </div>
-          <div class="analysis-explain__line">{{ analysisDetail.scoringExplain.scoringHint }}</div>
+          <div v-if="kneeBilateralDiagnostics?.mode !== 'bilateral'" class="analysis-explain__line">{{ analysisDetail.scoringExplain.scoringHint }}</div>
           <div class="analysis-explain__line analysis-explain__line--pure-skeleton">
             说明：本页面用于流程验证，若要看“纯骨架/骨架+视频”切换，请点上方“前往视频详情看纯骨架”。
           </div>
@@ -216,32 +219,124 @@
           <section v-if="segmentationDiagnostics" class="segmentation-panel">
             <div class="segmentation-panel__header">
               <div>
-                <div class="analysis-section-title">缩腹双切分诊断</div>
-                <div class="segmentation-panel__subtitle">正式评分仅使用“正式版本”；闭环状态机结果用于 Shadow 对比与误拆/漏拆排查。表内“视频时间”仅用于回看定位，不影响切分、次数或评分。</div>
+                <div class="analysis-section-title">缩腹切分对照</div>
+                <div class="segmentation-panel__subtitle">同一视频比较三种切分。下表把“切出了几次”和“按什么规则评分”分开；仅正式结果写入本次流程验证报告。</div>
               </div>
               <el-tag :type="segmentationModeTagType">{{ segmentationModeLabel }}</el-tag>
             </div>
 
-            <div class="segmentation-metrics">
-              <div class="segmentation-metric"><span>正式切分</span><strong>{{ segmentationDiagnostics.formalVersion || '-' }}</strong></div>
-              <div class="segmentation-metric"><span>峰值切分次数</span><strong>{{ segmentationDiagnostics.legacyRepCount ?? '-' }}</strong></div>
-              <div class="segmentation-metric"><span>闭环切分次数</span><strong>{{ segmentationDiagnostics.cycleRepCount ?? '-' }}</strong></div>
-              <div class="segmentation-metric"><span>次数差（闭环 - 峰值）</span><strong :class="segmentationCountDeltaClass">{{ signedNumber(segmentationDiagnostics.countDelta) }}</strong></div>
-              <div class="segmentation-metric"><span>实际抽帧率</span><strong>{{ formatFps(segmentationDiagnostics.effectiveSampleFps) }}</strong></div>
-              <div class="segmentation-metric"><span>Shadow 额外耗时</span><strong>{{ formatMilliseconds(segmentationDiagnostics.shadowOverheadMs) }}</strong></div>
+            <div class="segmentation-comparison">
+              <div class="segmentation-comparison__head"><span>切分方式</span><span>识别次数</span><span>姿态模板分</span><span>视觉规则分</span><span>用途</span></div>
+              <div v-for="row in segmentationComparisonRows" :key="row.key" class="segmentation-comparison__row">
+                <div class="segmentation-comparison__name">{{ row.name }}<small>{{ row.detail }}</small></div>
+                <strong>{{ row.count }}</strong>
+                <div class="segmentation-comparison__score" data-label="姿态模板分">{{ row.poseScore }}<small>{{ row.poseScoreHint }}</small></div>
+                <div class="segmentation-comparison__score" data-label="视觉规则分">{{ row.visualScore }}<small>{{ row.visualScoreHint }}</small></div>
+                <el-tag :type="row.formal ? 'success' : 'info'" size="small">{{ row.formal ? '本次正式' : '仅供对比' }}</el-tag>
+              </div>
             </div>
+
+            <div class="segmentation-panel__subtitle">姿态模板分使用关键点特征；视觉规则分使用腹部轮廓的完整周期、保持、回位与节奏。轮廓行的“姿态模板分”只是把轮廓切出的边界交给姿态模板试算，不是第四种切分，也不与视觉规则分直接比较。</div>
+            <div class="segmentation-panel__subtitle">本次正式切分版本：{{ segmentationDiagnostics.formalVersion || '-' }}。配置切换仅影响新分析，历史结果不会自动重算。实际抽帧率 {{ formatFps(segmentationDiagnostics.effectiveSampleFps) }}；影子切分额外耗时 {{ formatMilliseconds(segmentationDiagnostics.shadowOverheadMs) }}（含轮廓提取，不含评分试算）。</div>
 
             <el-alert
               v-if="segmentationDiagnostics.mode === 'shadow'"
               type="info"
               :closable="false"
-              title="Shadow 模式：患者侧次数、预览分段与评分仍使用峰值切分；下方仅展示闭环算法诊断。"
+              title="本次后台验证仍使用姿态峰值正式计次和评分。视觉规则分只在本页试算；小程序新上传的缩腹短片段按其自身配置选择口径。"
             />
 
+            <el-alert
+              v-if="segmentationDiagnostics.scoringContract?.compatible === false"
+              type="warning"
+              :closable="false"
+              title="当前缩腹模板与评分特征口径不一致"
+              description="当前计算器使用角度（deg、deg/s），模板可能仍是旧百分比口径。正式分数及下方试算仅供排查；请用同版本金标准重新生成模板并复核后再比较。"
+            />
+
+            <div v-if="segmentationDiagnostics.mode === 'shadow'" class="segmentation-candidate-group">
+              <div class="segmentation-candidate-group__title">方式 C · 腹部轮廓｜完整周期与边界（试运行）</div>
+              <div v-if="!segmentationDiagnostics.visualObservable" class="empty-state">
+                {{ segmentationDiagnostics.visualUnavailableReason || '本次未运行视觉诊断；旧流程验证记录需重新上传分析。' }}
+              </div>
+              <template v-else>
+                <div class="segmentation-panel__subtitle">画面轮廓有效帧 {{ Math.round((segmentationDiagnostics.visualValidRatio ?? 0) * 100) }}%；顶点指腹部隆起最高的平台。轮廓幅度为相对身体尺度的比例，不是角度或评分。</div>
+                <div v-if="segmentationDiagnostics.visualAcceptedCycles.length" class="analysis-table-wrap">
+                  <table class="analysis-table">
+                    <thead><tr><th>候选</th><th>开始</th><th>隆起顶点</th><th>顶点平台</th><th>回落</th><th>轮廓幅度</th></tr></thead>
+                    <tbody>
+                      <tr v-for="(item, index) in segmentationDiagnostics.visualAcceptedCycles" :key="`visual-${index}`">
+                        <td>第 {{ index + 1 }} 次</td>
+                        <td>{{ formatVideoTime(item.startTime) }}</td>
+                        <td>{{ formatVideoTime(item.peakTime) }}</td>
+                        <td>{{ formatVideoTime(item.peakStartTime) }}–{{ formatVideoTime(item.peakEndTime) }}</td>
+                        <td>{{ formatVideoTime(item.returnTime) }}</td>
+                        <td>{{ formatAmplitude(item.amplitude) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div v-else class="empty-state">腹壁轮廓可见，但未找到完成隆起和回落的周期；不能据此认定患者没有练习。</div>
+                <div v-if="segmentationDiagnostics.visualRejectedCandidates.length" class="segmentation-candidate-group">
+                  <div class="segmentation-candidate-group__title">方式 C · 未计入的轮廓候选（{{ segmentationDiagnostics.visualRejectedCandidates.length }}）</div>
+                  <div class="analysis-table-wrap">
+                    <table class="analysis-table">
+                      <thead><tr><th>开始</th><th>隆起顶点</th><th>回落</th><th>未计入原因</th></tr></thead>
+                      <tbody>
+                        <tr v-for="(item, index) in segmentationDiagnostics.visualRejectedCandidates" :key="`visual-rejected-${index}`">
+                          <td>{{ formatVideoTime(item.startTime) }}</td>
+                          <td>{{ formatVideoTime(item.peakTime) }}</td>
+                          <td>{{ formatVideoTime(item.returnTime) }}</td>
+                          <td class="segmentation-reason">{{ item.reason || '未满足完整周期条件' }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <div v-if="segmentationDiagnostics.mode === 'shadow'" class="segmentation-candidate-group">
+              <div class="segmentation-candidate-group__title">方式 C · 腹部轮廓按视觉规则评分（试算）</div>
+              <div class="segmentation-panel__subtitle">使用上方同一批完整周期，按顶部保持、回位与节奏评分；不套用姿态模板，不写入本次后台正式报告。</div>
+              <div v-if="segmentationDiagnostics.visualEvidencePreview?.score_available" class="segmentation-score-summary">
+                <strong>平均 {{ segmentationDiagnostics.visualEvidencePreview.average_score }} 分</strong>
+                <span>各周期：{{ segmentationDiagnostics.visualEvidencePreview.rep_scores?.map((score, index) => `第 ${index + 1} 次 ${score} 分`).join(' · ') || '暂无明细' }}</span>
+              </div>
+              <div v-else class="empty-state">{{ segmentationDiagnostics.visualEvidencePreview?.reason || '本次未试算视觉规则分；旧记录请重新验证。' }}</div>
+            </div>
+
+            <div v-if="segmentationDiagnostics.visualScorePreview" class="segmentation-candidate-group">
+              <div class="segmentation-candidate-group__title">方式 C · 轮廓周期按姿态模板评分（交叉诊断）</div>
+              <div class="segmentation-panel__subtitle">
+                周期边界仍由腹部轮廓切出，仅评分时使用姿态关键点与模板；用于检查“换一套边界”对姿态分的影响。这不是小程序采用的视觉规则分，也不是新的切分方式。
+                <span v-if="segmentationDiagnostics.visualScorePreview.score_status === 'unavailable'">试算未完成：{{ segmentationDiagnostics.visualScorePreview.reason || '请查看分析日志' }}。</span>
+                <span v-else-if="!segmentationDiagnostics.visualScorePreview.template_comparable">模板口径不兼容，两组分数不能作为动作质量结论。</span>
+              </div>
+              <div v-if="segmentationDiagnostics.visualScorePreview.template_comparable && segmentationDiagnostics.visualScorePreview.reps?.length" class="analysis-table-wrap">
+                <table class="analysis-table">
+                  <thead><tr><th>视觉周期</th><th>边界</th><th>试算分</th><th>准确</th><th>稳定</th><th>控制</th><th>持续</th></tr></thead>
+                  <tbody>
+                    <tr v-for="item in segmentationDiagnostics.visualScorePreview.reps" :key="`visual-score-${item.rep_id}`">
+                      <td>第 {{ item.rep_id }} 次</td>
+                      <td>{{ formatVideoTime(item.start_time) }}–{{ formatVideoTime(item.end_time) }}</td>
+                      <td>{{ item.score }}</td>
+                      <td>{{ item.dimensions.accuracy }}</td>
+                      <td>{{ item.dimensions.stability }}</td>
+                      <td>{{ item.dimensions.control }}</td>
+                      <td>{{ item.dimensions.duration }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div v-else class="empty-state">{{ segmentationDiagnostics.visualScorePreview.score_status === 'unavailable' ? '试算未完成，请查看分析日志。' : segmentationDiagnostics.visualScorePreview.template_comparable ? '暂无完整视觉周期；被拒绝的候选不会纳入平均分。' : '模板口径不兼容，原始试算值不作为可展示分数。' }}</div>
+            </div>
+
+            <div class="segmentation-candidate-group__title">方式 B · 姿态闭环｜周期与拒绝原因</div>
             <div class="segmentation-state-guide">
               <strong>状态说明：</strong>
               <span><b>完整闭环（COMPLETE）</b>：已完成收缩、顶点、回落和稳定，计入闭环次数。</span>
-              <span><b>尾部截断（INCOMPLETE_TAIL）</b>：视频结束截断了稳定窗口，但已满足尾部规则，计入闭环次数。</span>
+              <span><b>尾部截断（INCOMPLETE_TAIL）</b>：是否计入以“闭环接受周期”列表为准；出现在拒绝候选中则不计入。</span>
               <span><b>回落反弹（REBOUND）</b>：回落过程中的局部反弹，未形成独立完整动作，不计入次数。</span>
             </div>
 
@@ -283,6 +378,50 @@
           <div v-else-if="actionType === 'abdominal_crunch'" class="analysis-note">
             当前结果尚无双切分诊断。请确认分析服务已使用支持 P0 的版本，并将 <code>ABDOMINAL_SEGMENTATION_MODE</code> 设为 <code>shadow</code> 或 <code>cycle_state_machine</code> 后重新验证。
           </div>
+
+          <section v-if="kneeBilateralDiagnostics" class="segmentation-panel">
+            <div class="segmentation-panel__header">
+              <div>
+                <div class="analysis-section-title">膝关节旋转切分对照</div>
+                <div class="segmentation-panel__subtitle">同一份关键点对比旧姿态峰值和新版双侧闭环；只有标为“本次正式”的结果写入报告。</div>
+              </div>
+              <el-tag :type="kneeBilateralDiagnostics.mode === 'bilateral' ? 'success' : 'info'">{{ kneeBilateralDiagnostics.mode === 'bilateral' ? '双侧闭环正式' : '双侧闭环试算' }}</el-tag>
+            </div>
+            <div class="segmentation-comparison">
+              <div class="segmentation-comparison__head"><span>切分方式</span><span>识别次数</span><span>评分</span><span>说明</span><span>用途</span></div>
+              <div class="segmentation-comparison__row">
+                <div class="segmentation-comparison__name">姿态峰值<small>旧规则</small></div>
+                <strong>{{ kneeBilateralDiagnostics.legacyCount ?? '-' }}</strong>
+                <div class="segmentation-comparison__score">{{ kneeBilateralDiagnostics.mode !== 'bilateral' ? (analysisDetail.summary?.averageScore ?? '-') : '—' }}<small>旧姿态模板分</small></div>
+                <span>用于对照</span>
+                <el-tag :type="kneeBilateralDiagnostics.mode === 'bilateral' ? 'info' : 'success'" size="small">{{ kneeBilateralDiagnostics.mode === 'bilateral' ? '仅供对比' : '本次正式' }}</el-tag>
+              </div>
+              <div class="segmentation-comparison__row">
+                <div class="segmentation-comparison__name">双侧闭环<small>两侧各到位并回正，合为 1 次</small></div>
+                <strong>{{ kneeBilateralDiagnostics.cycleCount }}</strong>
+                <div class="segmentation-comparison__score">{{ kneeBilateralDiagnostics.scorePreview?.available ? kneeBilateralDiagnostics.scorePreview.average_score : '—' }}<small>独立规则分</small></div>
+                <span>{{ kneeBilateralDiagnostics.reason }}</span>
+                <el-tag :type="kneeBilateralDiagnostics.mode === 'bilateral' ? 'success' : 'info'" size="small">{{ kneeBilateralDiagnostics.mode === 'bilateral' ? '本次正式' : '仅供对比' }}</el-tag>
+              </div>
+            </div>
+            <div class="segmentation-panel__subtitle">“两侧”指画面中相反方向的双膝位移；关键点本身不能确认解剖学上的左/右。新版分数不套用旧姿态模板，也不与旧分数直接比较。配置切换仅影响新分析。</div>
+            <div v-if="kneeBilateralDiagnostics.cycles.length" class="analysis-table-wrap">
+              <table class="analysis-table">
+                <thead><tr><th>次数</th><th>第一侧开始</th><th>第一侧到位</th><th>中间回正</th><th>第二侧到位</th><th>最终回正</th></tr></thead>
+                <tbody>
+                  <tr v-for="(cycle, index) in kneeBilateralDiagnostics.cycles" :key="`knee-cycle-${index}`">
+                    <td>第 {{ index + 1 }} 次</td>
+                    <td>{{ formatVideoTime(cycle.first.start_seconds) }}</td>
+                    <td>{{ formatVideoTime(cycle.first.arrival_seconds) }}</td>
+                    <td>{{ formatVideoTime(cycle.first.end_seconds) }}</td>
+                    <td>{{ formatVideoTime(cycle.second.arrival_seconds) }}</td>
+                    <td>{{ formatVideoTime(cycle.second.end_seconds) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else class="empty-state">{{ kneeBilateralDiagnostics.reason || '没有可确认的双侧完整周期。' }}</div>
+          </section>
 
           <template v-if="analysisDetail.summary">
           <div class="analysis-section-title">分次动作评分（rep）</div>
@@ -425,11 +564,39 @@ type SegmentationCandidate = {
 
 type SegmentationSnapshot = {
   mode?: string;
+  knee_bilateral_preview?: {
+    mode: string; cycle_count: number; reason?: string;
+    cycles: Array<{ first: { start_seconds: number; arrival_seconds: number; end_seconds: number };
+      second: { arrival_seconds: number; end_seconds: number } }>;
+    score_preview?: { available: boolean; average_score?: number | null; rep_scores?: number[] };
+  };
   formal_version?: string;
+  scoring_contract?: { compatible?: boolean; mismatched_units?: Record<string, { expected: string; actual: string | null }> };
+  visual_score_preview?: {
+    template_comparable?: boolean; average_score?: number | null; score_status?: string; reason?: string;
+    reps?: Array<{ rep_id: number; start_time: number; end_time: number; score: number;
+      dimensions: { accuracy: number; stability: number; control: number; duration: number } }>;
+  };
+  cycle_score_preview?: SegmentationSnapshot['visual_score_preview'];
+  visual_evidence_preview?: {
+    version?: string; uncalibrated?: boolean; score_available?: boolean;
+    average_score?: number | null; rep_scores?: number[]; reason?: string;
+  };
   effective_sample_fps?: number;
   legacy_rep_count?: number;
   cycle_rep_count?: number;
   count_delta?: number;
+  visual_observable?: boolean;
+  visual_rep_count?: number | null;
+  visual_unavailable_reason?: string;
+  visual_quality?: { valid_ratio?: number };
+  visual_accepted_cycles?: Array<{
+    start_time?: number | null; peak_time?: number | null; return_time?: number | null;
+    peak_start_time?: number | null; peak_end_time?: number | null; amplitude?: number;
+  }>;
+  visual_rejected_candidates?: Array<{
+    start_time?: number | null; peak_time?: number | null; return_time?: number | null; reason?: string;
+  }>;
   timings_ms?: { shadow_overhead_ms?: number };
   accepted_cycles?: Array<{
     state?: string; start_frame?: number; peak_frame?: number; return_frame?: number | null;
@@ -653,6 +820,28 @@ const segmentationDiagnostics = computed(() => {
     effectiveSampleFps: snapshot.effective_sample_fps ?? null,
     legacyRepCount: snapshot.legacy_rep_count ?? null,
     cycleRepCount: snapshot.cycle_rep_count ?? null,
+    visualObservable: snapshot.visual_observable === true,
+    visualRepCount: snapshot.visual_rep_count ?? null,
+    visualUnavailableReason: snapshot.visual_unavailable_reason || '',
+    scoringContract: snapshot.scoring_contract ?? null,
+    visualScorePreview: snapshot.visual_score_preview ?? null,
+    cycleScorePreview: snapshot.cycle_score_preview ?? null,
+    visualEvidencePreview: snapshot.visual_evidence_preview ?? null,
+    visualValidRatio: snapshot.visual_quality?.valid_ratio ?? null,
+    visualAcceptedCycles: (snapshot.visual_accepted_cycles || []).map((item) => ({
+      startTime: item.start_time ?? null,
+      peakTime: item.peak_time ?? null,
+      returnTime: item.return_time ?? null,
+      peakStartTime: item.peak_start_time ?? null,
+      peakEndTime: item.peak_end_time ?? null,
+      amplitude: Number(item.amplitude ?? 0),
+    })),
+    visualRejectedCandidates: (snapshot.visual_rejected_candidates || []).map((item) => ({
+      startTime: item.start_time ?? null,
+      peakTime: item.peak_time ?? null,
+      returnTime: item.return_time ?? null,
+      reason: item.reason || '',
+    })),
     countDelta: snapshot.count_delta ?? null,
     shadowOverheadMs: snapshot.timings_ms?.shadow_overhead_ms ?? null,
     acceptedCycles: (snapshot.accepted_cycles || []).map(toCandidate),
@@ -660,24 +849,78 @@ const segmentationDiagnostics = computed(() => {
   };
 });
 
+const kneeBilateralDiagnostics = computed(() => {
+  const detail = analysisDetail.value;
+  if (detail?.actionType !== 'knee_rotation') return null;
+  const preview = detail.segmentation?.snapshot?.knee_bilateral_preview;
+  if (!preview) return null;
+  return {
+    ...preview,
+    legacyCount: detail.segmentation?.snapshot?.legacy_rep_count ?? null,
+    cycleCount: preview.cycle_count,
+    scorePreview: preview.score_preview,
+  };
+});
+
+const segmentationComparisonRows = computed(() => {
+  const diagnostic = segmentationDiagnostics.value;
+  if (!diagnostic) return [];
+  const isCycleFormal = diagnostic.formalVersion?.startsWith('abdominal_cycle_') === true;
+  const poseScore = analysisDetail.value?.summary?.grade === '待复核'
+    ? null : analysisDetail.value?.summary?.averageScore;
+  const previewScore = (preview: SegmentationSnapshot['visual_score_preview'] | null, count: number | null) => {
+    if (count === 0) return { value: '—', hint: '未切出完整周期' };
+    if (!preview) return { value: '—', hint: '未试算；旧记录请重新验证' };
+    if (!preview.template_comparable) return { value: '—', hint: '模板不兼容，不展示分数' };
+    if (typeof preview.average_score !== 'number') return { value: '—', hint: preview.reason || '试算未完成' };
+    return { value: String(preview.average_score), hint: '边界替换试算' };
+  };
+  const cyclePose = previewScore(diagnostic.cycleScorePreview, diagnostic.cycleRepCount);
+  const contourPose = previewScore(diagnostic.visualScorePreview, diagnostic.visualRepCount);
+  const visualScore = diagnostic.visualEvidencePreview;
+  return [
+    {
+      key: 'peak', name: 'A · 姿态峰值', detail: '肩髋关键点的峰值',
+      count: diagnostic.legacyRepCount ?? '—',
+      poseScore: !isCycleFormal && poseScore != null ? String(poseScore) : '—',
+      poseScoreHint: !isCycleFormal ? (poseScore != null ? '本次正式评分' : '未生成正式评分') : '未单独试算',
+      visualScore: '—', visualScoreHint: '不适用', formal: !isCycleFormal,
+    },
+    {
+      key: 'cycle', name: 'B · 姿态闭环', detail: '起伏并回到稳定位置',
+      count: diagnostic.cycleRepCount ?? '—',
+      poseScore: isCycleFormal ? (poseScore != null ? String(poseScore) : '—') : cyclePose.value,
+      poseScoreHint: isCycleFormal ? (poseScore != null ? '本次正式评分' : '未生成正式评分') : cyclePose.hint,
+      visualScore: '—', visualScoreHint: '不适用',
+      formal: isCycleFormal,
+    },
+    {
+      key: 'visual', name: 'C · 腹部轮廓', detail: '隆起—保持—回位',
+      count: diagnostic.visualObservable ? diagnostic.visualRepCount ?? '—' : '—',
+      poseScore: diagnostic.visualObservable ? contourPose.value : '—',
+      poseScoreHint: diagnostic.visualObservable ? contourPose.hint : '轮廓不可观察',
+      visualScore: visualScore?.score_available && typeof visualScore.average_score === 'number'
+        ? String(visualScore.average_score) : '—',
+      visualScoreHint: visualScore?.score_available ? '视觉规则试算' : visualScore?.reason || '未试算；旧记录请重新验证',
+      formal: false,
+    },
+  ];
+});
+
 const segmentationModeLabel = computed(() => {
   const mode = segmentationDiagnostics.value?.mode;
   if (mode === 'shadow') return 'Shadow 对比中';
-  if (mode === 'cycle_state_machine') return '闭环状态机正式生效';
+  if (mode === 'cycle_state_machine') return segmentationDiagnostics.value?.formalVersion?.startsWith('abdominal_cycle_')
+    ? '闭环状态机正式生效' : '已回退峰值切分';
   return '峰值切分正式生效';
 });
 
 const segmentationModeTagType = computed(() => {
   const mode = segmentationDiagnostics.value?.mode;
   if (mode === 'shadow') return 'warning';
-  if (mode === 'cycle_state_machine') return 'success';
+  if (mode === 'cycle_state_machine') return segmentationDiagnostics.value?.formalVersion?.startsWith('abdominal_cycle_')
+    ? 'success' : 'warning';
   return 'info';
-});
-
-const segmentationCountDeltaClass = computed(() => {
-  const delta = segmentationDiagnostics.value?.countDelta;
-  if (typeof delta !== 'number' || delta === 0) return '';
-  return delta > 0 ? 'segmentation-value--positive' : 'segmentation-value--negative';
 });
 
 const accuracyHint = computed(() => {
@@ -718,11 +961,6 @@ function actionLabel(type: TrainingActionType) {
 
 function statusLabel(status: AnalysisStatus | string) {
   return (ANALYSIS_STATUS_LABELS as Record<string, string>)[status] || status;
-}
-
-function signedNumber(value: number | null | undefined): string {
-  if (typeof value !== 'number') return '-';
-  return value > 0 ? `+${value}` : String(value);
 }
 
 function formatFps(value: number | null | undefined): string {
@@ -1293,45 +1531,62 @@ onUnmounted(() => {
 .segmentation-panel__subtitle {
   margin-top: 6px;
   color: var(--ink-500);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-.segmentation-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.segmentation-metric {
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid rgba(148, 180, 214, 0.24);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.segmentation-metric span {
-  color: var(--ink-500);
-  font-size: 12px;
-}
-
-.segmentation-metric strong {
-  overflow: hidden;
-  color: var(--ink-950);
   font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.6;
 }
 
-.segmentation-value--positive {
-  color: #1f8b5a !important;
+.segmentation-comparison {
+  overflow: hidden;
+  border: 1px solid rgba(148, 180, 214, 0.35);
+  border-radius: 10px;
+  background: #fff;
 }
 
-.segmentation-value--negative {
-  color: #bf3434 !important;
+.segmentation-comparison__head,
+.segmentation-comparison__row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.7fr) minmax(82px, 0.65fr) minmax(150px, 1.25fr) minmax(150px, 1.25fr) minmax(92px, 0.7fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.segmentation-comparison__head {
+  background: #edf4fa;
+  color: var(--ink-700);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.segmentation-comparison__row + .segmentation-comparison__row {
+  border-top: 1px solid rgba(148, 180, 214, 0.28);
+}
+
+.segmentation-comparison__row:nth-child(even) {
+  background: rgba(237, 244, 250, 0.36);
+}
+
+.segmentation-comparison__row strong,
+.segmentation-comparison__score {
+  color: var(--ink-950);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.segmentation-comparison__name {
+  color: var(--ink-900);
+  font-weight: 700;
+}
+
+.segmentation-comparison__name small,
+.segmentation-comparison__score small {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink-600);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
 }
 
 .segmentation-candidates {
@@ -1363,8 +1618,27 @@ onUnmounted(() => {
 
 .segmentation-candidate-group__title {
   color: var(--ink-700);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
+}
+
+.segmentation-score-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 180, 214, 0.3);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink-700);
+  font-size: 13px;
+}
+
+.segmentation-score-summary strong {
+  color: var(--ink-950);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
 }
 
 .segmentation-reason {
@@ -1463,9 +1737,35 @@ onUnmounted(() => {
 
 @media (max-width: 900px) {
   .verify-form-grid,
-  .preview-grid,
-  .segmentation-metrics {
+  .preview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .segmentation-comparison__head {
+    display: none;
+  }
+
+  .segmentation-comparison__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .segmentation-comparison__row > .segmentation-comparison__score {
+    font-size: 18px;
+  }
+
+  .segmentation-comparison__row > .segmentation-comparison__score:nth-of-type(2),
+  .segmentation-comparison__row > .segmentation-comparison__score:nth-of-type(3) {
+    grid-column: 1 / -1;
+  }
+
+  .segmentation-comparison__score::before {
+    content: attr(data-label);
+    display: inline-block;
+    min-width: 100px;
+    margin-right: 12px;
+    color: var(--ink-600);
+    font-size: 13px;
+    font-weight: 500;
   }
 
   .segmentation-panel__header {

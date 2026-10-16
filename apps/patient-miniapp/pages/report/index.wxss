@@ -28,6 +28,16 @@
   font-weight: 800;
 }
 
+.rp-review-notice__count {
+  margin-top: 14rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.rp-review-notice__count text {
+  font-size: 38rpx;
+}
+
 .rp-review-notice__desc,
 .rp-review-notice__tip {
   display: block;
@@ -305,9 +315,9 @@ box-sizing: border-box;
 
 .rp-score-circle__label {
   margin-top: 6rpx;
-  font-size: 22rpx;
+  font-size: 25rpx;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.85);
+  color: #ffffff;
 }
 
 .rp-hero__info {
@@ -322,11 +332,12 @@ box-sizing: border-box;
   display: block;
 }
 
-.rp-hero__compare {
-  margin-top: 8rpx;
-  font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.85);
+.rp-hero__method {
   display: block;
+  margin-top: 8rpx;
+  color: #ffffff;
+  font-size: 27rpx;
+  font-weight: 700;
 }
 
 /* ========== 概要数据 2列 ========== */
@@ -367,7 +378,7 @@ box-sizing: border-box;
 .rp-stat-card__label {
   display: block;
   margin-top: 12rpx;
-  font-size: 24rpx;
+  font-size: 28rpx;
   color: #718096;
 }
 
@@ -455,6 +466,40 @@ box-sizing: border-box;
 .rp-metric-summary__strong {
   color: #dd6b20;
   font-weight: 700;
+}
+
+/* 视觉周期的阶段时间采用与旧报告相同的指标面板。 */
+.rp-phase-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12rpx;
+}
+
+.rp-phase-cell {
+  min-width: 0;
+  padding: 18rpx 8rpx;
+  border-radius: 18rpx;
+  background: #f1f8f4;
+  text-align: center;
+}
+
+.rp-phase-cell__label {
+  display: block;
+  color: #405847;
+  font-size: 30rpx;
+}
+
+.rp-phase-cell__value {
+  display: block;
+  margin-top: 12rpx;
+  color: #22543d;
+  font-size: 36rpx;
+  font-weight: 800;
+}
+
+.rp-phase-unavailable {
+  color: #4a5568;
+  font-size: 28rpx;
 }
 
 /* ========== 系统建议 ========== */
@@ -598,6 +643,29 @@ box-sizing: border-box;
 
 .rp-feedback-panel__btn::after {
   border: none;
+}
+
+.rp-feedback-panel--compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 20rpx 24rpx;
+}
+
+.rp-feedback-panel--compact .rp-feedback-panel__title {
+  flex: 1;
+  color: #234e78;
+  font-size: 32rpx;
+}
+
+.rp-feedback-panel--compact .rp-feedback-panel__btn {
+  width: auto;
+  min-width: 180rpx;
+  min-height: 88rpx;
+  margin: 0;
+  padding: 0 20rpx;
+  font-size: 30rpx;
 }
 
 /* ========== 反馈表单 ========== */

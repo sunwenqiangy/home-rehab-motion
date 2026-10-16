@@ -100,7 +100,17 @@ def _inspect_visual_quality(video_path: str) -> Dict[str, Any]:
         return {'available': False, 'brightness': 0.0, 'brightness_std': 0.0}
 
 
-def check_video_quality(video_path: str, keypoint_avg_visibility: float = 1.0) -> QualityCheckResult:
+def duration_limits_for_action(action_type: str) -> tuple[int, int]:
+    """小程序膝旋转短片段可从 10 秒起上传，是否完成周期由切分校验。"""
+    return {
+        'abdominal_crunch': (8, 30),
+        'pelvic_tilt': (8, 30),
+        'knee_rotation': (10, 60),
+    }.get(action_type, (8, 300))
+
+
+def check_video_quality(video_path: str, keypoint_avg_visibility: float = 1.0,
+                        action_type: str = '') -> QualityCheckResult:
     """视频质量检测：格式、亮度、稳定性及关键点可见性。"""
     info = _run_ffprobe(video_path)
 
@@ -140,9 +150,10 @@ def check_video_quality(video_path: str, keypoint_avg_visibility: float = 1.0) -
         issues.append('resolution_too_low')
     if fps < 15:
         issues.append('fps_too_low')
-    if duration < 10:
+    min_duration, max_duration = duration_limits_for_action(action_type)
+    if not np.isfinite(duration) or duration < min_duration:
         issues.append('duration_too_short')
-    elif duration > 300:
+    elif duration > max_duration:
         issues.append('duration_too_long')
 
     if not visual['available']:

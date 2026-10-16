@@ -14,9 +14,9 @@ const STATUS_LABEL_MAP = {
     queued: '排队中',
     processing: '分析中',
     completed: '已完成',
-    failed: '分析失败',
-    quality_insufficient: '视频质量不足',
-    review_required: '待人工复核',
+    failed: '已记录 · 观察暂不可用',
+    quality_insufficient: '已记录 · 画面待改善',
+    review_required: '已记录 · 观察待复核',
 };
 function formatTime(uploadedAt) {
     const date = new Date(uploadedAt);
@@ -41,11 +41,9 @@ function buildDotColor(status) {
         return 'green';
     if (status === 'processing' || status === 'queued' || status === 'uploading' || status === 'pending')
         return 'teal';
-    if (status === 'quality_insufficient')
+    if (status === 'quality_insufficient' || status === 'review_required' || status === 'failed')
         return 'orange';
-    if (status === 'review_required')
-        return 'orange';
-    return 'red';
+    return 'teal';
 }
 function buildRecordItem(item) {
     const status = item.status;
@@ -53,7 +51,8 @@ function buildRecordItem(item) {
     const actionLabel = ACTION_LABEL_MAP[item.actionType] || '训练动作';
     const statusLabel = STATUS_LABEL_MAP[status] || '状态待确认';
     const timeLabel = `${formatTime(item.uploadedAt)} · ${statusLabel}`;
-    const showScore = status === 'completed' && typeof item.averageScore === 'number';
+    const showScore = status === 'completed' && item.scoreType !== 'visual_practice'
+        && item.scoreAvailable !== false && typeof item.averageScore === 'number';
     let scoreText = '';
     let chipColor = 'gray';
     let chipText = '';
@@ -64,17 +63,17 @@ function buildRecordItem(item) {
         chipColor = 'teal';
         chipText = '查看';
     }
-    else if (status === 'failed') {
-        chipColor = 'coral';
-        chipText = '重新上传';
-    }
-    else if (status === 'quality_insufficient') {
+    else if (status === 'failed' || status === 'quality_insufficient') {
         chipColor = 'orange';
-        chipText = '重新上传';
+        chipText = '查看说明';
     }
     else if (status === 'review_required') {
         chipColor = 'orange';
         chipText = '查看说明';
+    }
+    else if (status === 'completed') {
+        chipColor = 'teal';
+        chipText = '已记录';
     }
     return {
         videoId: item.videoId,
@@ -159,14 +158,18 @@ Page({
             const [items, trainingSummary] = await Promise.all([(0, history_1.getHistoryVideos)(), (0, me_1.getTrainingSummary)()]);
             const allRecords = items.map(buildRecordItem);
             const groupedItems = groupByDate(allRecords, items);
+            const latestCompletedType = items.find((item) => item.status === 'completed')?.scoreType;
+            const latestIsVisual = latestCompletedType === 'visual_practice';
+            const comparableType = latestCompletedType === 'visual_evidence' ? 'visual_evidence' : 'pose';
             const scoredItems = items.filter((item) =>
-                item.status === 'completed' && typeof item.averageScore === 'number' && Number.isFinite(item.averageScore),
+                item.status === 'completed' && item.scoreAvailable !== false && item.scoreType === comparableType
+                    && typeof item.averageScore === 'number' && Number.isFinite(item.averageScore),
             );
             const avgScore = scoredItems.length
                 ? Math.round(scoredItems.reduce((sum, item) => sum + item.averageScore, 0) / scoredItems.length)
                 : '--';
             const improvementLevel = trainingSummary.improvementLevel;
-            const scoreTrend = improvementLevel === 'clear'
+            const scoreTrend = comparableType === 'visual_evidence' ? '--' : improvementLevel === 'clear'
                 ? '进步明显'
                 : improvementLevel === 'slight'
                     ? '稳步提升'
@@ -182,8 +185,12 @@ Page({
                 groupedItems: this.filterRecords(this.data.activeFilter, allRecords, items),
                 summaryItems: [
                     { label: '累计训练', value: trainingSummary.totalTrainingCount || 0, color: 'teal' },
-                    { label: '平均得分', value: avgScore, color: 'green' },
-                    { label: '分数趋势', value: scoreTrend, color: 'orange' },
+                    latestIsVisual
+                        ? { label: '本周练习', value: `${trainingSummary.weeklyTrainingDays || 0} 天`, color: 'green' }
+                        : { label: '平均得分', value: avgScore, color: 'green' },
+                    latestIsVisual
+                        ? { label: '连续练习', value: `${trainingSummary.consecutiveTrainingDays || 0} 天`, color: 'orange' }
+                        : { label: '分数趋势', value: scoreTrend, color: 'orange' },
                 ],
                 weeklyLabel: hasWeeklyProgress && weeklyProgress.label ? weeklyProgress.label : '--',
                 weeklyProgress: hasWeeklyProgress ? weeklyProgress.progressPercent : 0,

@@ -39,7 +39,7 @@ Page({
         statsItems: [
             { label: '总训练次数', value: '--', color: 'teal' },
             { label: '坚持天数', value: '--', color: 'green' },
-            { label: '最高评分', value: '--', color: 'orange' },
+            { label: '本周练习', value: '--', color: 'orange' },
         ],
         badgeCountText: '--',
         badgeWallItems: [],
@@ -67,7 +67,7 @@ Page({
                 statsItems: [
                     { label: '总训练次数', value: '--', color: 'teal' },
                     { label: '坚持天数', value: '--', color: 'green' },
-                    { label: '最高评分', value: '--', color: 'orange' },
+                    { label: '本周练习', value: '--', color: 'orange' },
                 ],
                 badgeCountText: '登录后查看',
                 badgeWallItems: [],
@@ -86,7 +86,7 @@ Page({
             statsItems: [
                 { label: '总训练次数', value: '--', color: 'teal' },
                 { label: '坚持天数', value: '--', color: 'green' },
-                { label: '最高评分', value: '--', color: 'orange' },
+                { label: '本周练习', value: '--', color: 'orange' },
             ],
             badgeCountText: '--',
             badgeWallItems: [],
@@ -123,7 +123,7 @@ Page({
             }));
             const totalCount = trainingSummary.totalTrainingCount || 0;
             const totalDays = trainingSummary.totalTrainingDays || 0;
-            const maxScore = trainingSummary.maxScore || trainingSummary.latestBestScore || 0;
+            const weeklyTrainingDays = Number(trainingSummary.weeklyTrainingDays) || 0;
             this.setData({
                 profileLoading: false,
                 nickname: profile.nickname,
@@ -133,7 +133,7 @@ Page({
                 statsItems: [
                     { label: '总训练次数', value: totalCount, color: 'teal' },
                     { label: '坚持天数', value: totalDays, color: 'green' },
-                    { label: '最高评分', value: maxScore, color: 'orange' },
+                    { label: '本周练习', value: `${weeklyTrainingDays} 天`, color: 'orange' },
                 ],
                 badgeCountText: badgeWallResult.status === 'fulfilled' ? `已获得${badgeWall.unlockedCount}个` : '暂未加载',
                 badgeWallItems,
@@ -152,7 +152,7 @@ Page({
                 statsItems: [
                     { label: '总训练次数', value: '--', color: 'teal' },
                     { label: '坚持天数', value: '--', color: 'green' },
-                    { label: '最高评分', value: '--', color: 'orange' },
+                    { label: '本周练习', value: '--', color: 'orange' },
                 ],
                 badgeCountText: '暂未加载',
                 badgeWallItems: [],
