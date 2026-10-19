@@ -46,6 +46,7 @@ Page({
     activeFilter: 'all',
     filters: FILTERS,
     items: [],
+    filteredItems: [],
   },
   onLoad() { try { const systemInfo = wx.getSystemInfoSync(); this.setData({ statusBarHeight: systemInfo.statusBarHeight || 20 }); } catch (_) { this.setData({ statusBarHeight: 20 }); } },
   onReady() { this.updateTopPlaceholderHeight(); },
@@ -53,10 +54,11 @@ Page({
     await this.loadGuidance();
   },
   async loadGuidance() {
-    this.setData({ loading: true, loadFailed: false, errorTitle: '', errorDesc: '', items: [] });
+    this.setData({ loading: true, loadFailed: false, errorTitle: '', errorDesc: '', items: [], filteredItems: [] });
     try {
       const items = await (0, guidance_1.getGuidanceList)();
-      this.setData({ items: items.map(toViewItem) });
+      const viewItems = items.map(toViewItem);
+      this.setData({ items: viewItems, filteredItems: this.filterItems(viewItems, this.data.activeFilter) });
     }
     catch (error) {
       // 指导内容来自后台配置，加载失败时不展示无法进入详情的本地示例动作。
@@ -71,6 +73,7 @@ Page({
           ? '请检查网络连接后重新加载。'
           : '服务可能正在繁忙或维护中，请稍后重新加载。',
         items: [],
+        filteredItems: [],
       });
     }
     finally {
@@ -80,6 +83,12 @@ Page({
   },
   onRetryLoad() { this.loadGuidance(); },
   updateTopPlaceholderHeight() { wx.nextTick(() => wx.createSelectorQuery().select('.guidance-v4-top-sticky').boundingClientRect((rect) => { if (rect?.height) this.setData({ topPlaceholderHeight: Math.ceil(rect.height) }); }).exec()); },
-  onFilterTap(event) { const { value } = event.currentTarget.dataset; this.setData({ activeFilter: value || 'all' }); },
+  filterItems(items, filter) { return filter === 'all' ? items : items.filter((item) => item.actionType === filter); },
+  onFilterTap(event) { const value = event.currentTarget.dataset.value || 'all'; this.setData({ activeFilter: value, filteredItems: this.filterItems(this.data.items, value) }); },
+  onCoverError(event) {
+    const contentId = event.currentTarget.dataset.contentId;
+    const items = this.data.items.map((item) => String(item.contentId) === String(contentId) ? { ...item, coverUrl: '' } : item);
+    this.setData({ items, filteredItems: this.filterItems(items, this.data.activeFilter) });
+  },
   onViewDetail(event) { const { contentId } = event.currentTarget.dataset; wx.navigateTo({ url: `/pages/guidance/detail?contentId=${contentId}` }); },
 });

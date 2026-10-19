@@ -1,5 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.recordSelfTraining = recordSelfTraining;
+exports.listSelfTraining = listSelfTraining;
+exports.getSelfTraining = getSelfTraining;
 exports.getProfile = getProfile;
 exports.getDisplaySettings = getDisplaySettings;
 exports.getTrainingSummary = getTrainingSummary;
@@ -12,6 +15,9 @@ exports.getPrivacyConsent = getPrivacyConsent;
 exports.grantPrivacyConsent = grantPrivacyConsent;
 exports.withdrawPrivacyConsent = withdrawPrivacyConsent;
 const request_1 = require("../utils/request");
+function recordSelfTraining() { return (0, request_1.request)({ url: '/me/self-training', method: 'POST', data: {} }); }
+function listSelfTraining() { return (0, request_1.request)({ url: '/me/self-training' }); }
+function getSelfTraining(id) { return (0, request_1.request)({ url: `/me/self-training/${encodeURIComponent(id)}` }); }
 function getProfile() {
     return (0, request_1.request)({
         url: '/me/profile',

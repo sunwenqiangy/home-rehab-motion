@@ -41,21 +41,22 @@
         <view class="guidance-v4-state-card">
           <view class="guidance-v4-state-card__icon">📋</view>
           <view class="guidance-v4-state-card__title">暂未配置训练动作</view>
-          <view class="guidance-v4-state-card__desc">管理员发布训练指导后，将在这里展示。</view>
+          <view class="guidance-v4-state-card__desc">请稍后再来查看训练指导。</view>
         </view>
       </view>
 
+      <view wx:elif="{{!filteredItems.length}}" class="guidance-v4-error-wrap"><view class="guidance-v4-state-card"><view class="guidance-v4-state-card__title">这个分类暂无训练指导</view><view class="guidance-v4-state-card__desc">切换分类可查看其他动作。</view></view></view>
       <view wx:else>
-        <view class="guidance-v4-card" wx:for="{{items}}" wx:key="contentId" wx:if="{{activeFilter === 'all' || activeFilter === item.actionType}}" data-content-id="{{item.contentId}}" bindtap="onViewDetail" hover-class="guidance-v4-card--pressed" hover-stay-time="80">
+        <view class="guidance-v4-card" wx:for="{{filteredItems}}" wx:key="contentId" data-content-id="{{item.contentId}}" bindtap="onViewDetail" hover-class="guidance-v4-card--pressed" hover-stay-time="80">
           <view class="guidance-v4-card__row">
             <view class="{{item.coverClassName}}">
-              <image wx:if="{{item.coverUrl}}" class="guidance-v4-card__cover-image" src="{{item.coverUrl}}" mode="aspectFill" />
+              <image wx:if="{{item.coverUrl}}" class="guidance-v4-card__cover-image" src="{{item.coverUrl}}" mode="aspectFit" data-content-id="{{item.contentId}}" binderror="onCoverError" />
               <text wx:else class="guidance-v4-card__icon">{{item.iconText}}</text>
             </view>
             <view class="guidance-v4-card__main">
               <view class="guidance-v4-card__title">{{item.actionLabel}}</view>
               <view wx:if="{{item.briefInstruction}}" class="guidance-v4-card__desc">{{item.briefInstruction}}</view>
-              <view wx:if="{{item.durationLabel}}" class="guidance-v4-card__duration">建议用时：{{item.durationLabel}}</view>
+              <view wx:if="{{item.trainingAdvice}}" class="guidance-v4-card__duration">训练建议：{{item.trainingAdvice}}</view>
               <view class="guidance-v4-card__chip-row">
                 <text class="{{item.chipClassName}}">查看详情 ›</text>
               </view>

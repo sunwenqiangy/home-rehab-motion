@@ -53,6 +53,7 @@
   <scroll-view wx:else class="rp-scroll" scroll-y enhanced show-scrollbar="{{false}}">
     <view class="rp-top-placeholder" style="height: {{topPlaceholderHeight}}px;"></view>
     <view class="rp-scroll-inner">
+      <view class="rp-scope-note"><text class="rp-scope-note__title">先看本段结论</text><text class="rp-scope-note__body">以下结果只反映这段视频中的动作表现，不代表整次练习完成度或康复效果。</text></view>
       <view wx:if="{{showSafetyNotice}}" class="rp-safety-notice">
         <view class="rp-safety-notice__title">已记录本次身体不适</view>
         <view class="rp-safety-notice__desc">请先暂停训练。若不适持续、加重或影响活动，请及时联系主治医生或前往医疗机构评估。</view>
@@ -78,11 +79,11 @@
         <view class="rp-hero__row">
           <view class="rp-score-circle">
             <text class="rp-score-circle__num">{{isVisualPractice && !showVisualScore ? '已' : averageScore}}</text>
-            <text class="rp-score-circle__label">{{isVisualPractice && !showVisualScore ? '记录' : '本段评分'}}</text>
+            <text class="rp-score-circle__label">{{isVisualPractice && !showVisualScore ? '记录' : '本段得分'}}</text>
           </view>
           <view class="rp-hero__info">
             <text class="rp-hero__title">{{actionLabel}}</text>
-            <text class="rp-hero__method">{{isVisualPractice ? '依据腹部起伏观察' : '依据身体姿态观察'}}<text wx:if="{{!isVisualPractice}}"> · {{grade}}</text></text>
+            <text class="rp-hero__method">{{isVisualPractice ? '根据腹部起伏判断动作' : '根据身体姿态判断动作'}}<text wx:if="{{!isVisualPractice}}"> · {{grade}}</text></text>
           </view>
         </view>
       </view>
@@ -135,7 +136,7 @@
           </view>
         </view>
         <view wx:if="{{showSafetyNotice}}" class="rp-metric-summary">本段指标仅用于回顾视频中的动作。请先暂停训练，并以医生或医疗机构的建议为准。</view>
-        <view wx:else class="rp-metric-summary">本段指标仅基于所上传的 1～2 个动作生成，不代表整套训练效果。</view>
+        <view wx:else class="rp-metric-summary">本段指标仅用于回顾视频中的动作。</view>
       </view>
 
       <!-- 身体不适安全态不展示训练重点和动作建议，避免与“暂停训练”冲突。 -->
@@ -154,8 +155,8 @@
       <view wx:if="{{videoReview}}" class="rp-video-review">
         <view class="rp-video-review__header" bindtap="onToggleVideo">
           <view>
-            <view class="rp-video-review__title">查看本次视频</view>
-            <view class="rp-video-review__hint">仅本人可看</view>
+            <view class="rp-video-review__title">回看本段视频</view>
+            <view class="rp-video-review__hint">仅在需要时查看</view>
           </view>
           <text class="rp-video-review__toggle">{{videoExpanded ? '收起' : '查看回放'}}</text>
         </view>
@@ -165,7 +166,7 @@
 
       <!-- 保留训练日徽章，但不展示旧接口返回的整套训练进步结论。 -->
       <view wx:if="{{!requiresManualReview && !showSafetyNotice && newlyUnlockedBadges.length}}" class="rp-motivation-panel">
-        <view wx:for="{{newlyUnlockedBadges}}" wx:key="badgeCode" class="rp-motivation-panel__badge">🏅 解锁「{{item.title}}」</view>
+        <view wx:for="{{newlyUnlockedBadges}}" wx:key="badgeCode" class="rp-motivation-panel__badge"><text class="rp-motivation-panel__icon">🏅</text><text>解锁「{{item.title}}」</text></view>
       </view>
 
       <!-- 反馈入口 -->
@@ -176,6 +177,7 @@
 
       <!-- 次级操作：避免和底部主操作竞争 -->
       <view class="rp-page-footer">
+        <button class="btn-big btn-teal rp-guidance-btn" bindtap="onViewGuidance">查看动作指导</button>
         <button class="btn-big btn-ghost" bindtap="onViewHistory">查看训练记录</button>
       </view>
 

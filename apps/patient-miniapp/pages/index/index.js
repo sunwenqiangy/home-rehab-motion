@@ -199,6 +199,7 @@ Page({
         stageTag: '继续练会更稳',
         stageItems: buildStageItems('corrective').items,
         recentTrainings: [],
+        selfTrainingRecordedToday: false,
         defaultAction: {
             actionType: 'abdominal_crunch',
             contentId: 1,
@@ -237,12 +238,17 @@ Page({
     },
     async onShow() {
         const isLoggedIn = Boolean((0, session_1.getToken)());
-        this.setData({ isLoggedIn });
+        this.setData({ isLoggedIn, selfTrainingEnabled: false, selfTrainingRecordedToday: false });
         if (!isLoggedIn) {
             this.loadGuestHomeData();
             this.updateTopPlaceholderHeight();
             return;
         }
+        try {
+            const config = await (0, appConfig_1.fetchAppConfig)();
+            getApp().globalData.appConfig = config;
+            this.setData({ selfTrainingEnabled: config.selfTrainingEnabled === true });
+        } catch (_error) { this.setData({ selfTrainingEnabled: false }); }
         await Promise.all([this.loadHomeData(), this.loadNoticeAndFeedback()]);
         this.updateTopPlaceholderHeight();
     },
@@ -259,7 +265,7 @@ Page({
             unreadCount: 0,
             showMessageReminder: false,
             heroTitle: '先登录，开启专属训练',
-            heroSub: '登录后可保存训练记录，获得个性化动作分析与康复建议。',
+            heroSub: '登录后可保存训练记录，查看动作分析与训练建议。',
             quickActions,
             defaultAction: quickActions[0] || this.data.defaultAction,
             weeklyLabel: `0 / ${cfg.weeklyTarget} 天`,
@@ -270,6 +276,7 @@ Page({
             stageTag: '登录后查看',
             stageItems: stage.items,
             recentTrainings: [],
+            selfTrainingRecordedToday: false,
         });
     },
     goToLogin() {
@@ -350,20 +357,21 @@ Page({
             this.setData({
                 homeLoadFailed: false,
                 greetingText: profile?.nickname ? `👋 您好，${profile.nickname}` : '👋 您好',
-                heroTitle: trainingSummary?.todayTrainingState === 'not_started' ? '今天还没训练' : trainingSummary ? '今天已完成训练' : '开始今天的训练',
+                heroTitle: trainingSummary?.todayTrainingState === 'not_started' ? '今天还没训练' : trainingSummary ? '今天已记录练习' : '开始今天的训练',
                 heroSub: trainingSummary?.encourageText || (trainingSummary?.todayTrainingState === 'not_started'
                     ? '完成 1 次训练后，系统会自动分析动作并给出建议。'
                     : '选择训练动作，按自己的节奏开始练习。'),
                 quickActions,
                 defaultAction: quickActions[0] || this.data.defaultAction,
                 weeklyLabel: weeklyProgress?.label || `0 / ${cfg.weeklyTarget} 天`,
-                weeklyDesc: trainingSummary?.encourageText || weeklyProgress?.desc || '完成训练后，这里会更新本周成长进度。',
+                weeklyDesc: trainingSummary?.encourageText || weeklyProgress?.desc || '完成训练后，这里会更新本周训练进度。',
                 weeklyProgressPercent: weeklyProgress?.progressPercent || 0,
                 weekDays: buildWeekDays(trainingSummary?.weeklyCalendar),
                 stageTitle: stage.stageTitle,
                 stageTag: trainingSummary ? stage.stageTag : '完成训练后更新',
                 stageItems: stage.items,
                 recentTrainings,
+                selfTrainingRecordedToday: trainingSummary?.selfTrainingRecordedToday === true,
             });
         }
         catch (error) {
@@ -381,6 +389,7 @@ Page({
                 quickActions,
                 defaultAction: quickActions[0] || this.data.defaultAction,
                 recentTrainings: [],
+                selfTrainingRecordedToday: false,
             });
         }
         finally {
@@ -404,6 +413,21 @@ Page({
             })
                 .exec();
         });
+    },
+    onRecordSelfTraining() {
+        if (!this.requireLogin() || this.data.selfTrainingSaving) return;
+        wx.showModal({ title: '记录今天的练习', content: '确认您今天已完成练习？这条记录由您自主填写，不包含动作分析。', confirmText: '确认记录', success: async (res) => {
+            if (!res.confirm || this.data.selfTrainingSaving) return;
+            this.setData({ selfTrainingSaving: true });
+            try {
+                const record = await (0, me_1.recordSelfTraining)();
+                wx.navigateTo({
+                    url: `/pages/self-training/index?id=${record.id}`,
+                    fail: () => wx.showToast({ title: '记录已保存，请在历史中查看', icon: 'none' }),
+                });
+            } catch (error) { wx.showToast({ title: error.userMessage || '记录失败，请稍后重试', icon: 'none' }); }
+            finally { this.setData({ selfTrainingSaving: false }); }
+        } });
     },
     onStartToday() {
         if (!this.requireLogin()) {

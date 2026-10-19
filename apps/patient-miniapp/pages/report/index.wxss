@@ -69,10 +69,15 @@
 }
 
 .rp-motivation-panel__badge {
-  margin-top: 12rpx;
+  display: flex;
+  align-items: center;
+  min-height: 40rpx;
+  margin: 0;
   font-size: 28rpx;
+  line-height: 1.4;
   color: #a45e16;
 }
+.rp-motivation-panel__icon { margin-right: 10rpx; line-height: 1; }
 
 /* ========== 页面基础 ========== */
 page {
@@ -816,3 +821,148 @@ box-sizing: border-box;
   border: 2rpx solid rgba(121, 175, 219, 0.24);
   box-shadow: 0 8rpx 20rpx rgba(34, 87, 139, 0.06);
 }
+
+.rp-scope-note { padding: 20rpx 24rpx; border-radius: 18rpx; background: #edf8f6; color: #396e69; font-size: 25rpx; line-height: 1.6; }
+.rp-scope-note__title { display: block; color: #236d66; font-size: 28rpx; font-weight: 800; }
+.rp-scope-note__body { display: block; margin-top: 4rpx; }
+.rp-guidance-btn { margin-bottom: 14rpx; }
+
+/* ========== 统一报告页视觉层级 ========== */
+.rp-page,
+page { background: #f2f8f7; color: #183c3b; }
+
+.rp-top-sticky,
+.rp-statusbar,
+.rp-nav { background: #f7fbfa; }
+
+.rp-nav { padding-top: 12rpx; padding-bottom: 16rpx; }
+.rp-nav__title { color: #183c3b; font-size: 34rpx; }
+
+.rp-scroll-inner { padding: 20rpx 28rpx 36rpx; gap: 16rpx; }
+
+.rp-scope-note {
+  border: 1rpx solid #cfe7e2;
+  border-radius: 16rpx;
+  background: #eaf6f3;
+  color: #52726d;
+}
+
+.rp-scope-note__title { color: #176f68; font-size: 27rpx; }
+.rp-scope-note__body { color: #52726d; font-size: 24rpx; }
+
+.rp-hero {
+  padding: 28rpx;
+  border: 0;
+  border-radius: 24rpx;
+  background: linear-gradient(140deg, #0f968c 0%, #08766f 100%);
+  box-shadow: 0 12rpx 28rpx rgba(8, 118, 111, .18);
+}
+
+.rp-hero__row { gap: 22rpx; }
+.rp-score-circle {
+  width: 128rpx;
+  height: 128rpx;
+  background: rgba(255, 255, 255, .16);
+  border: 1rpx solid rgba(255, 255, 255, .32);
+}
+.rp-score-circle__num { font-size: 44rpx; }
+.rp-score-circle__label { font-size: 23rpx; font-weight: 600; opacity: .9; }
+.rp-hero__title { font-size: 31rpx; }
+.rp-hero__method { margin-top: 10rpx; font-size: 25rpx; font-weight: 500; opacity: .9; line-height: 1.5; }
+
+.rp-stat-grid { gap: 12rpx; }
+.rp-stat-card,
+.info-panel {
+  border: 1rpx solid #deece9;
+  border-radius: 20rpx;
+  background: #fff;
+  box-shadow: 0 6rpx 18rpx rgba(24, 84, 78, .05);
+}
+.rp-stat-card { padding: 24rpx 20rpx; }
+.rp-stat-card__value { color: #147d74; font-size: 38rpx; }
+.rp-stat-card__value--green { color: #208d68; }
+.rp-stat-card__value--teal { color: #147d74; }
+.rp-stat-card__label { margin-top: 10rpx; color: #6b8580; font-size: 24rpx; }
+
+.info-panel { padding: 24rpx; }
+.info-title { margin-bottom: 16rpx; color: #183c3b; font-size: 29rpx; }
+.rp-metric-list { gap: 16rpx; }
+.rp-metric-line { gap: 12rpx; }
+.rp-metric-key { width: 112rpx; color: #52726d; font-size: 25rpx; }
+.rp-progress-bar { height: 12rpx; background: #e6f0ee; }
+.rp-progress-bar__fill,
+.rp-progress-bar__fill--orange { background: #39a99c; }
+.rp-metric-val--green,
+.rp-metric-val--teal,
+.rp-metric-val--orange { color: #147d74; }
+.rp-metric-val { width: 54rpx; font-size: 24rpx; }
+.rp-metric-summary { color: #78918c; font-size: 23rpx; }
+
+.rp-next-step-panel {
+  border: 1rpx solid #cfe7dc;
+  background: #f4fbf7;
+}
+.rp-next-step-panel__eyebrow { color: #21866c; font-size: 21rpx; }
+.rp-next-step-panel .info-title { color: #1d6257; }
+.rp-next-step-panel__summary,
+.rp-advice-item { color: #4d7068; font-size: 25rpx; }
+.rp-advice-item__dot { background: #2d9b78; box-shadow: 0 0 0 5rpx rgba(45, 155, 120, .12); }
+
+.rp-phase-cell { background: #f0f8f5; border: 1rpx solid #e0eee9; }
+.rp-phase-cell__label { color: #56766e; font-size: 24rpx; }
+.rp-phase-cell__value { color: #1c7e6c; font-size: 31rpx; }
+
+.rp-video-review,
+.rp-feedback-panel {
+  border: 1rpx solid #deece9;
+  border-radius: 20rpx;
+  background: #fff;
+}
+.rp-video-review__title { color: #236d66; font-size: 27rpx; }
+.rp-video-review__hint { color: #79918d; }
+.rp-video-review__toggle {
+  min-height: 58rpx;
+  padding: 0 20rpx;
+  display: inline-flex;
+  align-items: center;
+  border: 1rpx solid #cfe7e2;
+  border-radius: 999rpx;
+  background: #eaf6f3;
+  color: #147d74;
+  font-size: 25rpx;
+}
+.rp-feedback-panel--compact .rp-feedback-panel__title { color: #55736e; font-size: 27rpx; }
+.rp-feedback-panel--compact .rp-feedback-panel__btn {
+  width: auto;
+  min-width: 0;
+  min-height: 58rpx;
+  height: auto;
+  margin: 0;
+  padding: 0 20rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid #cfe7e2;
+  border-radius: 999rpx;
+  background: #eaf6f3;
+  color: #147d74;
+  box-shadow: none;
+  font-size: 25rpx;
+  font-weight: 700;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.rp-page-footer { padding-top: 2rpx; }
+.rp-page-footer .btn-big { min-height: 76rpx; border-radius: 16rpx; font-size: 27rpx; }
+.rp-guidance-btn { margin-bottom: 10rpx; }
+.rp-page-footer .btn-ghost { border: 1rpx solid #cfe2de; background: transparent; color: #4f726c; box-shadow: none; }
+
+.action-dock { background: rgba(247, 251, 250, .96); border-top: 1rpx solid #deece9; }
+.action-dock .btn-teal { border-radius: 16rpx; background: #087f76; box-shadow: 0 8rpx 20rpx rgba(8, 127, 118, .2); }
+
+/* 参考报告页的紧凑卡片节奏 */
+.rp-scroll-inner { padding: 16rpx 24rpx 36rpx; gap: 14rpx; }
+.rp-hero { border-radius: 22rpx; }
+.rp-stat-card { min-height: 112rpx; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.rp-page-footer { padding-bottom: 4rpx; }

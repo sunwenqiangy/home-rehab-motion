@@ -63,11 +63,7 @@
   font-weight: 700;
 }
 
-.privacy-consent-btn--secondary {
-  background: #ffffff;
-  border: 1rpx solid #d75a5a;
-  color: #b53c3c;
-}
+
 
 .privacy-page__content {
   display: flex;

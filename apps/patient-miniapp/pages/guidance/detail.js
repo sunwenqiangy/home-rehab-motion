@@ -6,10 +6,11 @@ const guidance_1 = require("../../services/guidance");
 const session_1 = require("../../store/session");
 const DEFAULT_COVERS = { abdominal_crunch: '/guidance-defaults/cover-abdominal-crunch.png', pelvic_tilt: '/guidance-defaults/cover-pelvic-tilt.png', knee_rotation: '/guidance-defaults/cover-knee-rotation.png' };
 const SHOOTING_DEFAULTS = {
-  angle: { order: 1, typeLabel: '拍摄角度', title: '正侧面拍摄', description: '手机放在身体正侧方，与躯干保持平行。', altText: '训练者完整侧身站立，手机放在身体正侧方。', correctUrl: '../../assets/guidance/shooting-angle-side.png' },
-  framing: { order: 2, typeLabel: '入镜范围', title: '全身完整入镜', description: '从头到脚都要拍到，四周留出适当空间。', altText: '训练者从头到脚完整出现在手机画面内。', correctUrl: '../../assets/guidance/shooting-framing-full-body.png' },
-  lighting: { order: 3, typeLabel: '光线', title: '光线充足、画面明亮', description: '面向窗户或明亮光源，避免背光和阴影。', altText: '训练者面向明亮窗户，脸部和身体轮廓清晰。', correctUrl: '../../assets/guidance/shooting-lighting-bright.png' },
+  angle: { order: 1, typeLabel: '拍摄角度', title: '正侧面拍摄', description: '手机放在身体正侧方，镜头与身体保持垂直。', altText: '训练者平卧时，手机放在身体正侧方。', correctUrl: '../../assets/guidance/shooting-angle-side-v2.png' },
+  framing: { order: 2, typeLabel: '入镜范围', title: '全身完整入镜', description: '从头到脚完整入镜，四周留出适当空间。', altText: '训练者从头到脚完整出现在手机画面内。', correctUrl: '../../assets/guidance/shooting-framing-full-body-v2.png' },
+  lighting: { order: 3, typeLabel: '光线', title: '光线均匀', description: '光线均匀，避免背光和阴影。', altText: '训练者处于光线均匀的环境，身体轮廓清晰。', correctUrl: '../../assets/guidance/shooting-lighting-bright-v2.png' },
 };
+const SHOOTING_TYPE_LABELS = { angle: '拍摄角度', framing: '入镜范围', lighting: '光线', stability: '画面稳定' };
 function getAppConfig() { const app = getApp(); return app.globalData.appConfig || appConfig_1.DEFAULT_APP_CONFIG; }
 function resolveAssetUrl(url) { if (!url || /^https?:\/\//.test(url) || url.startsWith('data:')) return url || ''; const origin = env_1.API_BASE_URL.replace(/\/api\/?$/, ''); return `${origin}${url.startsWith('/') ? url : `/${url}`}`; }
 function chooseTrainingVideo(source, actionType) {
@@ -25,8 +26,47 @@ function chooseTrainingVideo(source, actionType) {
     wx.chooseVideo({ sourceType: [source], maxDuration, camera: 'back', compressed: false, success, fail: reject });
   });
 }
-function toShootingViewModel(requirements) { const byType = (requirements || []).reduce((result, item) => ({ ...result, [item.type]: item }), {}); return Object.keys(SHOOTING_DEFAULTS).map((type) => { const fallback = SHOOTING_DEFAULTS[type]; const item = byType[type] || {}; return { ...fallback, ...item, order: fallback.order, typeLabel: fallback.typeLabel, title: item.title || fallback.title, description: item.description || fallback.description, altText: item.altText || fallback.altText, correctUrl: resolveAssetUrl(item.correctImage?.url) || fallback.correctUrl }; }); }
-function toViewModel(detail) { return { ...detail, coverUrl: resolveAssetUrl(detail.coverImage?.url) || resolveAssetUrl(DEFAULT_COVERS[detail.actionType]), videoUrl: resolveAssetUrl(detail.video?.asset?.url), videoFallbackText: detail.video?.fallbackText || '教学视频暂时无法播放，您可以先查看下面的图文步骤。', steps: (detail.steps || []).map((item, index) => ({ ...item, number: index + 1, imageUrl: resolveAssetUrl(item.image?.url) })), commonMistakes: (detail.commonMistakes || []).map((item) => ({ ...item, media: { ...item.media, url: resolveAssetUrl(item.media?.url) } })), hasCommonMistakes: (detail.commonMistakes || []).length > 0, shootingRequirements: toShootingViewModel(detail.shootingRequirements), estimatedTimeLabel: Number(detail.estimatedMinutes) > 0 ? `约 ${detail.estimatedMinutes} 分钟` : '', clipHint: detail.actionType === 'abdominal_crunch' ? `跟随呼吸引导，以舒适幅度练习即可；练习后可拍摄一段收缩与放松过程（不超过 ${(0, appConfig_1.formatVideoDuration)((0, appConfig_1.getVideoLimits)(detail.actionType, getAppConfig()).maxDuration)}）。视频确认上传后会计入训练记录，识别结果不影响这次记录。` : `每段拍摄 1～2 个完整动作，视频不超过 ${(0, appConfig_1.formatVideoDuration)((0, appConfig_1.getVideoLimits)(detail.actionType, getAppConfig()).maxDuration)}。` }; }
+function toShootingViewModel(requirements) {
+  const configured = Array.isArray(requirements) && requirements.length ? requirements : Object.keys(SHOOTING_DEFAULTS).map((type) => SHOOTING_DEFAULTS[type]);
+  return configured.map((item, index) => {
+    const fallback = SHOOTING_DEFAULTS[item.type] || { order: index + 1, typeLabel: SHOOTING_TYPE_LABELS[item.type] || '拍摄要求', title: '', description: '', altText: '', correctUrl: '' };
+    return {
+      ...fallback,
+      ...item,
+      order: index + 1,
+      typeLabel: SHOOTING_TYPE_LABELS[item.type] || fallback.typeLabel,
+      title: item.title || fallback.title,
+      description: item.description || fallback.description,
+      altText: item.altText || fallback.altText,
+      correctUrl: resolveAssetUrl(item.correctImage?.url) || fallback.correctUrl,
+    };
+  });
+}
+function toViewModel(detail) {
+  const limits = (0, appConfig_1.getVideoLimits)(detail.actionType, getAppConfig());
+  const uploadLimit = (0, appConfig_1.formatVideoDuration)(limits.maxDuration);
+  const recordLimit = (0, appConfig_1.formatVideoDuration)(limits.recordMaxDuration);
+  return {
+    ...detail,
+    coverUrl: resolveAssetUrl(detail.coverImage?.url) || resolveAssetUrl(DEFAULT_COVERS[detail.actionType]),
+    videoUrl: resolveAssetUrl(detail.video?.asset?.url),
+    videoFallbackText: detail.video?.fallbackText || '教学视频暂时无法播放，您可以先查看下面的图文步骤。',
+    steps: (detail.steps || []).map((item, index) => ({ ...item, number: index + 1, imageUrl: resolveAssetUrl(item.image?.url) })),
+    commonMistakes: (detail.commonMistakes || []).map((item) => ({
+      ...item,
+      isVideo: Boolean(item.media?.mimeType?.startsWith('video/') || /\.(mp4|mov|m4v)(\?|$)/i.test(item.media?.url || '')),
+      media: { ...item.media, url: resolveAssetUrl(item.media?.url) },
+    })),
+    hasCommonMistakes: (detail.commonMistakes || []).length > 0,
+    shootingRequirements: toShootingViewModel(detail.shootingRequirements),
+    clipLimitHint: limits.recordMaxDuration === limits.maxDuration
+      ? `本动作视频不超过 ${uploadLimit}。`
+      : `拍摄视频不超过 ${recordLimit}；相册视频不超过 ${uploadLimit}。`,
+    clipHint: detail.actionType === 'abdominal_crunch'
+      ? '请拍到至少一次完整的腹部隆起与回落。'
+      : '请拍到 1～2 个完整动作。',
+  };
+}
 function getNetworkType() { return new Promise((resolve) => wx.getNetworkType({ success: (result) => resolve(result.networkType || 'unknown'), fail: () => resolve('unknown') })); }
 Page({
   data: { loading: true, failed: false, errorIcon: '⚠️', errorTitle: '', errorDesc: '', videoFailed: false, statusBarHeight: 20, navBarHeight: 44, topPlaceholderHeight: 128, detail: null, contentId: 0, actionType: '', loadedVersion: 0 },

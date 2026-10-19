@@ -1,0 +1,15 @@
+page { background:#f2f8f7; color:#183c3b; }
+.self-page { padding:32rpx 32rpx calc(env(safe-area-inset-bottom) + 40rpx); }
+.self-hero { padding:38rpx 34rpx; border-radius:28rpx; background:#dff2ec; border:1rpx solid #c3e4dc; }
+.self-badge { display:inline-block; padding:8rpx 18rpx; border-radius:999rpx; background:#fff; color:#18786e; font-size:26rpx; font-weight:700; }
+.self-hero__title { margin-top:22rpx; font-size:40rpx; font-weight:700; }
+.self-hero__date { margin-top:12rpx; font-size:28rpx; color:#52746d; }
+.self-card { margin-top:22rpx; padding:30rpx; border-radius:24rpx; background:#fff; border:1rpx solid #dfefeb; }
+.self-title { font-size:32rpx; font-weight:700; }
+.self-row { display:flex; justify-content:space-between; gap:20rpx; margin-top:22rpx; font-size:28rpx; color:#56736e; }
+.self-row text:last-child { color:#214b46; text-align:right; }
+.self-copy { margin-top:14rpx; color:#526f69; font-size:28rpx; line-height:1.7; }
+.self-next { background:#f9fdfb; }
+.self-button,.self-retry { margin-top:24rpx; border-radius:18rpx; background:#087f76; color:#fff; font-size:30rpx; font-weight:700; }
+.self-button::after,.self-retry::after { border:0; }
+.self-state { padding:60rpx 30rpx; text-align:center; color:#526f69; font-size:28rpx; }

@@ -1,42 +1,30 @@
 <view class="login-page">
-  <view class="login-orb login-orb--top"></view>
-  <view class="login-orb login-orb--bottom"></view>
-
   <view class="login-header" style="padding-top: {{statusBarHeight}}px;">
-    <view class="login-brand-mark" aria-label="Home Rehab Motion">H</view>
-    <view class="login-brand-name">Home Rehab Motion</view>
+    <view class="login-back" bindtap="onBack" role="button" aria-label="返回"><text class="login-back__arrow">‹</text><text>返回</text></view>
   </view>
 
   <view class="login-content">
-    <view class="login-illustration" aria-hidden="true">
-      <view class="login-illustration__ring"></view>
-      <view class="login-illustration__heart"></view>
-      <view class="login-illustration__line login-illustration__line--left"></view>
-      <view class="login-illustration__line login-illustration__line--right"></view>
+    <view class="login-emblem" aria-hidden="true">
+      <view class="login-emblem__circle"></view>
+      <view class="login-emblem__line login-emblem__line--one"></view>
+      <view class="login-emblem__line login-emblem__line--two"></view>
+      <view class="login-emblem__dot"></view>
     </view>
+    <view class="login-eyebrow">陪伴您的居家训练</view>
+    <view class="login-title">居家腹部训练助手</view>
+    <view class="login-subtitle"><view>看动作指导，记录训练</view><view>了解动作完成情况</view></view>
 
-    <view class="login-title">腹部训练助手</view>
-    <view class="login-subtitle">记录每一次练习，陪您稳步恢复</view>
-
-    <view class="login-card">
-      <view class="login-card__title">欢迎使用 Home Rehab Motion</view>
-      <view class="login-card__desc">使用微信登录后即可保存训练记录，稍后可按需绑定手机号。</view>
-      <view class="login-security-row">
-        <view class="login-security-item"><view class="login-security-icon">✓</view><text>加密保护</text></view>
-        <view class="login-security-item"><view class="login-security-icon">✓</view><text>安全登录</text></view>
-      </view>
+    <view class="login-info">
+      <view class="login-info__title">登录后，训练记录随时可查看</view>
+      <view class="login-info__desc"><view>使用微信登录，无需手机号</view><view>之后可按需绑定手机号</view></view>
     </view>
   </view>
 
   <view class="login-actions">
-    <button class="login-phone-button" bindtap="onDirectLogin" loading="{{loggingIn}}" disabled="{{loggingIn}}">
-      <view class="login-phone-button__icon">⌕</view>
-      <text>微信一键登录</text>
-    </button>
-    <view class="login-agreement" bindtap="onAgreementChange">
+    <button class="login-button" bindtap="onDirectLogin" loading="{{loggingIn}}" disabled="{{loggingIn}}">{{loggingIn ? '正在登录' : '微信一键登录'}}</button>
+    <view class="login-agreement" bindtap="onAgreementChange" role="checkbox" aria-checked="{{agreed}}" aria-label="我已阅读并同意隐私政策">
       <view class="login-check {{agreed ? 'login-check--selected' : ''}}">{{agreed ? '✓' : ''}}</view>
-      <text>我已阅读并同意</text>
-      <text class="login-agreement__link" catchtap="onOpenPrivacy">《隐私政策》</text>
+      <view class="login-agreement__text">我已阅读并同意<text class="login-agreement__link" catchtap="onOpenPrivacy">《隐私政策》</text></view>
     </view>
   </view>
 </view>

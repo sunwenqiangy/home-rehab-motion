@@ -45,6 +45,7 @@
       <view class="v4-hero-title">{{heroTitle}}</view>
       <view class="v4-hero-sub">{{heroSub}}</view>
       <button class="v4-btn-big v4-btn-white" bindtap="onStartToday">{{isLoggedIn ? '▶ 立即开始训练' : '登录后开始训练'}}</button>
+      <button wx:if="{{isLoggedIn && selfTrainingEnabled && !selfTrainingRecordedToday}}" class="home-self-record" bindtap="onRecordSelfTraining" loading="{{selfTrainingSaving}}" disabled="{{selfTrainingSaving}}">已练习？记录今天的练习 <text class="home-self-record__arrow">›</text></button>
     </view>
 
     <view wx:if="{{showMessageReminder}}" class="v4-feedback-card" bindtap="onOpenFeedback">
@@ -73,7 +74,7 @@
 
     <view class="v4-weekly-panel">
       <view class="v4-weekly-row">
-        <view class="v4-weekly-title">📈 本周成长进度</view>
+        <view class="v4-weekly-title">📈 本周训练进度</view>
         <text class="v4-chip v4-chip-teal v4-chip-sm">{{weeklyLabel}}</text>
       </view>
       <view class="v4-weekly-sub">{{weeklyDesc}}</view>

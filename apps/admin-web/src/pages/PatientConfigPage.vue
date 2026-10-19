@@ -6,7 +6,7 @@
           <div class="page-hero__eyebrow">Patient App Config</div>
           <h1 class="page-hero__title">患者端应用配置</h1>
           <p class="page-hero__subtitle">
-            短片段上传：缩腹、骨盆最多 30 秒，膝旋转最多 60 秒；管理周目标与分析等待时长。
+            短片段上传：缩腹、骨盆最多 30 秒，膝旋转最多 60 秒；管理训练目标与动作类型。
           </p>
         </div>
       </div>
@@ -49,17 +49,19 @@
         </el-form-item>
 
         <el-divider content-position="left">训练目标</el-divider>
+        <el-form-item label="允许自主记录练习">
+          <div class="self-training-setting">
+            <div class="self-training-setting__toggle">
+              <el-switch v-model="form.selfTrainingEnabled" aria-label="允许自主记录练习" />
+              <span :class="{ 'self-training-setting__status--on': form.selfTrainingEnabled }">{{ form.selfTrainingEnabled ? '已开启' : '已关闭' }}</span>
+            </div>
+            <div class="form-hint">开启后，患者无需上传视频即可记录当天练习。关闭后，已有记录仍可查看。</div>
+          </div>
+        </el-form-item>
 
         <el-form-item label="每周目标天数">
           <el-input-number v-model="form.weeklyTarget" :min="1" :max="14" :step="1" />
           <div class="form-hint">患者端首页的每周训练目标显示值</div>
-        </el-form-item>
-
-        <el-divider content-position="left">分析流程</el-divider>
-
-        <el-form-item label="分析中最短等待（秒）">
-          <el-input-number v-model="form.analyzingMinWaitSeconds" :min="5" :max="120" :step="5" />
-          <div class="form-hint">即使后端分析快速完成，患者端也会至少展示此秒数</div>
         </el-form-item>
 
         <el-divider content-position="left">动作类型</el-divider>
@@ -89,12 +91,12 @@ const saving = ref(false);
 const saveState = ref<{ kind: 'idle' | 'saving' | 'success' | 'error'; title: string; detail: string; retry?: () => void }>({ kind: 'idle', title: '保存状态', detail: '修改配置后点击保存，变更将立即下发。' });
 
 const form = ref<UpdatePatientAppConfigRequestDto>({
+  selfTrainingEnabled: false,
   videoMinDurationSeconds: 10,
   videoMaxDurationSeconds: 60,
   videoRecordMaxDurationSeconds: 60,
   videoMaxSizeMB: 200,
   weeklyTarget: 7,
-  analyzingMinWaitSeconds: 20,
   supportedActionTypes: ['abdominal_crunch', 'pelvic_tilt', 'knee_rotation'] as TrainingActionType[],
 });
 
@@ -103,12 +105,12 @@ async function loadData() {
   try {
     const data = await getPatientAppConfig();
     form.value = {
+      selfTrainingEnabled: data.selfTrainingEnabled,
       videoMinDurationSeconds: data.videoMinDurationSeconds,
       videoMaxDurationSeconds: data.videoMaxDurationSeconds,
       videoRecordMaxDurationSeconds: data.videoRecordMaxDurationSeconds,
       videoMaxSizeMB: data.videoMaxSizeMB,
       weeklyTarget: data.weeklyTarget,
-      analyzingMinWaitSeconds: data.analyzingMinWaitSeconds,
       supportedActionTypes: [...data.supportedActionTypes],
     };
   } catch {
@@ -144,4 +146,8 @@ onMounted(loadData);
   color: var(--el-text-color-secondary);
   margin-top: 4px;
 }
+.self-training-setting { width: min(100%, 560px); padding: 12px 16px; border: 1px solid #e3ecea; border-radius: 12px; background: #f8fbfa; line-height: 1.6; }
+.self-training-setting__toggle { display: flex; align-items: center; gap: 10px; color: #687b78; font-size: 13px; font-weight: 600; }
+.self-training-setting__status--on { color: #087f76; }
+.self-training-setting .form-hint { line-height: 1.6; }
 </style>

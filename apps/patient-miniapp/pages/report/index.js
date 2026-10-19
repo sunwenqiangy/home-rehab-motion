@@ -78,13 +78,24 @@ Page({
     async onLoad(query) {
         const sysInfo = wx.getSystemInfoSync();
         const statusBarHeight = sysInfo.statusBarHeight || 20;
-        const videoId = Number(query.videoId || 1);
+        const videoId = Number(query.videoId);
         const showSafetyNotice = query.safetyNotice === '1';
         this.setData({
             videoId,
             statusBarHeight,
             showSafetyNotice,
         });
+        if (!Number.isSafeInteger(videoId) || videoId <= 0) {
+          this.setData({
+            loading: false,
+            loadFailed: true,
+            errorIcon: '⚠️',
+            errorTitle: '报告链接无效',
+            errorMessage: '请从训练历史中重新打开这条记录。',
+          });
+          this.updateTopPlaceholderHeight();
+          return;
+        }
         try {
             const report = await (0, report_1.getReport)(videoId);
             const actionLabel = ACTION_LABEL_MAP[report.actionType] || '本段动作';
@@ -210,6 +221,11 @@ Page({
     },
     onGoBack() {
         const pages = getCurrentPages();
+        const previousPage = pages.length > 1 ? pages[pages.length - 2] : null;
+        if (previousPage?.route === 'pages/guidance/detail') {
+            wx.redirectTo({ url: '/pages/guidance/index' });
+            return;
+        }
         if (pages.length > 1) {
             wx.navigateBack({ delta: 1 });
             return;
@@ -253,6 +269,9 @@ Page({
     },
     onBackHome() {
         wx.redirectTo({ url: `/pages/upload/index?actionType=${this.data.actionType}&source=report` });
+    },
+    onViewGuidance() {
+        wx.redirectTo({ url: `/pages/guidance/detail?actionType=${encodeURIComponent(this.data.actionType)}` });
     },
     onRetryUpload() {
         wx.redirectTo({ url: `/pages/upload/index?actionType=${this.data.actionType}&source=report` });

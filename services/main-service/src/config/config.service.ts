@@ -24,12 +24,12 @@ const DEFAULT_MOTIVATION_RULES: MotivationRulesDto = {
 };
 
 const DEFAULT_APP_CONFIG: PatientAppConfigDto = {
+  selfTrainingEnabled: false,
   videoMinDurationSeconds: 8,
   videoMaxDurationSeconds: 60,
   videoRecordMaxDurationSeconds: 60,
   videoMaxSizeMB: 200,
   weeklyTarget: 7,
-  analyzingMinWaitSeconds: 20,
   supportedActionTypes: ALLOWED_ACTION_TYPES,
 };
 
@@ -228,12 +228,12 @@ function normalizePatientAppConfig(raw: Partial<PatientAppConfigDto>): PatientAp
   const recordMaxDuration = Math.max(minDuration, Math.min(maxDuration, recordMaxDurationRaw));
 
   return {
+    selfTrainingEnabled: raw.selfTrainingEnabled === true,
     videoMinDurationSeconds: minDuration,
     videoMaxDurationSeconds: maxDuration,
     videoRecordMaxDurationSeconds: recordMaxDuration,
     videoMaxSizeMB: pickNumber(raw.videoMaxSizeMB, DEFAULT_APP_CONFIG.videoMaxSizeMB, 10, 200),
     weeklyTarget: pickNumber(raw.weeklyTarget, DEFAULT_APP_CONFIG.weeklyTarget, 1, 7),
-    analyzingMinWaitSeconds: pickNumber(raw.analyzingMinWaitSeconds, DEFAULT_APP_CONFIG.analyzingMinWaitSeconds, 0, 180),
     supportedActionTypes: sanitizeSupportedActionTypes(raw.supportedActionTypes),
   };
 }
@@ -1018,13 +1018,13 @@ export class ConfigService {
     }
     const current = await this.getPatientAppConfig(true);
     const merged = normalizePatientAppConfig({
+      selfTrainingEnabled: payload.selfTrainingEnabled ?? current.selfTrainingEnabled,
       videoMinDurationSeconds: payload.videoMinDurationSeconds ?? current.videoMinDurationSeconds,
       videoMaxDurationSeconds: payload.videoMaxDurationSeconds ?? current.videoMaxDurationSeconds,
       videoRecordMaxDurationSeconds:
         payload.videoRecordMaxDurationSeconds ?? current.videoRecordMaxDurationSeconds,
       videoMaxSizeMB: payload.videoMaxSizeMB ?? current.videoMaxSizeMB,
       weeklyTarget: payload.weeklyTarget ?? current.weeklyTarget,
-      analyzingMinWaitSeconds: payload.analyzingMinWaitSeconds ?? current.analyzingMinWaitSeconds,
       supportedActionTypes: payload.supportedActionTypes ?? current.supportedActionTypes,
     });
 

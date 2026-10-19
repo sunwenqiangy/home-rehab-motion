@@ -38,8 +38,8 @@
 
       <!-- 上传引导 hero -->
       <view class="upload-hero-card">
-        <view class="upload-hero-card__title">上传前 30 秒自查</view>
-        <view class="upload-hero-card__desc">确认动作无误后，再检查视频中动作完整入镜、画面清晰稳定。</view>
+        <view class="upload-hero-card__title">上传前检查</view>
+        <view class="upload-hero-card__desc">无需上传整次练习。提交前确认：动作完整入镜、光线清楚、视频不超过 30 秒。</view>
       </view>
       <!-- 视频预览区 -->
       <view class="info-panel">
@@ -59,8 +59,8 @@
       <view class="upload-ready-panel" wx:if="{{filePath && canSubmit}}">
         <view class="upload-ready-panel__icon">✓</view>
         <view>
-          <view class="upload-ready-panel__title">视频可用于{{actionLabel}}分析</view>
-          <view class="upload-ready-panel__desc">请再次确认视频中的动作与本次训练动作一致。</view>
+          <view class="upload-ready-panel__title">视频已准备好上传</view>
+          <view class="upload-ready-panel__desc">请确认动作正确、画面清晰且完整入镜。</view>
         </view>
       </view>
 
@@ -82,6 +82,6 @@
       {{submitting ? submittingText : '上传并分析「' + actionLabel + '」'}}
     </button>
     <view class="action-dock__gap"></view>
-    <button class="btn-big btn-ghost" bindtap="onSelectVideo" disabled="{{submitting}}">重新选择视频</button>
+    <button class="btn-big btn-ghost" bindtap="onSelectVideo" disabled="{{submitting}}">重新选择</button>
   </view>
 </view>

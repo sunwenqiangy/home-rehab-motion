@@ -48,7 +48,7 @@
     <view wx:elif="{{!filteredItems.length}}" class="v4-empty-state">
       <view class="v4-empty-icon">📭</view>
       <view class="v4-empty-title">{{items.length ? '该分类暂时没有消息' : '暂时没有消息'}}</view>
-      <view class="v4-empty-desc">{{items.length ? '点击上方标签可切换查看全部消息' : '等有新的训练结果后，这里会自动更新'}}</view>
+      <view class="v4-empty-desc">{{items.length ? '点击上方标签可切换查看全部消息' : '训练结果和反馈回复会显示在这里'}}</view>
     </view>
 
     <!-- 消息列表 -->

@@ -128,6 +128,13 @@ Page({
     if (this.data.feedbackId) this.loadDetail(this.data.feedbackId);
   },
 
+  onRetryLoad() {
+    if (this.data.feedbackId) {
+      this.setData({ loading: true, loadFailed: false });
+      this.loadDetail(this.data.feedbackId).finally(() => this.setData({ loading: false }));
+    }
+  },
+
   onRefresh() {
     if (!this.data.feedbackId || this.data.refreshing) return;
     this.setData({ refreshing: true });

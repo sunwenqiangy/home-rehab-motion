@@ -147,7 +147,7 @@ page {
 .submit-images { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 14rpx; }
 .submit-image-wrap { position: relative; }
 .submit-image { width: 128rpx; height: 128rpx; border-radius: 16rpx; }
-.submit-image-remove { position: absolute; top: -10rpx; right: -10rpx; width: 32rpx; height: 32rpx; border-radius: 50%; background: #ef6a60; color: #ffffff; text-align: center; line-height: 31rpx; }
+.submit-image-remove { position: absolute; top: -10rpx; right: -10rpx; width: 48rpx; height: 48rpx; border-radius: 50%; background: #ef6a60; color: #ffffff; text-align: center; line-height: 48rpx; }
 
 .submit-image-add {
   width: 128rpx;

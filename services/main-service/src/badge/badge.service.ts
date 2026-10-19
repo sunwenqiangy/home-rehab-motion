@@ -32,7 +32,7 @@ export class BadgeService {
 
   async evaluateAndAwardBadges(params: {
     userId: number;
-    videoId: number;
+    videoId?: number;
     totalTrainingDays: number;
     consecutiveTrainingDays: number;
     grade?: string;
@@ -57,7 +57,7 @@ export class BadgeService {
           data: {
             user_id: BigInt(params.userId),
             badge_id: definition.badge_id,
-            source_video_id: BigInt(params.videoId),
+            source_video_id: params.videoId == null ? null : BigInt(params.videoId),
           },
         });
         awarded.push({ badgeCode: definition.badge_code, title: definition.title });

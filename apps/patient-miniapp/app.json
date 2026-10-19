@@ -8,6 +8,7 @@
     "pages/analyzing/index",
     "pages/report/index",
     "pages/history/index",
+    "pages/self-training/index",
     "pages/mine/index",
     "pages/mine/badges",
     "pages/mine/privacy",

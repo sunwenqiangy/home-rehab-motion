@@ -12,13 +12,33 @@ import type {
 import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { MeService } from './me.service';
+import { MotivationService } from '../motivation/motivation.service';
 
 @Controller('me')
 export class MeController {
   constructor(
     private readonly meService: MeService,
     private readonly authService: AuthService,
+    private readonly motivationService: MotivationService,
   ) {}
+
+  @Post('self-training')
+  recordSelfTraining(@Req() req: Request, @Body() payload: { actionType?: string }) {
+    const user = this.authService.requireUser(req, ['patient']);
+    return this.motivationService.recordSelfTraining(user.userId, payload?.actionType);
+  }
+
+  @Get('self-training')
+  listSelfTraining(@Req() req: Request) {
+    const user = this.authService.requireUser(req, ['patient']);
+    return this.motivationService.listSelfTraining(user.userId);
+  }
+
+  @Get('self-training/:id')
+  getSelfTraining(@Req() req: Request, @Param('id') id: string) {
+    const user = this.authService.requireUser(req, ['patient']);
+    return this.motivationService.getSelfTraining(user.userId, Number(id));
+  }
 
   @Get('profile')
   getProfile(@Req() req: Request): Promise<UserProfileDto> {

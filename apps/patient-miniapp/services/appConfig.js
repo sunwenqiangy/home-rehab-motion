@@ -9,12 +9,12 @@ const request_1 = require("../utils/request");
 const ACTION_MAX_SECONDS = { abdominal_crunch: 30, pelvic_tilt: 30, knee_rotation: 60 };
 /** 默认配置 —— 网络请求失败时的兜底 */
 exports.DEFAULT_APP_CONFIG = {
+    selfTrainingEnabled: false,
     videoMinDurationSeconds: 8,
     videoMaxDurationSeconds: 60,
     videoRecordMaxDurationSeconds: 60,
     videoMaxSizeMB: 200,
     weeklyTarget: 7,
-    analyzingMinWaitSeconds: 20,
     supportedActionTypes: ['abdominal_crunch', 'pelvic_tilt', 'knee_rotation'],
 };
 function positiveNumber(value, fallback) {

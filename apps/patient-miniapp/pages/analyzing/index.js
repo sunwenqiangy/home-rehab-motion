@@ -1,14 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const appConfig_1 = require("../../services/appConfig");
 const session_1 = require("../../store/session");
 const video_1 = require("../../services/video");
 const POLL_INTERVAL_MS = 3000;
 const MAX_WAIT_MS = 3 * 60 * 1000;
-function getAppConfig() {
-    const app = getApp();
-    return app.globalData.appConfig || appConfig_1.DEFAULT_APP_CONFIG;
-}
 let pollTimer;
 let isPolling = false;
 function parseActionType(value) {

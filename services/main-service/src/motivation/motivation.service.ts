@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
   BadgeProgressDto,
   BadgeSummaryDto,
@@ -97,11 +97,51 @@ function numberOrNull(value: number | null | undefined) {
 
 @Injectable()
 export class MotivationService {
+  private readonly logger = new Logger(MotivationService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly badgeService: BadgeService,
     private readonly configService: ConfigService,
   ) {}
+
+  async recordSelfTraining(userId: number, actionType?: string) {
+    const config = await this.configService.getPatientAppConfig(true);
+    if (!config.selfTrainingEnabled) throw new ForbiddenException('自主记录暂未开放');
+    if (actionType && !['abdominal_crunch', 'pelvic_tilt', 'knee_rotation'].includes(actionType)) throw new BadRequestException('不支持的动作类型');
+    const now = new Date();
+    const trainingDate = utcDateForShanghaiKey(shanghaiDateKey(now));
+    const record = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT user_id FROM user_profile WHERE user_id = ${BigInt(userId)} FOR UPDATE`;
+      const existing = await tx.trainingAttendance.findFirst({ where: { user_id: BigInt(userId), training_date: trainingDate, video_id: null } });
+      if (existing) return existing;
+      const counted = await tx.trainingAttendance.findFirst({ where: { user_id: BigInt(userId), training_date: trainingDate, counted_for_training_day: true } });
+      return tx.trainingAttendance.create({ data: { user_id: BigInt(userId), video_id: null, action_type: actionType || null, training_date: trainingDate, counted_for_training_day: !counted, counted_at: now } });
+    });
+    try {
+      const summary = await this.buildSummary(userId);
+      await this.badgeService.evaluateAndAwardBadges({ userId, totalTrainingDays: summary.totalTrainingDays, consecutiveTrainingDays: summary.consecutiveTrainingDays });
+    } catch (error) {
+      // The attendance is already committed. A repeated request retries badge evaluation.
+      this.logger.error(`自主记录已保存，徽章更新失败（用户 ${userId}）`, error instanceof Error ? error.stack : String(error));
+    }
+    return this.selfTrainingDto(record);
+  }
+
+  private selfTrainingDto(record: { attendance_id: bigint; action_type: string | null; counted_at: Date }) {
+    return { id: Number(record.attendance_id), actionType: record.action_type, recordedAt: record.counted_at.toISOString() };
+  }
+
+  async listSelfTraining(userId: number) {
+    const rows = await this.prisma.trainingAttendance.findMany({ where: { user_id: BigInt(userId), video_id: null }, orderBy: { counted_at: 'desc' }, take: 20 });
+    return rows.map((row) => this.selfTrainingDto(row));
+  }
+
+  async getSelfTraining(userId: number, id: number) {
+    if (!Number.isSafeInteger(id) || id <= 0) throw new NotFoundException('练习记录不存在');
+    const row = await this.prisma.trainingAttendance.findFirst({ where: { attendance_id: BigInt(id), user_id: BigInt(userId), video_id: null } });
+    if (!row) throw new NotFoundException('练习记录不存在');
+    return this.selfTrainingDto(row);
+  }
 
   async recordConfirmedTraining(userId: number, videoId: number, confirmedAt = new Date()) {
     const trainingDate = shanghaiDateKey(confirmedAt);
@@ -158,7 +198,7 @@ export class MotivationService {
     }
 
     const todayBounds = shanghaiDayBounds();
-    const [totalTrainingCount, totalQualifiedCount, latestEvaluation, todayConfirmedVideo, badges] = await Promise.all([
+    const [totalTrainingCount, totalQualifiedCount, latestEvaluation, todayConfirmedVideo, badges, todayAttendance, todaySelfTraining] = await Promise.all([
       this.prisma.trainingAttendance.count({ where: { user_id: BigInt(userId) } }),
       this.prisma.videoEvaluationResult.count({
         where: {
@@ -181,6 +221,8 @@ export class MotivationService {
         orderBy: { confirmed_at: 'desc' },
       }),
       this.badgeService.listUserBadges(userId),
+      this.prisma.trainingAttendance.findFirst({ where: { user_id: BigInt(userId), training_date: utcDateForShanghaiKey(todayKey), counted_for_training_day: true } }),
+      this.prisma.trainingAttendance.findFirst({ where: { user_id: BigInt(userId), training_date: utcDateForShanghaiKey(todayKey), video_id: null } }),
     ]);
 
     const stage = resolveJourneyStage(totalTrainingCount, rehabilitationWeek);
@@ -218,7 +260,8 @@ export class MotivationService {
       latestBadge,
       nearestBadge,
       encourageText: this.buildEncourageText(totalTrainingDays, consecutiveTrainingDays, stage),
-      todayTrainingState: resolveTodayState(todayConfirmedVideo),
+      todayTrainingState: todayConfirmedVideo ? resolveTodayState(todayConfirmedVideo) : todayAttendance ? 'confirmed' : 'not_started',
+      selfTrainingRecordedToday: Boolean(todaySelfTraining),
     };
   }
 

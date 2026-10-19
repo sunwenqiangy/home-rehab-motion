@@ -61,7 +61,7 @@ export class MeService {
         : 'unknown';
     return {
       userId: Number(user.user_id),
-      nickname: user.name || '训练用户',
+      nickname: user.name || '微信用户',
       phoneBound: Boolean(user.phone_authorized_at && user.phone),
       displayMode: (user.display_mode as DisplayMode) || 'elderly',
       age: user.age ?? undefined,
@@ -100,7 +100,7 @@ export class MeService {
     });
     return {
       userId: Number(user.user_id),
-      nickname: user.name || '训练用户',
+      nickname: user.name || '微信用户',
       phoneBound: Boolean(user.phone_authorized_at && user.phone),
       displayMode: (user.display_mode as DisplayMode) || 'elderly',
       age: user.age ?? undefined,

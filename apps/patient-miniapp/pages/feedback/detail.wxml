@@ -22,8 +22,8 @@
 
     <view wx:if="{{loadFailed}}" class="feedback-state">
       <view class="feedback-state-title">暂时无法读取反馈详情</view>
-      <view class="feedback-state-desc">请返回后稍后再试</view>
-      <button class="feedback-retry" bindtap="onBackHistory">返回上一页</button>
+      <view class="feedback-state-desc">请检查网络后重新加载</view>
+      <button wx:if="{{feedbackId}}" class="feedback-retry" bindtap="onRetryLoad">重新加载</button><button wx:else class="feedback-retry" bindtap="onBackHistory">返回上一页</button>
     </view>
 
     <view wx:if="{{!loading && !loadFailed}}">
@@ -65,7 +65,7 @@
     <view wx:if="{{followUpImages.length}}" class="followup-images">
       <view wx:for="{{followUpImages}}" wx:key="objectKey" class="followup-image-wrap">
         <image class="followup-image" src="{{item.previewUrl}}" mode="aspectFill" />
-        <text class="followup-image-remove" data-index="{{index}}" bindtap="onRemoveFollowUpImage">×</text>
+        <text class="followup-image-remove" role="button" aria-label="删除图片" data-index="{{index}}" bindtap="onRemoveFollowUpImage">×</text>
       </view>
     </view>
     <view class="feedback-actions">

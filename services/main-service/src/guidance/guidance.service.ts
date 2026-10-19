@@ -145,6 +145,7 @@ function normalizeSnapshot(payload: Record<string, unknown>, contentId: number, 
     actionType,
     title: asText(payload.title, 30),
     briefInstruction: asText(payload.briefInstruction, 40),
+    trainingAdvice: asText(payload.trainingAdvice, 120) || '每组 10 次，共 3 组',
     estimatedMinutes: Math.max(0, Math.min(180, Number(payload.estimatedMinutes) || 0)),
     coverImage: toAsset(payload.coverImage) || { url: '' },
     trainingSafetyNotice: asText(payload.trainingSafetyNotice, 500),
@@ -170,6 +171,7 @@ function validateSnapshot(snapshot: GuidanceContentDto): GuidanceValidationResul
   const errors: string[] = [];
   if (!snapshot.title) errors.push('请填写标题（不超过 30 字）');
   if (!snapshot.briefInstruction) errors.push('请填写一句话目标（不超过 40 字）');
+  if (!snapshot.trainingAdvice) errors.push('请填写训练建议文案（不超过 120 字）');
   if (!snapshot.estimatedMinutes) errors.push('请填写预计训练时长');
   if (!snapshot.coverImage?.url) errors.push('请上传封面图');
   if (!snapshot.trainingSafetyNotice) errors.push('请填写训练前安全提示');
@@ -198,6 +200,7 @@ function toListItem(snapshot: GuidanceContentDto): GuidanceListItemDto {
     actionType: snapshot.actionType,
     title: snapshot.title,
     briefInstruction: snapshot.briefInstruction,
+    trainingAdvice: snapshot.trainingAdvice,
     estimatedMinutes: snapshot.estimatedMinutes,
     coverImage: snapshot.coverImage,
     version: snapshot.version,

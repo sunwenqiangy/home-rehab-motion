@@ -46,6 +46,7 @@ function buildDotColor(status) {
     return 'teal';
 }
 function buildRecordItem(item) {
+    if (item.recordType === 'self') return { recordKey: `self-${item.selfId}`, selfId: item.selfId, actionType: item.actionType, actionLabel: ACTION_LABEL_MAP[item.actionType] || '自主练习', recordTypeLabel: '自主记录', status: 'self', dotColor: 'green', showScore: false, chipColor: 'teal', chipText: '查看详情', timeLabel: `${formatTime(item.uploadedAt)} · 自主记录` };
     const status = item.status;
     const dotColor = buildDotColor(status);
     const actionLabel = ACTION_LABEL_MAP[item.actionType] || '训练动作';
@@ -76,9 +77,11 @@ function buildRecordItem(item) {
         chipText = '已记录';
     }
     return {
+        recordKey: `video-${item.videoId}`,
         videoId: item.videoId,
         actionType: item.actionType,
         actionLabel,
+        recordTypeLabel: '视频分析',
         status,
         statusLabel,
         dotColor,
@@ -106,6 +109,7 @@ Page({
         topPlaceholderHeight: 128,
         loading: true,
         listLoadFailed: false,
+        partialLoadWarning: '',
         activeFilter: 'all',
         filterChips: [
             { key: 'all', label: '全部' },
@@ -141,6 +145,7 @@ Page({
         this.setData({
             loading: true,
             listLoadFailed: false,
+            partialLoadWarning: '',
             summaryLoading: true,
             summaryItems: [
                 { label: '累计训练', value: '--', color: 'teal' },
@@ -155,7 +160,13 @@ Page({
             allRecords: [],
         });
         try {
-            const [items, trainingSummary] = await Promise.all([(0, history_1.getHistoryVideos)(), (0, me_1.getTrainingSummary)()]);
+            const [videosResult, summaryResult, selfResult] = await Promise.allSettled([(0, history_1.getHistoryVideos)(), (0, me_1.getTrainingSummary)(), (0, me_1.listSelfTraining)()]);
+            if (videosResult.status === 'rejected' && selfResult.status === 'rejected') throw new Error('历史记录加载失败');
+            const videos = videosResult.status === 'fulfilled' ? videosResult.value : [];
+            const selfRecords = selfResult.status === 'fulfilled' ? selfResult.value : [];
+            const trainingSummary = summaryResult.status === 'fulfilled' ? summaryResult.value : null;
+            const partialLoadWarning = videosResult.status === 'rejected' || selfResult.status === 'rejected' ? '部分记录暂时无法加载，请重试' : '';
+            const items = [...videos, ...selfRecords.map((record) => ({ recordType: 'self', selfId: record.id, actionType: record.actionType, status: 'self', uploadedAt: record.recordedAt }))].sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
             const allRecords = items.map(buildRecordItem);
             const groupedItems = groupByDate(allRecords, items);
             const latestCompletedType = items.find((item) => item.status === 'completed')?.scoreType;
@@ -168,7 +179,7 @@ Page({
             const avgScore = scoredItems.length
                 ? Math.round(scoredItems.reduce((sum, item) => sum + item.averageScore, 0) / scoredItems.length)
                 : '--';
-            const improvementLevel = trainingSummary.improvementLevel;
+            const improvementLevel = trainingSummary?.improvementLevel;
             const scoreTrend = comparableType === 'visual_evidence' ? '--' : improvementLevel === 'clear'
                 ? '进步明显'
                 : improvementLevel === 'slight'
@@ -176,20 +187,21 @@ Page({
                     : improvementLevel === 'stable'
                         ? '稳定中'
                         : '--';
-            const weeklyProgress = trainingSummary.weeklyProgress;
+            const weeklyProgress = trainingSummary?.weeklyProgress;
             const hasWeeklyProgress = Boolean(weeklyProgress && typeof weeklyProgress.progressPercent === 'number');
             this.setData({
                 summaryLoading: false,
+                partialLoadWarning,
                 allRawItems: items,
                 allRecords,
                 groupedItems: this.filterRecords(this.data.activeFilter, allRecords, items),
                 summaryItems: [
-                    { label: '累计训练', value: trainingSummary.totalTrainingCount || 0, color: 'teal' },
+                    { label: '累计训练', value: trainingSummary ? (trainingSummary.totalTrainingCount || 0) : '--', color: 'teal' },
                     latestIsVisual
-                        ? { label: '本周练习', value: `${trainingSummary.weeklyTrainingDays || 0} 天`, color: 'green' }
+                        ? { label: '本周练习', value: `${trainingSummary?.weeklyTrainingDays ?? '--'} 天`, color: 'green' }
                         : { label: '平均得分', value: avgScore, color: 'green' },
                     latestIsVisual
-                        ? { label: '连续练习', value: `${trainingSummary.consecutiveTrainingDays || 0} 天`, color: 'orange' }
+                        ? { label: '连续练习', value: `${trainingSummary?.consecutiveTrainingDays ?? '--'} 天`, color: 'orange' }
                         : { label: '分数趋势', value: scoreTrend, color: 'orange' },
                 ],
                 weeklyLabel: hasWeeklyProgress && weeklyProgress.label ? weeklyProgress.label : '--',
@@ -254,7 +266,8 @@ Page({
         this.setData({ groupedItems });
     },
     onViewReport(event) {
-        const { videoId, status, actionType } = event.currentTarget.dataset;
+        const { videoId, selfId, status, actionType } = event.currentTarget.dataset;
+        if (status === 'self' && selfId) { wx.navigateTo({ url: `/pages/self-training/index?id=${selfId}` }); return; }
         if (status === 'completed' || status === 'review_required') {
             wx.navigateTo({ url: `/pages/report/index?videoId=${videoId}` });
             return;

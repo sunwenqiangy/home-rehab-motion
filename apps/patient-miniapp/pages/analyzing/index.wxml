@@ -52,7 +52,7 @@
       <!-- 提示面板 -->
       <view class="az-hint-panel">
         <view class="az-hint-panel__title">分析将在后台继续</view>
-        <view class="az-hint-panel__desc">您可以返回首页等待通知，完成后会自动提醒您查看报告。</view>
+        <view class="az-hint-panel__desc">您可以返回首页，分析完成后在训练记录或消息中心查看结果。</view>
       </view>
 
       <!-- 操作按钮 -->

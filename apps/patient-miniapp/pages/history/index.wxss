@@ -402,3 +402,5 @@ line-height: 1.6;
   font-size: 22rpx;
   line-height: 1.2;
 }
+
+.v4-record-type{display:inline-flex;margin-left:8rpx;padding:3rpx 8rpx;border-radius:999rpx;font-size:20rpx;font-weight:700;vertical-align:middle}.v4-record-type--self{color:#277b70;background:#e6f7f3}.v4-record-type--video{color:#58748a;background:#eef4f7}

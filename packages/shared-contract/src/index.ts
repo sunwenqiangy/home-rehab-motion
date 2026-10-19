@@ -57,6 +57,8 @@ export interface GuidanceContentDto {
   actionType: TrainingActionType;
   title: string;
   briefInstruction: string;
+  /** 患者端展示的训练建议文案，例如“每组 10 次，共 3 组”。 */
+  trainingAdvice: string;
   estimatedMinutes: number;
   coverImage?: GuidanceAssetDto;
   trainingSafetyNotice: string;
@@ -67,7 +69,7 @@ export interface GuidanceContentDto {
   version?: number;
 }
 
-export interface GuidanceListItemDto extends Pick<GuidanceContentDto, 'contentId' | 'actionType' | 'title' | 'briefInstruction' | 'estimatedMinutes' | 'coverImage' | 'version'> {}
+export interface GuidanceListItemDto extends Pick<GuidanceContentDto, 'contentId' | 'actionType' | 'title' | 'briefInstruction' | 'trainingAdvice' | 'estimatedMinutes' | 'coverImage' | 'version'> {}
 
 export interface GuidanceValidationResultDto {
   valid: boolean;
@@ -249,6 +251,8 @@ export interface MotivationSummaryDto {
   nearestBadge?: BadgeProgressDto;
   encourageText: string;
   todayTrainingState: 'not_started' | 'confirmed' | 'analyzing' | 'reported';
+  /** 今天是否已创建自主练习记录，避免重复记录入口。 */
+  selfTrainingRecordedToday?: boolean;
 }
 
 export interface WeeklyProgressDto {
@@ -635,6 +639,8 @@ export interface GoldTemplateSaveResponseDto {
  * 患者端应用配置（由后台 system_config 表下发，前端可据此调整行为）
  */
 export interface PatientAppConfigDto {
+  /** 允许患者自主记录当天练习 */
+  selfTrainingEnabled: boolean;
   /** 视频最短时长（秒） */
   videoMinDurationSeconds: number;
   /** 相册上传全局最长时长（秒），不超过 60；缩腹/骨盆服务端另有 30 秒硬上限 */
@@ -645,19 +651,17 @@ export interface PatientAppConfigDto {
   videoMaxSizeMB: number;
   /** 每周目标天数 */
   weeklyTarget: number;
-  /** 分析中页最短停留秒数 */
-  analyzingMinWaitSeconds: number;
   /** 支持的动作类型列表 */
   supportedActionTypes: TrainingActionType[];
 }
 
 export interface UpdatePatientAppConfigRequestDto {
+  selfTrainingEnabled?: boolean;
   videoMinDurationSeconds?: number;
   videoMaxDurationSeconds?: number;
   videoRecordMaxDurationSeconds?: number;
   videoMaxSizeMB?: number;
   weeklyTarget?: number;
-  analyzingMinWaitSeconds?: number;
   supportedActionTypes?: TrainingActionType[];
 }
 

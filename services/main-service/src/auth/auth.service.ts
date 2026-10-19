@@ -108,7 +108,7 @@ export class AuthService {
       },
       create: {
         openid,
-        name: openid.startsWith('mock-openid:') ? `测试患者-${wxCode.slice(-4)}` : '训练用户',
+        name: openid.startsWith('mock-openid:') ? `测试患者-${wxCode.slice(-4)}` : '微信用户',
         role: 'patient',
         status: 1,
         display_mode: 'elderly',
@@ -488,7 +488,7 @@ export class AuthService {
     }
 
     if (!appId || !appSecret) {
-      return `mock-openid:${code}`;
+      return 'mock-openid:local-preview';
     }
 
     if (

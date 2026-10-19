@@ -44,7 +44,7 @@
     </view>
 
     <view wx:if="{{!isLoggedIn}}" class="v4-guest-tip">
-      <view class="v4-guest-tip__title">登录后，训练才会被好好记录</view>
+      <view class="v4-guest-tip__title">登录后保存训练记录</view>
       <view class="v4-guest-tip__desc">同步动作分析、训练记录和成长进度，方便持续练习。</view>
     </view>
 

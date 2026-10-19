@@ -129,7 +129,7 @@ page {
   animation: guidance-skeleton-pulse 1.2s ease-in-out infinite;
 }
 
-.guidance-v4-skeleton--cover { width: 160rpx; height: 160rpx; flex-shrink: 0; }
+.guidance-v4-skeleton--cover { width: 168rpx; height: 112rpx; flex-shrink: 0; }
 .guidance-v4-skeleton-copy { display: flex; flex: 1; flex-direction: column; gap: 16rpx; }
 .guidance-v4-skeleton--title { width: 54%; height: 32rpx; }
 .guidance-v4-skeleton--line { width: 88%; height: 24rpx; }
@@ -175,17 +175,18 @@ page {
 .guidance-v4-card__row {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 16rpx;
 }
 
 .guidance-v4-card__cover {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 24rpx;
+  width: 168rpx;
+  height: 112rpx;
+  border-radius: 18rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: #edf7f6;
 }
 
 .guidance-v4-card__cover--teal {

@@ -44,6 +44,14 @@ Page({
         const systemInfo = wx.getSystemInfoSync();
         this.setData({ statusBarHeight: systemInfo.statusBarHeight || 20 });
     },
+    onBack() {
+        if (getCurrentPages().length > 1) {
+            wx.navigateBack({ delta: 1 });
+        }
+        else {
+            wx.reLaunch({ url: '/pages/index/index' });
+        }
+    },
     onAgreementChange() {
         this.setData({ agreed: !this.data.agreed });
     },

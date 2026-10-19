@@ -70,6 +70,9 @@
         >🔒 未解锁</text>
       </view>
 
+      <view wx:if="{{filterMode === 'unlocked' && !unlockedItems.length}}" class="v4-empty-state"><view class="v4-empty-title">还没有获得徽章</view><view class="v4-empty-desc">坚持练习，逐步解锁训练徽章。</view></view>
+      <view wx:if="{{filterMode === 'locked' && !lockedItems.length}}" class="v4-empty-state"><view class="v4-empty-title">已获得全部徽章</view></view>
+
       <!-- 已获得 -->
       <view wx:if="{{filterMode !== 'locked' && unlockedItems.length}}" class="v4-panel">
         <view class="v4-panel-title v4-panel-title--green">✅ 已获得</view>

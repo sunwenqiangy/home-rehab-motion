@@ -4,20 +4,13 @@ const session_1 = require("../../store/session");
 Page({
     data: {
         displayMode: 'elderly',
-        version: 'V4 体验版',
-        appName: '健康训练助手 · 患者端',
-        description: '基于人工智能动作分析技术的腹肌康复训练辅助系统，帮助患者在家庭环境中完成标准化训练，实时获取动作评估和阶段化指导。',
+        appName: '居家康复训练助手',
+        description: '在家查看动作指导，记录每天的练习，并回顾动作表现。',
         features: [
-            { icon: '🏋️', title: '智能动作分析', desc: '自动识别训练动作，给出四维评分和改进建议' },
-            { icon: '📊', title: '阶段化报告', desc: '根据康复阶段提供个性化训练建议和成长追踪' },
-            { icon: '🏅', title: '徽章激励', desc: '连续训练达标即可解锁徽章，养成坚持习惯' },
-            { icon: '👨‍⚕️', title: '医护反馈', desc: '对报告有疑问可一键提交，医护在线回复' },
-        ],
-        techInfo: [
-            { label: '系统版本', value: '4.0.0-preview' },
-            { label: '分析引擎', value: 'AI Motion Analysis v2' },
-            { label: '数据存储', value: '加密云端存储' },
-            { label: '技术支持', value: '健康训练团队' },
+            { icon: '🏋️', title: '动作观察', desc: '上传短视频，查看本段动作表现' },
+            { icon: '📊', title: '训练记录', desc: '随时查看练习记录和训练报告' },
+            { icon: '🏅', title: '坚持激励', desc: '记录连续练习，获得训练徽章' },
+            { icon: '💬', title: '问题反馈', desc: '训练中有疑问时，可以提交反馈' },
         ],
     },
     onShow() {
