@@ -1,0 +1,10 @@
+/var/log/home-rehab-monitor/resource-*.log {
+    daily
+    rotate 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    su root root
+}

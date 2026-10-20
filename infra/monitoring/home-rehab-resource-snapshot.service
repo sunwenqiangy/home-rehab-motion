@@ -1,0 +1,10 @@
+[Unit]
+Description=Capture Home Rehab host and container resource usage
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/home-rehab-resource-snapshot
+Nice=10
+IOSchedulingClass=idle
