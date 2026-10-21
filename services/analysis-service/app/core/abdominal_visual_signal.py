@@ -29,6 +29,44 @@ class VisualSignal:
         return not self.reason and len(self.values) >= 30
 
 
+@dataclass
+class VisualSignalCollector:
+    """在姿态提取的同一次顺序解码中收集腹壁轮廓信号。
+
+    旧实现为了拿到原始像素，会在 MediaPipe 完成后再次从头读取完整视频。这里
+    只保留每个已抽样姿态帧的轻量数值，避免缓存整帧图像，也避免第二次解码。
+    """
+
+    max_seconds: float = 30.0
+    values: List[float] = field(default_factory=list)
+    contrasts: List[float] = field(default_factory=list)
+    timestamps: List[float] = field(default_factory=list)
+    source_exceeded_limit: bool = False
+
+    def add_sample(self, image: np.ndarray, pose: Frame) -> None:
+        self.timestamps.append(pose.timestamp)
+        if pose.timestamp > self.max_seconds:
+            self.source_exceeded_limit = True
+            self.values.append(float('nan'))
+            return
+        measurement = _body_edge(image, pose)
+        if measurement is None:
+            self.values.append(float('nan'))
+            return
+        value, contrast = measurement
+        self.values.append(value)
+        self.contrasts.append(contrast)
+
+    def build(self, poses: List[Frame]) -> VisualSignal:
+        if len(poses) < 30:
+            return VisualSignal(reason='姿态帧不足')
+        if poses[-1].timestamp > self.max_seconds or self.source_exceeded_limit:
+            return VisualSignal(reason=f'超过视觉分析时长上限（{self.max_seconds:g} 秒）')
+        if len(self.values) != len(poses):
+            return VisualSignal(reason='原视频未覆盖全部姿态帧')
+        return _build_visual_signal(self.values, self.contrasts, self.timestamps)
+
+
 def _body_edge(image: np.ndarray, pose: Frame) -> tuple[float, float] | None:
     """在随肩髋移动的狭窄腹部 ROI 内测暗色衣物/亮色背景边界。"""
     landmarks = [pose.keypoints.get(name) for name in
@@ -92,8 +130,7 @@ def extract_abdominal_visual_signal(video_path: str, poses: List[Frame], max_sec
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         return VisualSignal(reason='原视频不可读取')
-    values = [float('nan')] * len(poses)
-    contrasts = []
+    collector = VisualSignalCollector(max_seconds=max_seconds)
     pose_pos = 0
     source_index = 0
     try:
@@ -102,30 +139,32 @@ def extract_abdominal_visual_signal(video_path: str, poses: List[Frame], max_sec
             if not ok:
                 break
             if source_index == source_indices[pose_pos]:
-                measurement = _body_edge(image, poses[pose_pos])
-                if measurement is not None:
-                    values[pose_pos], contrast = measurement
-                    contrasts.append(contrast)
+                collector.add_sample(image, poses[pose_pos])
                 pose_pos += 1
             source_index += 1
     finally:
         cap.release()
+    if pose_pos < len(poses):
+        return VisualSignal(reason='原视频未覆盖全部姿态帧')
+    return collector.build(poses)
+
+
+def _build_visual_signal(values: List[float], contrasts: List[float], timestamps: List[float]) -> VisualSignal:
+    """将同一解码轮次内取得的 ROI 测量值转换为稳定的视觉信号。"""
     arr = np.asarray(values, dtype=float)
     valid = np.isfinite(arr)
     valid_ratio = float(valid.mean())
     quality = VisualSignal(valid_ratio=valid_ratio,
                            median_contrast=float(np.median(contrasts)) if contrasts else 0.0)
-    if pose_pos < len(poses):
-        quality.reason = '原视频未覆盖全部姿态帧'
-    elif valid_ratio < 0.85:
+    if valid_ratio < 0.85:
         quality.reason = '腹壁轮廓有效帧不足'
-    elif np.flatnonzero(valid)[0] > 2 or len(poses) - 1 - np.flatnonzero(valid)[-1] > 2:
+    elif np.flatnonzero(valid)[0] > 2 or len(arr) - 1 - np.flatnonzero(valid)[-1] > 2:
         quality.reason = '视频边缘缺少可见腹壁证据'
     elif np.max(np.diff(np.flatnonzero(valid))) > 3:
         quality.reason = '腹壁轮廓连续丢失'
     else:
         quality.values = np.interp(np.arange(len(arr)), np.flatnonzero(valid), arr[valid]).tolist()
-        quality.timestamps = [pose.timestamp for pose in poses]
+        quality.timestamps = timestamps
     return quality
 
 

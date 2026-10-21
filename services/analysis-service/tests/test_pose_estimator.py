@@ -81,3 +81,22 @@ def test_timestamp_sampling_reports_incomplete_video_decode(monkeypatch):
     assert estimator.decoded_duration_seconds == 5.0
     assert estimator.decode_completion_ratio == 0.5
     assert not estimator.has_complete_decode
+
+
+def test_sample_callback_uses_the_same_decoded_frame_as_pose_extraction(monkeypatch):
+    estimator = PoseEstimator(sample_fps=2)
+    monkeypatch.setattr(estimator, '_init_model', lambda: None)
+    monkeypatch.setattr(estimator, '_close_model', lambda: None)
+    monkeypatch.setattr(cv2, 'VideoCapture', lambda _: _FakeCapture(total_frames=5, source_fps=4))
+    monkeypatch.setattr(
+        estimator,
+        '_process_frame',
+        lambda _, index, timestamp: Frame(frame_index=index, timestamp=timestamp, keypoints={}),
+    )
+    observed = []
+
+    frames = estimator.extract_frames('video.mp4', on_sample=lambda image, pose: observed.append((image, pose)))
+
+    assert [item.frame_index for item in frames] == [0, 2, 4]
+    assert [pose.frame_index for _, pose in observed] == [0, 2, 4]
+    assert all(image.shape == (8, 8, 3) for image, _ in observed)

@@ -1,7 +1,7 @@
 """Step 2: 关键点提取（MediaPipe Pose）"""
 
 import logging
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 import cv2
 import numpy as np
@@ -75,7 +75,11 @@ class PoseEstimator:
             or self.decode_completion_ratio >= self.MIN_DECODE_COMPLETION_RATIO
         )
 
-    def extract_frames(self, video_path: str) -> List[Frame]:
+    def extract_frames(
+        self,
+        video_path: str,
+        on_sample: Optional[Callable[[np.ndarray, Frame], None]] = None,
+    ) -> List[Frame]:
         """
         从视频中按 sample_fps 采样帧，提取关键点
         """
@@ -127,10 +131,16 @@ class PoseEstimator:
                     # 同时严格遵守帧预算，保证最长 300 秒骨盆倾斜视频也能完整分析。
                     should_sample = timestamp + 1e-9 >= next_sample_timestamp
                     if should_sample and (not self.max_frames or len(frames) < self.max_frames):
-                        frames.append(self._process_frame(frame, frame_index, timestamp))
+                        pose_frame = self._process_frame(frame, frame_index, timestamp)
+                        frames.append(pose_frame)
+                        if on_sample is not None:
+                            on_sample(frame, pose_frame)
                         next_sample_timestamp += sample_interval
                 elif frame_index % step == 0:
-                    frames.append(self._process_frame(frame, frame_index, timestamp))
+                    pose_frame = self._process_frame(frame, frame_index, timestamp)
+                    frames.append(pose_frame)
+                    if on_sample is not None:
+                        on_sample(frame, pose_frame)
 
                 frame_index += 1
         finally:

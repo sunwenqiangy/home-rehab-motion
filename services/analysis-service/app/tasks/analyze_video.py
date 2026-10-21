@@ -15,7 +15,7 @@ from celery import signals
 from app.core.abdominal_visual_signal import (
     VISUAL_VERSION,
     VisualSignal,
-    extract_abdominal_visual_signal,
+    VisualSignalCollector,
     segment_abdominal_visual,
 )
 from app.core.config import ROOT_DIR, settings
@@ -347,9 +347,27 @@ def analyze_video(
         with sync_session_scope() as session:
             AnalysisRepository(session).update_progress_stage(video_id, 'keypoint_extraction')
 
+        from app.core.pose_cache import extraction_config, file_sha256, load as load_pose_cache, save as save_pose_cache
         from app.core.pose_estimator import PoseEstimator
 
         effective_sample_fps, exact_sample_timestamps = _resolve_pose_sampling(action_type, sample_fps)
+        visual_collection_enabled = _should_run_visual_shadow(
+            action_type, settings.abdominal_segmentation_mode, short_clip, source_type,
+        )
+        visual_limit_seconds = _visual_analysis_limit_seconds(source_type)
+        pose_config = extraction_config(
+            action_type=action_type,
+            model_complexity=settings.model_complexity,
+            sample_fps=effective_sample_fps,
+            max_frames=settings.max_analysis_frames,
+            max_frame_width=settings.max_pose_frame_width,
+            exact_sample_timestamps=exact_sample_timestamps,
+        )
+        # 视觉信号与姿态帧共享首次解码；只有需要视觉分析的缩腹任务才进入该缓存分支。
+        pose_config['visual_signal'] = visual_collection_enabled
+        pose_config['visual_limit_seconds'] = visual_limit_seconds if visual_collection_enabled else None
+        content_sha256 = file_sha256(local_video_path)
+        pose_cache = load_pose_cache(content_sha256, pose_config)
 
         estimator = PoseEstimator(
             sample_fps=effective_sample_fps,
@@ -358,8 +376,34 @@ def analyze_video(
             max_frame_width=settings.max_pose_frame_width,
             exact_sample_timestamps=exact_sample_timestamps,
         )
-        frames = estimator.extract_frames(local_video_path)
-        effective_sample_fps = estimator.effective_sample_fps
+        cached_visual_signal = None
+        if pose_cache:
+            frames = pose_cache['frames']
+            effective_sample_fps = pose_cache['effective_sample_fps']
+            estimator.effective_sample_fps = effective_sample_fps
+            estimator.source_duration_seconds = pose_cache['source_duration_seconds']
+            estimator.decoded_duration_seconds = pose_cache['decoded_duration_seconds']
+            estimator.decode_completion_ratio = pose_cache['decode_completion_ratio']
+            cached_visual_signal = pose_cache['visual_signal']
+            logger.info('[%s] Pose cache hit: video_id=%d, frames=%d, sha256=%s',
+                        task_id, video_id, len(frames), content_sha256[:12])
+        else:
+            visual_collector = VisualSignalCollector(max_seconds=visual_limit_seconds) if visual_collection_enabled else None
+            frames = estimator.extract_frames(
+                local_video_path,
+                on_sample=visual_collector.add_sample if visual_collector else None,
+            )
+            effective_sample_fps = estimator.effective_sample_fps
+            cached_visual_signal = visual_collector.build(frames) if visual_collector else None
+            if frames and estimator.has_complete_decode:
+                save_pose_cache(
+                    content_sha256, pose_config, frames,
+                    effective_sample_fps=effective_sample_fps,
+                    source_duration_seconds=estimator.source_duration_seconds,
+                    decoded_duration_seconds=estimator.decoded_duration_seconds,
+                    decode_completion_ratio=estimator.decode_completion_ratio,
+                    visual_signal=cached_visual_signal,
+                )
         # 算法预处理会缩放和平移关键点；单独保留原始画面坐标供管理端骨架叠加，不能用处理后的坐标覆盖它。
         visualization_frames = copy.deepcopy(frames)
         logger.info(
@@ -600,13 +644,10 @@ def analyze_video(
             visual_extract_ms = 0
             visual_segment_ms = 0
             if _should_run_visual_shadow(action_type, segmentation_mode, short_clip, source_type):
-                # 视觉分析共用一份视频；不可观测时小程序记为未评分，后台保持原结果。
+                # 与姿态提取同一次解码完成；缓存命中时也复用当时的原始视觉信号。
                 try:
                     visual_started = time.monotonic()
-                    visual_signal = extract_abdominal_visual_signal(
-                        local_video_path, visualization_frames,
-                        max_seconds=_visual_analysis_limit_seconds(source_type),
-                    )
+                    visual_signal = cached_visual_signal or VisualSignal(reason='视觉信号缓存不可用')
                     visual_extract_ms = int((time.monotonic() - visual_started) * 1000)
                     visual_started = time.monotonic()
                     visual_result = segment_abdominal_visual(visual_signal)
