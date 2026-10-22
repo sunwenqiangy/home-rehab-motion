@@ -16,7 +16,7 @@ exports.grantPrivacyConsent = grantPrivacyConsent;
 exports.withdrawPrivacyConsent = withdrawPrivacyConsent;
 const request_1 = require("../utils/request");
 function recordSelfTraining() { return (0, request_1.request)({ url: '/me/self-training', method: 'POST', data: {} }); }
-function listSelfTraining() { return (0, request_1.request)({ url: '/me/self-training' }); }
+function listSelfTraining(page = 1, pageSize = 20) { return (0, request_1.request)({ url: `/me/self-training?page=${page}&pageSize=${pageSize}` }); }
 function getSelfTraining(id) { return (0, request_1.request)({ url: `/me/self-training/${encodeURIComponent(id)}` }); }
 function getProfile() {
     return (0, request_1.request)({

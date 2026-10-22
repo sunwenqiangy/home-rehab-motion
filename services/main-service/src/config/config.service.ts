@@ -19,8 +19,6 @@ const DEFAULT_MOTIVATION_RULES: MotivationRulesDto = {
   stabilityClearDelta: 8,
   durationSlightDelta: 0.5,
   durationClearDelta: 1.5,
-  repsSlightDelta: 1,
-  repsClearDelta: 2,
 };
 
 const DEFAULT_APP_CONFIG: PatientAppConfigDto = {
@@ -939,7 +937,6 @@ export class ConfigService {
     const slightScore = numberValue(raw.scoreSlightDelta, DEFAULT_MOTIVATION_RULES.scoreSlightDelta, 1, 30);
     const slightStability = numberValue(raw.stabilitySlightDelta, DEFAULT_MOTIVATION_RULES.stabilitySlightDelta, 1, 30);
     const slightDuration = numberValue(raw.durationSlightDelta, DEFAULT_MOTIVATION_RULES.durationSlightDelta, 0.1, 30);
-    const slightReps = numberValue(raw.repsSlightDelta, DEFAULT_MOTIVATION_RULES.repsSlightDelta, 1, 20);
     return {
       scoreSlightDelta: slightScore,
       scoreClearDelta: Math.max(slightScore, numberValue(raw.scoreClearDelta, DEFAULT_MOTIVATION_RULES.scoreClearDelta, 1, 50)),
@@ -947,8 +944,6 @@ export class ConfigService {
       stabilityClearDelta: Math.max(slightStability, numberValue(raw.stabilityClearDelta, DEFAULT_MOTIVATION_RULES.stabilityClearDelta, 1, 50)),
       durationSlightDelta: slightDuration,
       durationClearDelta: Math.max(slightDuration, numberValue(raw.durationClearDelta, DEFAULT_MOTIVATION_RULES.durationClearDelta, 0.1, 60)),
-      repsSlightDelta: slightReps,
-      repsClearDelta: Math.max(slightReps, numberValue(raw.repsClearDelta, DEFAULT_MOTIVATION_RULES.repsClearDelta, 1, 50)),
     };
   }
 
@@ -974,7 +969,6 @@ export class ConfigService {
     const scoreSlightDelta = clamp(payload.scoreSlightDelta, base.scoreSlightDelta, 1, 30);
     const stabilitySlightDelta = clamp(payload.stabilitySlightDelta, base.stabilitySlightDelta, 1, 30);
     const durationSlightDelta = clamp(payload.durationSlightDelta, base.durationSlightDelta, 0.1, 30);
-    const repsSlightDelta = clamp(payload.repsSlightDelta, base.repsSlightDelta, 1, 20);
     return {
       scoreSlightDelta,
       scoreClearDelta: Math.max(scoreSlightDelta, clamp(payload.scoreClearDelta, base.scoreClearDelta, 1, 50)),
@@ -982,8 +976,6 @@ export class ConfigService {
       stabilityClearDelta: Math.max(stabilitySlightDelta, clamp(payload.stabilityClearDelta, base.stabilityClearDelta, 1, 50)),
       durationSlightDelta,
       durationClearDelta: Math.max(durationSlightDelta, clamp(payload.durationClearDelta, base.durationClearDelta, 0.1, 60)),
-      repsSlightDelta,
-      repsClearDelta: Math.max(repsSlightDelta, clamp(payload.repsClearDelta, base.repsClearDelta, 1, 50)),
     };
   }
 
@@ -1036,7 +1028,7 @@ export class ConfigService {
       create: {
         config_key: 'patient_app_config',
         config_value: merged as unknown as Prisma.InputJsonValue,
-        description: '患者端应用配置：视频限制、周目标、分析等待时长等',
+        description: '患者端应用配置：视频限制、周目标与可用动作等',
       },
     });
 

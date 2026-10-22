@@ -18,7 +18,7 @@
   margin-top: 18rpx;
   font-size: 42rpx;
   font-weight: 800;
-  color: #15314f;
+  color: #173f3b;
   line-height: 1.36;
 }
 
@@ -30,7 +30,7 @@
   margin-top: 14rpx;
   font-size: 26rpx;
   line-height: 1.8;
-  color: #5d7690;
+  color: #66817c;
 }
 
 .privacy-page--standard .privacy-hero__desc {
@@ -38,20 +38,20 @@
 }
 
 .privacy-summary {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(243, 248, 255, 0.95));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(241, 250, 247, 0.95));
 }
 
 .privacy-summary__title {
   font-size: 30rpx;
   font-weight: 700;
-  color: #17314f;
+  color: #173f3b;
 }
 
 .privacy-summary__desc {
   margin-top: 10rpx;
   font-size: 24rpx;
   line-height: 1.75;
-  color: #5f7892;
+  color: #66817c;
 }
 
 .privacy-consent-btn {
@@ -74,7 +74,7 @@
 .privacy-section__title {
   font-size: 30rpx;
   font-weight: 700;
-  color: #17314f;
+  color: #173f3b;
 }
 
 .privacy-page--standard .privacy-section__title {
@@ -85,7 +85,7 @@
   margin-top: 12rpx;
   font-size: 26rpx;
   line-height: 1.82;
-  color: #4d6883;
+  color: #52766f;
 }
 
 .privacy-page--standard .privacy-section__content {

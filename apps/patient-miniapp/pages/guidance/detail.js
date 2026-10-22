@@ -6,9 +6,9 @@ const guidance_1 = require("../../services/guidance");
 const session_1 = require("../../store/session");
 const DEFAULT_COVERS = { abdominal_crunch: '/guidance-defaults/cover-abdominal-crunch.png', pelvic_tilt: '/guidance-defaults/cover-pelvic-tilt.png', knee_rotation: '/guidance-defaults/cover-knee-rotation.png' };
 const SHOOTING_DEFAULTS = {
-  angle: { order: 1, typeLabel: '拍摄角度', title: '正侧面拍摄', description: '手机放在身体正侧方，镜头与身体保持垂直。', altText: '训练者平卧时，手机放在身体正侧方。', correctUrl: '../../assets/guidance/shooting-angle-side-v2.png' },
-  framing: { order: 2, typeLabel: '入镜范围', title: '全身完整入镜', description: '从头到脚完整入镜，四周留出适当空间。', altText: '训练者从头到脚完整出现在手机画面内。', correctUrl: '../../assets/guidance/shooting-framing-full-body-v2.png' },
-  lighting: { order: 3, typeLabel: '光线', title: '光线均匀', description: '光线均匀，避免背光和阴影。', altText: '训练者处于光线均匀的环境，身体轮廓清晰。', correctUrl: '../../assets/guidance/shooting-lighting-bright-v2.png' },
+  angle: { order: 1, typeLabel: '拍摄角度', title: '正侧面拍摄', description: '手机放在身体正侧方，镜头与身体保持垂直。', altText: '训练者平卧时，手机放在身体正侧方。', correctUrl: '/guidance-defaults/shooting-angle-side-v2.png' },
+  framing: { order: 2, typeLabel: '入镜范围', title: '全身完整入镜', description: '从头到脚完整入镜，四周留出适当空间。', altText: '训练者从头到脚完整出现在手机画面内。', correctUrl: '/guidance-defaults/shooting-framing-full-body-v2.png' },
+  lighting: { order: 3, typeLabel: '光线', title: '光线均匀', description: '光线均匀，避免背光和阴影。', altText: '训练者处于光线均匀的环境，身体轮廓清晰。', correctUrl: '/guidance-defaults/shooting-lighting-bright-v2.png' },
 };
 const SHOOTING_TYPE_LABELS = { angle: '拍摄角度', framing: '入镜范围', lighting: '光线', stability: '画面稳定' };
 function getAppConfig() { const app = getApp(); return app.globalData.appConfig || appConfig_1.DEFAULT_APP_CONFIG; }

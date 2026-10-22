@@ -44,8 +44,8 @@
           <el-button size="small" @click="togglePlay">
             {{ isPlaying ? '暂停' : '播放' }}
           </el-button>
-          <el-button size="small" @click="stepBackward">← 上一帧</el-button>
-          <el-button size="small" @click="stepForward">下一帧 →</el-button>
+          <el-button size="small" @click="stepBackward">← 上一采样点</el-button>
+          <el-button size="small" @click="stepForward">下一采样点 →</el-button>
         </el-button-group>
 
         <el-tag
@@ -130,19 +130,20 @@
       </div>
 
       <div class="skeleton-overlay__info">
-        <span>帧: {{ currentFrameIndex }} / {{ totalFrames }}</span>
+        <span>分析采样帧: {{ currentSampleFrameNumber }} / {{ totalFrames }}</span>
+        <span>源视频帧: {{ currentFrameIndex }}</span>
         <span>时间: {{ currentTime.toFixed(2) }}s</span>
         <span>可见关键点: {{ visibleKeypointCount }} / {{ keypointCount }}</span>
         <span>骨架连线: {{ connectionCount }}</span>
         <span>
-          检测周期: {{ displayCompletedRepCount }} / {{ displayTotalRepCount }}
+          已完成周期: {{ displayCompletedRepCount }} / {{ displayTotalRepCount }}
           <template v-if="repCountSourceLabel">（{{ repCountSourceLabel }}）</template>
         </span>
         <span v-if="loopRepId !== null" style="color: #e6a23c;">🔁 循环 rep {{ loopRepId }}</span>
       </div>
 
       <div class="skeleton-overlay__analysis-note">
-        分析过程：1) 每帧提取人体关键点；2) 通过骨架连线跟踪动作轨迹；3) 结合稳定性、控制度与持续度输出质量分和评分。
+        分析过程：1) 对分析采样帧提取人体关键点；2) 通过骨架连线跟踪动作轨迹；3) 结合稳定性、控制度与持续度输出质量分和评分。
         <template v-if="actionType === 'pelvic_tilt'">骨盆倾斜仅在正侧面机位下按“稳定中立位 → 收紧下腹、腰背贴近垫面的后倾顶点 → 回到稳定中立位”确认一次完整周期；未回正、准备动作和短暂抖动不计入。</template>
       </div>
     </div>
@@ -175,6 +176,7 @@ const videoLoadError = ref(false);
 const currentTime = ref(0);
 const progressPercent = ref(0);
 const currentFrameIndex = ref(0);
+const currentSampleFrameNumber = ref(0);
 const totalFrames = ref(0);
 const visibleKeypointCount = ref(0);
 const showSkeleton = ref(true);
@@ -287,11 +289,15 @@ function updateFrameInfo() {
   const frame = findFrameByTime(currentTime.value);
   if (!frame) {
     currentFrameIndex.value = 0;
+    currentSampleFrameNumber.value = 0;
     visibleKeypointCount.value = 0;
     return;
   }
 
   currentFrameIndex.value = frame.frame_index;
+  currentSampleFrameNumber.value = (props.keypointsData?.frames.findIndex(
+    (candidate) => candidate.frame_index === frame.frame_index,
+  ) ?? -1) + 1;
   visibleKeypointCount.value = Object.values(frame.keypoints || {}).filter(isVisiblePoint).length;
 }
 
@@ -595,11 +601,14 @@ function drawAnalysisView() {
   }
 
   ctx.fillStyle = 'rgba(8, 21, 37, 0.78)';
-  ctx.fillRect(10, 10, 238, 76);
+  ctx.fillRect(10, 10, 270, 76);
   ctx.fillStyle = '#ffffff';
   ctx.font = '12px sans-serif';
   ctx.textAlign = 'start';
-  ctx.fillText(`frame: ${frame.frame_index}`, 18, 28);
+  const sampleFrameNumber = (props.keypointsData?.frames.findIndex(
+    (candidate) => candidate.frame_index === frame.frame_index,
+  ) ?? -1) + 1;
+  ctx.fillText(`sample: ${sampleFrameNumber}/${totalFrames.value} · source: ${frame.frame_index}`, 18, 28);
   ctx.fillText(`time: ${Number(frame.timestamp || 0).toFixed(2)}s`, 18, 44);
   ctx.fillText(`keypoints: ${visiblePoints.length} · reps: ${displayCompletedRepCount.value}/${displayTotalRepCount.value}`, 18, 60);
   if (loopRepId.value !== null) {

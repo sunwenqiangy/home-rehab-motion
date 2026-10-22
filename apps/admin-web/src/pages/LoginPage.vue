@@ -3,8 +3,8 @@
     <div class="login-page__mesh"></div>
     <div class="login-shell">
       <section class="login-brand-panel">
-        <div class="login-brand-panel__eyebrow">Home Rehab Motion Control Center</div>
-        <h1 class="login-brand-panel__title">腹部肌肉训练分析后台</h1>
+        <div class="login-brand-panel__eyebrow">安舒随行 · 管理端</div>
+        <h1 class="login-brand-panel__title">居家动作训练管理</h1>
         <p class="login-brand-panel__subtitle">
           面向医护与运营团队的训练数据中枢，统一管理患者视频、动作指导、阈值配置与反馈处置。
         </p>

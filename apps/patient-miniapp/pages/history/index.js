@@ -18,6 +18,7 @@ const STATUS_LABEL_MAP = {
     quality_insufficient: '已记录 · 画面待改善',
     review_required: '已记录 · 观察待复核',
 };
+const HISTORY_PAGE_SIZE = 20;
 function formatTime(uploadedAt) {
     const date = new Date(uploadedAt);
     if (Number.isNaN(date.getTime()))
@@ -129,6 +130,9 @@ Page({
         groupedItems: [],
         allRawItems: [],
         allRecords: [],
+        historyPage: 1,
+        hasMoreHistory: false,
+        loadingMoreHistory: false,
     },
     onLoad() {
         const sysInfo = wx.getSystemInfoSync();
@@ -158,9 +162,12 @@ Page({
             groupedItems: [],
             allRawItems: [],
             allRecords: [],
+            historyPage: 1,
+            hasMoreHistory: false,
+            loadingMoreHistory: false,
         });
         try {
-            const [videosResult, summaryResult, selfResult] = await Promise.allSettled([(0, history_1.getHistoryVideos)(), (0, me_1.getTrainingSummary)(), (0, me_1.listSelfTraining)()]);
+            const [videosResult, summaryResult, selfResult] = await Promise.allSettled([(0, history_1.getHistoryVideos)(1, HISTORY_PAGE_SIZE), (0, me_1.getTrainingSummary)(), (0, me_1.listSelfTraining)(1, HISTORY_PAGE_SIZE)]);
             if (videosResult.status === 'rejected' && selfResult.status === 'rejected') throw new Error('历史记录加载失败');
             const videos = videosResult.status === 'fulfilled' ? videosResult.value : [];
             const selfRecords = selfResult.status === 'fulfilled' ? selfResult.value : [];
@@ -207,6 +214,8 @@ Page({
                 weeklyLabel: hasWeeklyProgress && weeklyProgress.label ? weeklyProgress.label : '--',
                 weeklyProgress: hasWeeklyProgress ? weeklyProgress.progressPercent : 0,
                 weeklyProgressUnavailable: !hasWeeklyProgress,
+                historyPage: 1,
+                hasMoreHistory: videos.length >= HISTORY_PAGE_SIZE || selfRecords.length >= HISTORY_PAGE_SIZE,
             });
         }
         catch (error) {
@@ -230,6 +239,34 @@ Page({
         finally {
             this.setData({ loading: false });
             this.updateTopPlaceholderHeight();
+        }
+    },
+    async onReachBottom() {
+        if (this.data.loading || this.data.loadingMoreHistory || !this.data.hasMoreHistory) return;
+        const nextPage = this.data.historyPage + 1;
+        this.setData({ loadingMoreHistory: true });
+        try {
+            const [videosResult, selfResult] = await Promise.allSettled([
+                (0, history_1.getHistoryVideos)(nextPage, HISTORY_PAGE_SIZE),
+                (0, me_1.listSelfTraining)(nextPage, HISTORY_PAGE_SIZE),
+            ]);
+            const videos = videosResult.status === 'fulfilled' ? videosResult.value : [];
+            const selfRecords = selfResult.status === 'fulfilled' ? selfResult.value : [];
+            if (videosResult.status === 'rejected' && selfResult.status === 'rejected') throw new Error('加载更多失败');
+            const newItems = [...videos, ...selfRecords.map((record) => ({ recordType: 'self', selfId: record.id, actionType: record.actionType, status: 'self', uploadedAt: record.recordedAt }))];
+            const items = [...this.data.allRawItems, ...newItems].sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+            const allRecords = items.map(buildRecordItem);
+            this.setData({
+                historyPage: nextPage,
+                hasMoreHistory: videos.length >= HISTORY_PAGE_SIZE || selfRecords.length >= HISTORY_PAGE_SIZE,
+                allRawItems: items,
+                allRecords,
+                groupedItems: this.filterRecords(this.data.activeFilter, allRecords, items),
+            });
+        } catch (_error) {
+            wx.showToast({ title: '加载更多失败，请稍后重试', icon: 'none' });
+        } finally {
+            this.setData({ loadingMoreHistory: false });
         }
     },
     onRetryWeeklyProgress() {

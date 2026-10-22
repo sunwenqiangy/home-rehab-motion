@@ -36,11 +36,6 @@
         <view class="upload-action-card__tip">请只上传本次「{{actionLabel}}」的视频；{{durationHint}}上传其他动作会影响本段分析。</view>
       </view>
 
-      <!-- 上传引导 hero -->
-      <view class="upload-hero-card">
-        <view class="upload-hero-card__title">上传前检查</view>
-        <view class="upload-hero-card__desc">无需上传整次练习。提交前确认：动作完整入镜、光线清楚、视频不超过 30 秒。</view>
-      </view>
       <!-- 视频预览区 -->
       <view class="info-panel">
         <view class="info-title">{{actionLabel}}视频预览</view>
@@ -78,10 +73,10 @@
 
   <!-- 底部固定操作栏 -->
   <view class="action-dock">
+    <button class="btn-big btn-ghost" bindtap="onSelectVideo" disabled="{{submitting}}">重新选择</button>
+    <view class="action-dock__gap"></view>
     <button class="btn-big btn-teal" bindtap="onSubmit" disabled="{{!canSubmit || submitting}}">
       {{submitting ? submittingText : '上传并分析「' + actionLabel + '」'}}
     </button>
-    <view class="action-dock__gap"></view>
-    <button class="btn-big btn-ghost" bindtap="onSelectVideo" disabled="{{submitting}}">重新选择</button>
   </view>
 </view>

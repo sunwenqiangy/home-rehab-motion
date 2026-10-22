@@ -4,8 +4,8 @@ const session_1 = require("../../store/session");
 Page({
     data: {
         displayMode: 'elderly',
-        appName: '居家康复训练助手',
-        description: '在家查看动作指导，记录每天的练习，并回顾动作表现。',
+        appName: '安舒随行',
+        description: '居家动作训练与记录工具，提供动作指导、短视频观察、练习记录和训练建议，帮助您按舒适节奏坚持每日练习。',
         features: [
             { icon: '🏋️', title: '动作观察', desc: '上传短视频，查看本段动作表现' },
             { icon: '📊', title: '训练记录', desc: '随时查看练习记录和训练报告' },

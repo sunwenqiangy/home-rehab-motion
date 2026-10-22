@@ -205,7 +205,7 @@ page {
 }
 
 .message-row-patient .message-avatar {
-  background: #0e9aa7;
+  background: #2b958d;
   color: #ffffff;
 }
 
@@ -240,7 +240,7 @@ page {
 .message-row-patient .message-bubble {
   border: 0;
   border-radius: 24rpx 10rpx 24rpx;
-  background: #0e9aa7;
+  background: #2b958d;
   color: #ffffff;
 }
 
@@ -339,7 +339,7 @@ page {
 }
 
 .feedback-send-button {
-  background: #0e9aa7;
+  background: #2b958d;
   color: #ffffff;
 }
 

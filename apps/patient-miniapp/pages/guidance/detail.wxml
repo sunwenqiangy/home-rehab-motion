@@ -12,5 +12,5 @@
     <view wx:if="{{detail.hasCommonMistakes}}" class="info-panel"><view class="info-title">常见错误</view><view wx:for="{{detail.commonMistakes}}" wx:key="id" class="mistake-card"><video wx:if="{{item.isVideo && item.media.url}}" class="mistake-card__image" src="{{item.media.url}}" controls show-fullscreen-btn></video><image wx:elif="{{item.media.url}}" class="mistake-card__image" src="{{item.media.url}}" mode="aspectFit" bindtap="onPreviewImage" data-url="{{item.media.url}}"/><view class="mistake-card__title">× {{item.title}}</view><view class="mistake-card__desc">{{item.mistakeDescription}}</view><view class="mistake-card__correct">✓ {{item.correction}}</view></view></view>
     <view class="dock-spacer"></view>
   </view></scroll-view>
-  <view class="action-dock" wx:if="{{!loading && !failed}}"><button class="btn-big btn-teal" bindtap="onStartUpload">拍摄训练视频</button><view class="action-dock__gap"></view><button class="btn-big btn-outline" bindtap="onChooseFromAlbum">从相册选择</button></view>
+  <view class="action-dock" wx:if="{{!loading && !failed}}"><button class="btn-big btn-ghost" bindtap="onStartUpload">拍摄训练视频</button><view class="action-dock__gap"></view><button class="btn-big btn-teal" bindtap="onChooseFromAlbum">从相册选择</button></view>
 </view>

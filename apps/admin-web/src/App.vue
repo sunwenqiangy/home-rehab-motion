@@ -400,6 +400,25 @@ h4,
   z-index: 4000 !important;
 }
 
+/* 所有确认弹窗都应覆盖页面 Hero、粘性预览和固定操作区。 */
+.el-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 5000 !important;
+}
+
+.el-overlay-dialog {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 100%;
+}
+
+.el-dialog {
+  position: relative;
+  z-index: 5001 !important;
+}
+
 .toolbar-row,
 .toolbar-group {
   display: flex;

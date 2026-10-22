@@ -4,9 +4,9 @@
       <div class="page-hero__content">
         <div>
           <div class="page-hero__eyebrow">Patient App Config</div>
-          <h1 class="page-hero__title">患者端应用配置</h1>
+          <h1 class="page-hero__title">应用运行设置</h1>
           <p class="page-hero__subtitle">
-            短片段上传：缩腹、骨盆最多 30 秒，膝旋转最多 60 秒；管理训练目标与动作类型。
+            管理患者端的视频限制、训练目标、自主记录和可用动作。
           </p>
         </div>
       </div>

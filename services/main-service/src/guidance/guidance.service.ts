@@ -180,11 +180,7 @@ function validateSnapshot(snapshot: GuidanceContentDto): GuidanceValidationResul
   snapshot.steps.forEach((step, index) => {
     if (!step.title) errors.push(`请填写步骤 ${index + 1} 的标题`);
   });
-  const requiredShootingTypes = ['angle', 'framing', 'lighting'];
-  if (snapshot.shootingRequirements.length < 3) errors.push('拍摄要求至少需要 3 条');
-  requiredShootingTypes.forEach((type) => {
-    if (!snapshot.shootingRequirements.some((item) => item.type === type)) errors.push(`拍摄要求缺少${type === 'angle' ? '拍摄角度' : type === 'framing' ? '入镜范围' : '光线'}说明`);
-  });
+  if (snapshot.shootingRequirements.length < 1) errors.push('拍摄要求至少需要 1 条');
   snapshot.shootingRequirements.forEach((item, index) => {
     if (!item.title || !item.description || !item.correctImage?.url) errors.push(`拍摄要求 ${index + 1} 的标题、患者短说明和正确示意图必须完整`);
   });
@@ -270,12 +266,22 @@ export class GuidanceService {
 
   async listAdminGuidance(): Promise<AdminGuidanceListItemDto[]> {
     const list = await this.prisma.guidanceContent.findMany({ orderBy: { updated_at: 'desc' }, take: 100 });
-    return list.map((item) => ({
-      contentId: Number(item.content_id),
-      actionType: item.action_type as TrainingActionType,
-      title: item.title,
-      enabled: item.status === 1,
-      updatedAt: item.updated_at.toISOString(),
+    return Promise.all(list.map(async (item) => {
+      // 兼容此前遗留的草稿记录：列表标题始终以当前已发布版本为准，避免草稿标题污染正式内容。
+      let title = item.title;
+      if (item.published_version) {
+        const published = await this.prisma.guidanceContentVersion.findUnique({
+          where: { content_id_version: { content_id: item.content_id, version: item.published_version } },
+        });
+        if (isRecord(published?.snapshot) && typeof published.snapshot.title === 'string') title = published.snapshot.title;
+      }
+      return {
+        contentId: Number(item.content_id),
+        actionType: item.action_type as TrainingActionType,
+        title,
+        enabled: item.status === 1,
+        updatedAt: item.updated_at.toISOString(),
+      };
     }));
   }
 
@@ -372,7 +378,13 @@ export class GuidanceService {
 
   async getAdminGuidance(id: number): Promise<GuidanceContentDto> {
     const content = await this.findContent(id);
-    if (!content.published_version) throw new NotFoundException('指导内容数据不完整');
+    // 兼容旧版已保存但未发布的记录；新流程不会再生成这类草稿。
+    if (!content.published_version) {
+      if (isRecord(content.draft_snapshot)) {
+        return normalizeStoredSnapshot(content.draft_snapshot, id, content.action_type as TrainingActionType);
+      }
+      throw new NotFoundException('指导内容数据不完整');
+    }
     const version = await this.prisma.guidanceContentVersion.findUnique({
       where: { content_id_version: { content_id: BigInt(id), version: content.published_version } },
     });

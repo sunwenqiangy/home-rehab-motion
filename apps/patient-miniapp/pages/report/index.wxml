@@ -177,7 +177,7 @@
 
       <!-- 次级操作：避免和底部主操作竞争 -->
       <view class="rp-page-footer">
-        <button class="btn-big btn-teal rp-guidance-btn" bindtap="onViewGuidance">查看动作指导</button>
+        <button class="btn-big rp-guidance-btn" bindtap="onViewGuidance">查看动作指导</button>
         <button class="btn-big btn-ghost" bindtap="onViewHistory">查看训练记录</button>
       </view>
 

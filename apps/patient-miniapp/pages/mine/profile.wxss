@@ -279,7 +279,7 @@
 
 .profile-nickname-save {
   color: #fff;
-  background: #0e9aa7;
+  background: #2b958d;
 }
 
 .profile-card__hint {
@@ -302,7 +302,7 @@
   justify-content: center;
   box-sizing: border-box;
   color: #fff;
-  background: #0e9aa7;
+  background: #2b958d;
   line-height: 1.2;
   white-space: nowrap;
 }

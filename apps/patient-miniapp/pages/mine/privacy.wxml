@@ -1,7 +1,7 @@
 <view class="container privacy-page privacy-page--{{displayMode}}">
   <view class="hero-card privacy-hero card-pad-md">
     <view class="hero-eyebrow-row">
-      <text class="hero-badge">🔒 隐私政策</text>
+      <text class="hero-badge">隐私政策</text>
     </view>
     <view class="privacy-hero__title">您的训练数据，仅用于康复训练服务</view>
     <view class="privacy-hero__desc">这里说明训练数据如何使用，以及视频分析授权状态。</view>
@@ -29,7 +29,7 @@
     </view>
 
     <view class="surface-card privacy-notice card-pad-md">
-      <view class="privacy-section__title">⚠️ 安全提醒</view>
+      <view class="privacy-section__title">安全提醒</view>
       <view class="privacy-section__content">如您在训练中感到身体不适，请立即停止并联系主治医生。本系统仅提供训练评估建议，不构成医学诊断。</view>
     </view>
   </view>

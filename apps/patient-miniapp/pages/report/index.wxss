@@ -809,10 +809,10 @@ box-sizing: border-box;
 }
 
 .btn-outline {
-  background: rgba(255, 255, 255, 0.9);
-  color: #4a5568;
-  border: 2rpx solid rgba(121, 175, 219, 0.24);
-  box-shadow: 0 8rpx 20rpx rgba(34, 87, 139, 0.06);
+  background: #e8f6f3;
+  color: #2b817b;
+  border: 2rpx solid #abd9d3;
+  box-shadow: none;
 }
 
 .btn-ghost {
@@ -957,12 +957,32 @@ page { background: #f2f8f7; color: #183c3b; }
 .rp-page-footer .btn-big { min-height: 76rpx; border-radius: 16rpx; font-size: 27rpx; }
 .rp-guidance-btn { margin-bottom: 10rpx; }
 .rp-page-footer .btn-ghost { border: 1rpx solid #cfe2de; background: transparent; color: #4f726c; box-shadow: none; }
+.rp-page-footer .rp-guidance-btn {
+  border: 1rpx solid #b9ddd6;
+  background: #e8f6f3;
+  color: #147d74;
+  box-shadow: none;
+}
 
 .action-dock { background: rgba(247, 251, 250, .96); border-top: 1rpx solid #deece9; }
-.action-dock .btn-teal { border-radius: 16rpx; background: #087f76; box-shadow: 0 8rpx 20rpx rgba(8, 127, 118, .2); }
+.action-dock .btn-teal {
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, #3bb8ae 0%, #2b958d 100%);
+  box-shadow: 0 8rpx 20rpx rgba(43, 149, 141, .22);
+}
 
 /* 参考报告页的紧凑卡片节奏 */
 .rp-scroll-inner { padding: 16rpx 24rpx 36rpx; gap: 14rpx; }
 .rp-hero { border-radius: 22rpx; }
+.rp-hero {
+  background: linear-gradient(140deg, #4abd7b 0%, #2f9364 100%);
+  box-shadow: 0 10rpx 24rpx rgba(47, 147, 100, .15);
+}
+.rp-score-circle { background: rgba(255, 255, 255, .2); border-color: rgba(255, 255, 255, .4); }
+.rp-progress-bar__fill { background: #43b878; }
+.rp-progress-bar__fill--orange { background: #e7842b; }
+.rp-metric-val--green { color: #319b67; }
+.rp-metric-val--teal { color: #2da7a4; }
+.rp-metric-val--orange { color: #d77721; }
 .rp-stat-card { min-height: 112rpx; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .rp-page-footer { padding-bottom: 4rpx; }

@@ -39,7 +39,6 @@ function doUploadFile(uploadTarget, filePath) {
                         }
                         const error = new Error(`视频上传失败（HTTP ${response.statusCode}）`);
                         console.error('[视频直传失败]', {
-                            url: uploadUrl,
                             uploadType: uploadTarget.uploadType,
                             statusCode: response.statusCode,
                             response: response.data,
@@ -66,11 +65,10 @@ function doUploadFile(uploadTarget, filePath) {
             fail: (error) => {
                 const message = error?.errMsg || '视频上传网络请求失败';
                 console.error('[视频上传网络失败]', {
-                    url: uploadUrl,
                     uploadType: uploadTarget.uploadType,
                     error: message,
                 });
-                reject(new Error(`${message}（上传地址：${uploadUrl}）`));
+                reject(new Error(message));
             },
         });
     });

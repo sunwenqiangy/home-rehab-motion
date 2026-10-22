@@ -7,14 +7,21 @@
           <span class="brand-mark__ring"></span>
         </div>
         <div v-if="!isCollapse" class="brand-copy">
-          <div class="brand-wordmark">Health</div>
-          <div class="brand-subtitle">腹肌康复管理系统</div>
+          <div class="brand-wordmark">安舒随行</div>
+          <div class="brand-subtitle">居家训练管理端</div>
         </div>
       </div>
       <div v-if="!isCollapse" class="aside-brand-divider"></div>
 
       <el-scrollbar class="aside-scroll">
-        <el-menu :default-active="activeMenu" :collapse="isCollapse" :collapse-transition="false" router class="aside-menu">
+        <el-menu
+          :default-active="activeMenu"
+          :collapse="isCollapse"
+          :collapse-transition="false"
+          popper-class="admin-aside-menu-tooltip"
+          router
+          class="aside-menu"
+        >
           <div class="menu-group" v-if="!isCollapse">总览视图</div>
           <el-menu-item v-if="hasPermission('dashboard')" index="/dashboard">
             <el-icon><Monitor /></el-icon>
@@ -34,13 +41,19 @@
             <el-icon><Timer /></el-icon>
             <template #title>分析任务监控</template>
           </el-menu-item>
-          <el-menu-item v-if="hasPermission('guidance')" index="/guidance">
-            <el-icon><Reading /></el-icon>
-            <template #title>指导内容</template>
-          </el-menu-item>
           <el-menu-item v-if="hasPermission('feedback')" index="/feedback">
             <el-icon><ChatDotRound /></el-icon>
             <template #title>反馈管理</template>
+          </el-menu-item>
+
+          <div class="menu-group" v-if="!isCollapse && (hasPermission('guidance') || hasPermission('patient-config'))">患者端配置</div>
+          <el-menu-item v-if="hasPermission('guidance')" index="/guidance">
+            <el-icon><Reading /></el-icon>
+            <template #title>动作指导</template>
+          </el-menu-item>
+          <el-menu-item v-if="hasPermission('patient-config')" index="/patient-config">
+            <el-icon><Setting /></el-icon>
+            <template #title>应用运行设置</template>
           </el-menu-item>
 
           <div class="menu-group" v-if="!isCollapse">系统配置</div>
@@ -55,10 +68,6 @@
           <el-menu-item v-if="hasPermission('motivation-rules')" index="/motivation-rules">
             <el-icon><Setting /></el-icon>
             <template #title>激励规则配置</template>
-          </el-menu-item>
-          <el-menu-item v-if="hasPermission('patient-config')" index="/patient-config">
-            <el-icon><Setting /></el-icon>
-            <template #title>患者应用配置</template>
           </el-menu-item>
           <el-menu-item v-if="hasPermission('accounts')" index="/accounts">
             <el-icon><User /></el-icon>
@@ -77,15 +86,6 @@
         </el-menu>
       </el-scrollbar>
 
-      <div class="aside-footer" v-if="!isCollapse">
-        <div class="aside-footer__card">
-          <div>
-            <div class="aside-footer__label">系统状态</div>
-            <div class="aside-footer__value">在线 · 数据同步正常</div>
-          </div>
-          <span class="aside-footer__dot"></span>
-        </div>
-      </div>
     </el-aside>
 
     <el-container class="layout-main-shell">
@@ -184,13 +184,13 @@ const currentDescription = computed(() => {
     '/videos': '聚合患者视频状态、分析结果与质量风险。',
     '/analysis-tasks': '查看分析队列、失败原因、补偿状态并执行重新分析。',
     '/flow-verify': '一键验证上传、分析与结果展示主链路。',
-    '/guidance': '管理训练动作说明、多媒体素材与版本变化。',
+    '/guidance': '管理患者端动作说明、多媒体素材与发布状态。',
     '/feedback': '跟进患者问题，快速处理上传与报告反馈。',
     '/thresholds': '统一维护算法模板、阈值版本和参考配置。',
     '/gold-templates': '上传或选择内部样本，提取金标准统计参数并保存新版本。',
     '/template-versions': '集中查看评分模板参数、阈值调优链路、启停与归档记录。',
     '/motivation-rules': '维护进步提示阈值和温和提醒频率，不影响既有训练快照。',
-    '/patient-config': '管理患者端视频限制、周目标、分析等待时长等全局参数。',
+    '/patient-config': '管理患者端视频限制、自主记录、周目标和可用动作。',
     '/accounts': '查看当前后台账号与角色信息。',
   };
 
@@ -254,8 +254,7 @@ function handleCommand(cmd: string) {
 }
 
 .aside-brand,
-.aside-brand-divider,
-.aside-footer {
+.aside-brand-divider {
   position: relative;
   z-index: 1;
 }
@@ -400,40 +399,24 @@ function handleCommand(cmd: string) {
   box-shadow: inset 0 0 0 1px rgba(121, 215, 255, 0.28), 0 8px 18px rgba(6, 30, 53, 0.18);
 }
 
-.aside-footer {
-  margin: 10px 18px 18px;
-  flex: none;
-}
-
-.aside-footer__card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 18px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.aside-footer__label {
-  color: rgba(214, 234, 249, 0.48);
-  font-size: 11px;
-}
-
-.aside-footer__value {
-  margin-top: 4px;
-  color: #f6fbff;
-  font-size: 13px;
+/* 折叠菜单的标题由 Element Plus 挂到 body；明确指定气泡样式，避免缺失组件样式时裸文字覆盖主内容。 */
+:global(.admin-aside-menu-tooltip) {
+  z-index: 3000 !important;
+  max-width: 180px;
+  padding: 8px 11px !important;
+  border: 1px solid rgba(133, 208, 245, 0.3) !important;
+  border-radius: 9px !important;
+  background: #102c47 !important;
+  color: #f6fbff !important;
+  font-size: 12px;
   font-weight: 700;
+  line-height: 1.35;
+  box-shadow: 0 10px 24px rgba(5, 23, 43, 0.28);
 }
 
-.aside-footer__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: #33b27b;
-  box-shadow: 0 0 0 8px rgba(51, 178, 123, 0.12);
+:global(.admin-aside-menu-tooltip .el-popper__arrow::before) {
+  border-color: rgba(133, 208, 245, 0.3) !important;
+  background: #102c47 !important;
 }
 
 .layout-main-shell {

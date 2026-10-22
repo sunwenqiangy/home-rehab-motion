@@ -7,7 +7,7 @@
 
     <!-- 自定义导航栏 -->
     <view class="v4-navbar">
-      <view class="v4-navbar-title">👤 我的</view>
+      <view class="v4-navbar-title">我的</view>
       <view class="v4-navbar-capsule"></view>
     </view>
   </view>
@@ -18,7 +18,7 @@
 
     <!-- 个人信息 Hero -->
     <view class="v4-hero-card v4-hero-teal {{!isLoggedIn ? 'v4-guest-hero' : ''}}">
-      <view wx:if="{{!isLoggedIn}}" class="v4-guest-hero__eyebrow">HOME REHAB MOTION · 游客模式</view>
+      <view wx:if="{{!isLoggedIn}}" class="v4-guest-hero__eyebrow">安舒随行 · 游客模式</view>
       <view class="v4-profile-row">
         <view class="v4-profile-avatar" aria-label="{{isLoggedIn ? (avatarGender === 'female' ? '女性头像' : avatarGender === 'male' ? '男性头像' : '默认头像') : '游客头像'}}">
           <image wx:if="{{isLoggedIn && avatarGender === 'female'}}" class="v4-profile-avatar__image" src="../../assets/icons/mine/avatar-female.svg" mode="aspectFit" />
@@ -60,7 +60,7 @@
     <!-- 徽章入口 -->
     <view class="v4-info-panel">
       <view class="v4-info-head">
-        <view class="v4-info-title">🏅 我的徽章</view>
+        <view class="v4-info-title">我的徽章</view>
         <view wx:if="{{profileLoading}}" class="v4-skeleton-block v4-skeleton-block--chip"></view>
         <text wx:else class="v4-chip v4-chip--teal v4-chip--sm">{{badgeCountText}}</text>
       </view>
@@ -71,7 +71,7 @@
           <view class="v4-badge-name">{{item.title}}</view>
         </view>
       </view>
-      <view class="v4-badge-all-link" bindtap="onViewAllBadges">📂 进入全部徽章页 ›</view>
+      <view class="v4-badge-all-link" bindtap="onViewAllBadges">进入全部徽章页 ›</view>
     </view>
 
     <!-- 功能列表 -->

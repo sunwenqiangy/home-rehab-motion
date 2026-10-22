@@ -31,7 +31,7 @@
 
           <div class="threshold-guide" role="note">
             <span class="threshold-guide__mark">i</span>
-            <span><strong>轻微进步</strong>用于日常鼓励，<strong>明显进步</strong>用于强化反馈；明显进步阈值始终不低于轻微进步阈值。</span>
+            <span><strong>轻微进步</strong>用于日常鼓励，<strong>明显进步</strong>用于强化反馈；明显进步阈值始终不低于轻微进步阈值。平均保持时间仅在前后两次都有有效保持数据时参与比较。</span>
           </div>
 
           <el-form :model="form" class="rules-form" label-position="top">
@@ -55,11 +55,6 @@
                 <div class="metric-cell"><span class="metric-icon metric-icon--time">秒</span><span>平均保持时间提升</span></div>
                 <el-form-item><el-input-number v-model="form.durationSlightDelta" :min="0.1" :max="30" :step="0.1" controls-position="right" /><span class="input-unit">秒</span></el-form-item>
                 <el-form-item><el-input-number v-model="form.durationClearDelta" :min="form.durationSlightDelta" :max="60" :step="0.1" controls-position="right" /><span class="input-unit">秒</span></el-form-item>
-              </div>
-              <div class="threshold-row">
-                <div class="metric-cell"><span class="metric-icon metric-icon--reps">次</span><span>有效动作次数提升</span></div>
-                <el-form-item><el-input-number v-model="form.repsSlightDelta" :min="1" :max="20" controls-position="right" /><span class="input-unit">次</span></el-form-item>
-                <el-form-item><el-input-number v-model="form.repsClearDelta" :min="form.repsSlightDelta" :max="50" controls-position="right" /><span class="input-unit">次</span></el-form-item>
               </div>
             </div>
           </el-form>
@@ -109,8 +104,6 @@ const form = ref<MotivationRulesDto>({
   stabilityClearDelta: 8,
   durationSlightDelta: 0.5,
   durationClearDelta: 1.5,
-  repsSlightDelta: 1,
-  repsClearDelta: 2,
 });
 
 async function load() {

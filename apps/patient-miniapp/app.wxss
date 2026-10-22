@@ -1,8 +1,8 @@
 page {
   background:
-    radial-gradient(circle at top right, rgba(128, 203, 255, 0.2), transparent 28%),
-    linear-gradient(180deg, #f4f9ff 0%, #edf5fc 48%, #f7fbff 100%);
-  color: #16324f;
+    radial-gradient(circle at top right, rgba(99, 205, 193, 0.16), transparent 28%),
+    linear-gradient(180deg, #f5fbfa 0%, #eef8f6 48%, #f8fcfb 100%);
+  color: #173f3b;
   font-size: 32rpx;
 }
 
@@ -13,8 +13,8 @@ page {
 .surface-card {
   border-radius: 32rpx;
   background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 20rpx 48rpx rgba(34, 87, 139, 0.1);
-  border: 1rpx solid rgba(121, 175, 219, 0.18);
+  box-shadow: 0 20rpx 48rpx rgba(38, 121, 111, 0.08);
+  border: 1rpx solid rgba(146, 207, 197, 0.28);
 }
 
 .hero-card,
@@ -27,21 +27,21 @@ page {
 .action-card {
   border-radius: 32rpx;
   background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 20rpx 48rpx rgba(34, 87, 139, 0.1);
-  border: 1rpx solid rgba(121, 175, 219, 0.18);
+  box-shadow: 0 20rpx 48rpx rgba(38, 121, 111, 0.08);
+  border: 1rpx solid rgba(146, 207, 197, 0.28);
 }
 
 .section-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #17314f;
+  color: #173f3b;
 }
 
 .section-desc {
   margin-top: 10rpx;
   font-size: 24rpx;
   line-height: 1.78;
-  color: #5e7893;
+  color: #66817c;
 }
 
 .primary-btn,
@@ -59,21 +59,21 @@ page {
 }
 
 .primary-btn {
-  background: linear-gradient(135deg, #2c8fff 0%, #166ff7 100%);
+  background: linear-gradient(135deg, #3bb8ae 0%, #2b958d 100%);
   color: #ffffff;
-  box-shadow: 0 14rpx 30rpx rgba(22, 111, 247, 0.24);
+  box-shadow: 0 14rpx 30rpx rgba(43, 149, 141, 0.22);
 }
 
 .secondary-btn {
-  background: #edf5ff;
-  color: #166ff7;
-  border: 1rpx solid rgba(22, 111, 247, 0.14);
+  background: #e8f6f3;
+  color: #2b817b;
+  border: 1rpx solid #abd9d3;
 }
 
 .ghost-btn {
-  background: rgba(255, 255, 255, 0.75);
-  color: #35516f;
-  border: 1rpx solid rgba(121, 175, 219, 0.2);
+  background: #ffffff;
+  color: #2b817b;
+  border: 1rpx solid #cfe6e1;
 }
 
 .badge-pill {
@@ -83,8 +83,8 @@ page {
   min-height: 48rpx;
   padding: 0 20rpx;
   border-radius: 999rpx;
-  background: rgba(22, 111, 247, 0.1);
-  color: #166ff7;
+  background: #e8f6f3;
+  color: #2b817b;
   font-size: 24rpx;
   font-weight: 700;
   line-height: 1;
@@ -112,8 +112,8 @@ page {
 }
 
 .hero-badge {
-  background: rgba(22, 111, 247, 0.1);
-  color: #166ff7;
+  background: #e8f6f3;
+  color: #2b817b;
 }
 
 .hero-badge--light,
@@ -123,8 +123,8 @@ page {
 }
 
 .hero-time-pill {
-  background: rgba(22, 111, 247, 0.08);
-  color: #4f79a8;
+  background: #edf8f5;
+  color: #4c7770;
 }
 
 .summary-grid {
@@ -138,26 +138,26 @@ page {
   padding: 24rpx;
   border-radius: 28rpx;
   background: rgba(255, 255, 255, 0.92);
-  border: 1rpx solid rgba(121, 175, 219, 0.16);
-  box-shadow: 0 14rpx 34rpx rgba(34, 87, 139, 0.08);
+  border: 1rpx solid rgba(146, 207, 197, 0.24);
+  box-shadow: 0 14rpx 34rpx rgba(38, 121, 111, 0.06);
 }
 
 .summary-label {
   font-size: 24rpx;
-  color: #5e7893;
+  color: #66817c;
 }
 
 .summary-value {
   margin-top: 16rpx;
   font-size: 44rpx;
   font-weight: 800;
-  color: #183655;
+  color: #1d5d56;
 }
 
 .summary-foot {
   margin-top: 10rpx;
   font-size: 22rpx;
-  color: #5f7892;
+  color: #66817c;
   line-height: 1.66;
 }
 
@@ -173,25 +173,25 @@ page {
 .history-record-card__title {
   font-size: 30rpx;
   font-weight: 700;
-  color: #16324f;
+  color: #173f3b;
 }
 
 .history-record-card__desc {
   margin-top: 10rpx;
   font-size: 24rpx;
   line-height: 1.76;
-  color: #5f7892;
+  color: #66817c;
 }
 
 .list-arrow {
   font-size: 30rpx;
   font-weight: 700;
-  color: #8ca2bb;
+  color: #90aaa5;
 }
 
 .empty-text {
   text-align: center;
-  color: #7b91a8;
+  color: #78938d;
   font-size: 26rpx;
   line-height: 1.8;
 }
@@ -211,8 +211,8 @@ page {
   padding: 14rpx 18rpx;
   border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 18rpx 40rpx rgba(34, 87, 139, 0.14);
-  border: 1rpx solid rgba(121, 175, 219, 0.18);
+  box-shadow: 0 18rpx 40rpx rgba(38, 121, 111, 0.12);
+  border: 1rpx solid rgba(146, 207, 197, 0.28);
   backdrop-filter: blur(20rpx);
 }
 
@@ -225,13 +225,13 @@ page {
   gap: 8rpx;
   min-height: 82rpx;
   border-radius: 999rpx;
-  color: #7893ae;
+  color: #78938d;
   font-size: 22rpx;
 }
 
 .bottom-nav-item--active {
-  background: rgba(22, 111, 247, 0.1);
-  color: #166ff7;
+  background: #e8f6f3;
+  color: #2b817b;
   font-weight: 700;
 }
 
@@ -254,8 +254,8 @@ page {
 .bottom-nav-item__dot--active {
   width: 20rpx;
   height: 20rpx;
-  background: #166ff7;
-  box-shadow: 0 0 0 10rpx rgba(22, 111, 247, 0.12);
+  background: #2b958d;
+  box-shadow: 0 0 0 10rpx rgba(43, 149, 141, 0.12);
 }
 
 .home-page,
@@ -276,7 +276,7 @@ page {
 .history-hero,
 .profile-card,
 .analyzing-card {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(237, 245, 255, 0.94));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(237, 248, 245, 0.94));
 }
 
 .home-summary-card,

@@ -251,6 +251,8 @@ export interface MotivationSummaryDto {
   nearestBadge?: BadgeProgressDto;
   encourageText: string;
   todayTrainingState: 'not_started' | 'confirmed' | 'analyzing' | 'reported';
+  /** 今天最近一次视频训练，用于患者端继续查看分析进度或报告。 */
+  todayVideoId?: number;
   /** 今天是否已创建自主练习记录，避免重复记录入口。 */
   selfTrainingRecordedToday?: boolean;
 }
@@ -672,8 +674,6 @@ export interface MotivationRulesDto {
   stabilityClearDelta: number;
   durationSlightDelta: number;
   durationClearDelta: number;
-  repsSlightDelta: number;
-  repsClearDelta: number;
 }
 
 export interface MotivationOverviewDto {

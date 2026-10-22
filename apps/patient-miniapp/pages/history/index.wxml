@@ -98,12 +98,16 @@
         >
           <view class="v4-status-dot v4-status-dot--{{item.dotColor}}"></view>
           <view class="v4-list-body">
-            <view class="v4-list-title">{{item.actionLabel}} <text class="v4-record-type v4-record-type--{{item.status === 'self' ? 'self' : 'video'}}">{{item.recordTypeLabel}}</text></view>
+            <view class="v4-list-title">{{item.actionLabel}}</view>
             <view class="v4-list-sub">{{item.timeLabel}}</view>
           </view>
           <view wx:if="{{item.showScore}}" class="v4-list-badge v4-list-badge--{{item.dotColor}}">{{item.scoreText}}</view>
           <text wx:else class="v4-chip v4-chip--{{item.chipColor}} v4-chip--sm">{{item.chipText}}</text>
         </view>
+      </view>
+      <view wx:if="{{hasMoreHistory}}" class="v4-load-more" bindtap="onReachBottom">
+        <text wx:if="{{loadingMoreHistory}}">正在加载更多…</text>
+        <text wx:else>加载更多记录</text>
       </view>
     </block>
 

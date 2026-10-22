@@ -18,20 +18,20 @@
   margin-top: 18rpx;
   font-size: 44rpx;
   font-weight: 800;
-  color: #15314f;
+  color: #173f3b;
 }
 
 .about-hero__desc {
   margin-top: 16rpx;
   font-size: 27rpx;
   line-height: 1.85;
-  color: #566f89;
+  color: #66817c;
 }
 
 .about-section__title {
   font-size: 30rpx;
   font-weight: 700;
-  color: #17314f;
+  color: #173f3b;
 }
 
 .about-feature {
@@ -45,7 +45,7 @@
   width: 64rpx;
   height: 64rpx;
   border-radius: 18rpx;
-  background: rgba(22, 111, 247, 0.08);
+  background: #e8f6f3;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -61,14 +61,14 @@
 .about-feature__name {
   font-size: 28rpx;
   font-weight: 700;
-  color: #17314f;
+  color: #173f3b;
 }
 
 .about-feature__desc {
   margin-top: 6rpx;
   font-size: 24rpx;
   line-height: 1.7;
-  color: #5f7892;
+  color: #66817c;
 }
 
 .about-info-row {
@@ -85,13 +85,13 @@
 
 .about-info-row__label {
   font-size: 26rpx;
-  color: #6d849d;
+  color: #78938d;
 }
 
 .about-info-row__value {
   font-size: 26rpx;
   font-weight: 700;
-  color: #17314f;
+  color: #173f3b;
 }
 
 .about-notice {
@@ -107,5 +107,5 @@
   margin-top: 14rpx;
   font-size: 27rpx;
   line-height: 1.85;
-  color: #4a6580;
+  color: #52766f;
 }

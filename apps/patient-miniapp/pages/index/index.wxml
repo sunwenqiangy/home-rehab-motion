@@ -41,10 +41,10 @@
 
       <block wx:else>
       <view class="v4-hero-card">
-      <text class="v4-hero-badge">📋 今日训练</text>
+      <text class="v4-hero-badge">今日训练</text>
       <view class="v4-hero-title">{{heroTitle}}</view>
       <view class="v4-hero-sub">{{heroSub}}</view>
-      <button class="v4-btn-big v4-btn-white" bindtap="onStartToday">{{isLoggedIn ? '▶ 立即开始训练' : '登录后开始训练'}}</button>
+      <button class="v4-btn-big v4-btn-white" bindtap="onHeroAction">{{isLoggedIn ? heroActionLabel : '登录后开始训练'}}</button>
       <button wx:if="{{isLoggedIn && selfTrainingEnabled && !selfTrainingRecordedToday}}" class="home-self-record" bindtap="onRecordSelfTraining" loading="{{selfTrainingSaving}}" disabled="{{selfTrainingSaving}}">已练习？记录今天的练习 <text class="home-self-record__arrow">›</text></button>
     </view>
 
@@ -58,8 +58,8 @@
     </view>
 
     <view class="v4-card">
-      <view class="v4-card-title">⚡ 选择训练动作</view>
-      <view class="v4-card-desc">点击下方卡片，先看动作指导再开始</view>
+      <view class="v4-card-title">快捷训练</view>
+      <view class="v4-card-desc">选择一个动作，先看指导再开始练习</view>
     </view>
 
     <view class="v4-action-grid">
@@ -74,7 +74,7 @@
 
     <view class="v4-weekly-panel">
       <view class="v4-weekly-row">
-        <view class="v4-weekly-title">📈 本周训练进度</view>
+        <view class="v4-weekly-title">本周训练进度</view>
         <text class="v4-chip v4-chip-teal v4-chip-sm">{{weeklyLabel}}</text>
       </view>
       <view class="v4-weekly-sub">{{weeklyDesc}}</view>
@@ -100,7 +100,7 @@
     </view>
 
     <view class="v4-card">
-      <view class="v4-card-title">📊 最近训练</view>
+      <view class="v4-card-title">最近训练</view>
       <view wx:if="{{recentTrainings.length}}">
         <view class="v4-list-row" wx:for="{{recentTrainings}}" wx:key="videoId" data-video-id="{{item.videoId}}" data-status="{{item.status}}" data-action-type="{{item.actionType}}" bindtap="onOpenRecent">
           <view class="v4-status-dot {{item.dotClass}}"></view>

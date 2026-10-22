@@ -2,9 +2,23 @@
   <view wx:if="{{loading}}" class="self-state">正在加载练习记录…</view>
   <view wx:elif="{{failed}}" class="self-card self-state"><view>暂时无法查看练习记录</view><button class="self-retry" bindtap="onRetry">重新加载</button></view>
   <block wx:else>
-    <view class="self-hero"><view class="self-badge">✓ 自主记录</view><view class="self-hero__title">练习已记录</view><view class="self-hero__date">{{recordedText}}</view></view>
-    <view class="self-card"><view class="self-title">练习内容</view><view class="self-row"><text>练习</text><text>{{actionLabel}}</text></view><view class="self-row"><text>记录方式</text><text>自主记录</text></view><view class="self-row"><text>记录时间</text><text>{{recordedText}}</text></view></view>
-    <view class="self-card"><view class="self-title">关于这条记录</view><view class="self-copy">这条练习由您自主记录，暂无视频和动作分析结果。</view></view>
-    <view class="self-card self-next"><view class="self-title">想看看动作做得怎么样？</view><view class="self-copy">拍摄一小段完整动作，获取动作观察和建议。</view><button class="self-button" bindtap="onChooseAction">查看动作指导</button></view>
+    <view class="self-hero">
+      <view class="self-badge">自主记录</view>
+      <view class="self-hero__title">{{actionLabel}}</view>
+      <view class="self-hero__copy">已加入今日练习记录</view>
+      <view wx:if="{{recordedText}}" class="self-hero__time">记录于 {{recordedText}}</view>
+    </view>
+
+    <view class="self-note">
+      <view class="self-note__title">本条记录暂不含动作分析</view>
+      <view class="self-note__copy">未上传训练视频，因此不会生成动作观察和练习建议。</view>
+    </view>
+
+    <view class="self-card self-next">
+      <view class="self-next__eyebrow">下一次练习</view>
+      <view class="self-title">拍一段视频，看看动作表现</view>
+      <view class="self-copy">上传 30 秒内的完整动作，即可获得动作观察和建议。</view>
+      <button class="self-button" bindtap="onChooseAction">查看动作指导</button>
+    </view>
   </block>
 </view>

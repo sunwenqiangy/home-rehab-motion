@@ -131,8 +131,8 @@ export class MotivationService {
     return { id: Number(record.attendance_id), actionType: record.action_type, recordedAt: record.counted_at.toISOString() };
   }
 
-  async listSelfTraining(userId: number) {
-    const rows = await this.prisma.trainingAttendance.findMany({ where: { user_id: BigInt(userId), video_id: null }, orderBy: { counted_at: 'desc' }, take: 20 });
+  async listSelfTraining(userId: number, page = 1, pageSize = 20) {
+    const rows = await this.prisma.trainingAttendance.findMany({ where: { user_id: BigInt(userId), video_id: null }, orderBy: { counted_at: 'desc' }, skip: (page - 1) * pageSize, take: pageSize });
     return rows.map((row) => this.selfTrainingDto(row));
   }
 
@@ -261,6 +261,7 @@ export class MotivationService {
       nearestBadge,
       encourageText: this.buildEncourageText(totalTrainingDays, consecutiveTrainingDays, stage),
       todayTrainingState: todayConfirmedVideo ? resolveTodayState(todayConfirmedVideo) : todayAttendance ? 'confirmed' : 'not_started',
+      todayVideoId: todayConfirmedVideo ? Number(todayConfirmedVideo.video_id) : undefined,
       selfTrainingRecordedToday: Boolean(todaySelfTraining),
     };
   }

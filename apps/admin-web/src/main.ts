@@ -40,6 +40,7 @@ import 'element-plus/theme-chalk/el-switch.css';
 import 'element-plus/theme-chalk/el-table.css';
 import 'element-plus/theme-chalk/el-table-column.css';
 import 'element-plus/theme-chalk/el-tag.css';
+import 'element-plus/theme-chalk/el-tooltip.css';
 import 'element-plus/theme-chalk/el-upload.css';
 import App from './App.vue';
 import router from './router';

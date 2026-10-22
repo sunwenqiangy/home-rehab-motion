@@ -7,7 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class HistoryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listHistoryVideos(userId: number): Promise<HistoryVideoDto[]> {
+  async listHistoryVideos(userId: number, page = 1, pageSize = 20): Promise<HistoryVideoDto[]> {
     const videos = await this.prisma.trainingVideo.findMany({
       where: {
         user_id: BigInt(userId),
@@ -16,7 +16,8 @@ export class HistoryService {
       orderBy: {
         created_at: 'desc',
       },
-      take: 20,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       include: {
         video_evaluation_result: {
           select: {

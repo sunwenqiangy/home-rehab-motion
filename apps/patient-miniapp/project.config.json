@@ -1,5 +1,5 @@
 {
-  "description": "Home Rehab Motion patient miniapp workspace",
+  "description": "安舒随行小程序工作区",
   "packOptions": {
     "ignore": [],
     "include": []
@@ -33,7 +33,7 @@
   "compileType": "miniprogram",
   "libVersion": "3.15.2",
   "appid": "wx8a8de3cffb3333b0",
-  "projectname": "home-rehab-motion-patient-miniapp",
+  "projectname": "anshu-suixing-patient-miniapp",
   "miniprogramRoot": "./",
   "simulatorPluginLibVersion": {},
   "editorSetting": {}

@@ -101,8 +101,8 @@ page {
 }
 
 .step-item--active {
-  background: rgba(22, 111, 247, 0.12);
-  color: #166ff7;
+  background: #e2f5f2;
+  color: #2b817b;
 }
 
 /* ========== 旋转环 ========== */
@@ -345,14 +345,14 @@ page {
 }
 
 .btn-teal {
-  background: linear-gradient(135deg, #38b2ac 0%, #2c7a7b 100%);
+  background: linear-gradient(135deg, #3bb8ae 0%, #2b958d 100%);
   color: #ffffff;
-  box-shadow: 0 12rpx 28rpx rgba(44, 122, 123, 0.28);
+  box-shadow: 0 12rpx 28rpx rgba(43, 149, 141, 0.22);
 }
 
 .btn-outline {
-  background: rgba(255, 255, 255, 0.9);
-  color: #4a5568;
-  border: 2rpx solid rgba(121, 175, 219, 0.24);
-  box-shadow: 0 8rpx 20rpx rgba(34, 87, 139, 0.06);
+  background: #e8f6f3;
+  color: #2b817b;
+  border: 2rpx solid #abd9d3;
+  box-shadow: none;
 }

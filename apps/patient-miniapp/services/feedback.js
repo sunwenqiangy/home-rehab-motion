@@ -68,7 +68,6 @@ function uploadFeedbackImage(uploadTarget, filePath) {
                         return;
                     }
                     console.error('[反馈图片直传失败]', {
-                        url: uploadTarget.uploadUrl,
                         statusCode: response.statusCode,
                         response: response.data,
                     });

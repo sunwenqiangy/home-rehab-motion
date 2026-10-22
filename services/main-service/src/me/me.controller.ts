@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Query, Req } from '@nestjs/common';
 import type {
   BadgeWallDto,
   DisplaySettingsDto,
@@ -29,9 +29,15 @@ export class MeController {
   }
 
   @Get('self-training')
-  listSelfTraining(@Req() req: Request) {
+  listSelfTraining(@Req() req: Request, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
     const user = this.authService.requireUser(req, ['patient']);
-    return this.motivationService.listSelfTraining(user.userId);
+    const parsedPage = Number(page);
+    const parsedPageSize = Number(pageSize);
+    return this.motivationService.listSelfTraining(
+      user.userId,
+      Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+      Number.isSafeInteger(parsedPageSize) && parsedPageSize > 0 ? Math.min(parsedPageSize, 50) : 20,
+    );
   }
 
   @Get('self-training/:id')

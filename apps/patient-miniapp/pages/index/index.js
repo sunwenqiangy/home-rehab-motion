@@ -172,6 +172,52 @@ function buildWeekDays(weeklyCalendar) {
         stateClass: index === todayIndex ? 'v4-day-pill-today' : '',
     }));
 }
+function buildHeroAction(summary) {
+    const videoId = Number(summary?.todayVideoId || 0);
+    if (summary?.todayTrainingState === 'analyzing' && videoId) {
+        return {
+            title: '本次训练分析中',
+            sub: '视频已保存，系统正在整理本次动作观察。',
+            label: '查看分析进度',
+            type: 'analyzing',
+            videoId,
+        };
+    }
+    if (summary?.todayTrainingState === 'reported' && videoId) {
+        return {
+            title: '本次训练报告已生成',
+            sub: '查看本段动作表现和下一次练习建议。',
+            label: '查看本次报告',
+            type: 'report',
+            videoId,
+        };
+    }
+    if (summary?.selfTrainingRecordedToday) {
+        return {
+            title: '今天已记录练习',
+            sub: '本次练习已保存，可随时回看今天的记录。',
+            label: '查看今日记录',
+            type: 'history',
+            videoId: 0,
+        };
+    }
+    if (summary?.todayTrainingState === 'confirmed') {
+        return {
+            title: '今天已记录练习',
+            sub: '本次训练已保存，分析结果会在完成后显示。',
+            label: '查看训练记录',
+            type: 'history',
+            videoId: 0,
+        };
+    }
+    return {
+        title: '今天还没训练',
+        sub: '完成 1 次训练后，系统会自动分析动作并给出建议。',
+        label: '开始今天的训练',
+        type: 'start',
+        videoId: 0,
+    };
+}
 Page({
     data: {
         statusBarHeight: 20,
@@ -187,6 +233,9 @@ Page({
         showMessageReminder: false,
         heroTitle: '今天还没训练',
         heroSub: '完成 1 次训练即可达标，系统会自动分析动作并给出建议。',
+        heroActionLabel: '开始今天的训练',
+        heroActionType: 'start',
+        heroVideoId: 0,
         feedbackTitle: '消息提醒',
         feedbackDesc: '暂时没有新的消息。',
         feedbackActionText: '查看消息',
@@ -345,6 +394,7 @@ Page({
             }
             const stage = buildStageItems(trainingSummary?.stage || 'corrective');
             const weeklyProgress = trainingSummary?.weeklyProgress;
+            const heroAction = buildHeroAction(trainingSummary);
             const sortedHistory = [...historyItems].sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
             const recentTrainings = buildRecentItems(sortedHistory.map((item) => ({
                 videoId: item.videoId,
@@ -357,10 +407,11 @@ Page({
             this.setData({
                 homeLoadFailed: false,
                 greetingText: profile?.nickname ? `👋 您好，${profile.nickname}` : '👋 您好',
-                heroTitle: trainingSummary?.todayTrainingState === 'not_started' ? '今天还没训练' : trainingSummary ? '今天已记录练习' : '开始今天的训练',
-                heroSub: trainingSummary?.encourageText || (trainingSummary?.todayTrainingState === 'not_started'
-                    ? '完成 1 次训练后，系统会自动分析动作并给出建议。'
-                    : '选择训练动作，按自己的节奏开始练习。'),
+                heroTitle: heroAction.title,
+                heroSub: heroAction.sub,
+                heroActionLabel: heroAction.label,
+                heroActionType: heroAction.type,
+                heroVideoId: heroAction.videoId,
                 quickActions,
                 defaultAction: quickActions[0] || this.data.defaultAction,
                 weeklyLabel: weeklyProgress?.label || `0 / ${cfg.weeklyTarget} 天`,
@@ -390,6 +441,9 @@ Page({
                 defaultAction: quickActions[0] || this.data.defaultAction,
                 recentTrainings: [],
                 selfTrainingRecordedToday: false,
+                heroActionLabel: '开始今天的训练',
+                heroActionType: 'start',
+                heroVideoId: 0,
             });
         }
         finally {
@@ -428,6 +482,25 @@ Page({
             } catch (error) { wx.showToast({ title: error.userMessage || '记录失败，请稍后重试', icon: 'none' }); }
             finally { this.setData({ selfTrainingSaving: false }); }
         } });
+    },
+    onHeroAction() {
+        if (!this.requireLogin()) {
+            return;
+        }
+        const { heroActionType, heroVideoId } = this.data;
+        if (heroActionType === 'analyzing' && heroVideoId) {
+            wx.navigateTo({ url: `/pages/analyzing/index?videoId=${heroVideoId}` });
+            return;
+        }
+        if (heroActionType === 'report' && heroVideoId) {
+            wx.navigateTo({ url: `/pages/report/index?videoId=${heroVideoId}` });
+            return;
+        }
+        if (heroActionType === 'history') {
+            wx.navigateTo({ url: '/pages/history/index' });
+            return;
+        }
+        this.onStartToday();
     },
     onStartToday() {
         if (!this.requireLogin()) {
