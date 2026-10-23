@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const feedback_1 = require("../../services/feedback");
 const report_1 = require("../../services/report");
 const video_1 = require("../../services/video");
+const videoFailure_1 = require("../../utils/videoFailure");
 const ACTION_LABEL_MAP = {
     abdominal_crunch: '缩腹运动',
     pelvic_tilt: '骨盆倾斜',
@@ -31,6 +32,8 @@ Page({
         isAnalysisFailed: false,
         failureTitle: '',
         failureReason: '',
+        failureCanRetryUpload: false,
+        failureNeedsGuidance: false,
         feedbackEntryLoading: false,
         activeFeedbackId: 0,
         feedbackEntryLabel: '提交反馈',
@@ -163,18 +166,14 @@ Page({
                 const status = await (0, video_1.getVideoStatus)(videoId);
                 const isAnalysisFailed = status.status === 'failed' || status.status === 'quality_insufficient';
                 if (isAnalysisFailed) {
-                    const trunkKeypointsUnstable = `${status.failReason || ''}`.includes('关键躯干点') || `${status.failReason || ''}`.includes('肩髋');
+                    const failure = (0, videoFailure_1.getVideoFailurePresentation)(status.status, status.failReason);
                     this.setData({
                         loadFailed: false,
                         isAnalysisFailed: true,
-                        failureTitle: status.status === 'quality_insufficient'
-                            ? (trunkKeypointsUnstable ? '拍摄画面暂不适合评估' : '视频质量不足，暂未生成报告')
-                            : '本次训练已记录，动作观察暂不可用',
-                        failureReason: status.status === 'quality_insufficient'
-                            ? (trunkKeypointsUnstable
-                                ? '部分画面未能稳定识别到肩部或髋部。请将肩膀到髋部完整拍入画面，避免动作中移出镜头或被遮挡后重新上传。'
-                                : (status.failReason || '请确保动作完整入镜、画面清晰稳定后再重新上传。'))
-                            : '视频已保存，不影响训练记录。系统暂时无法给出可靠的动作观察；您可以稍后查看记录，无需为了获得评分而重复训练。',
+                        failureTitle: failure.title,
+                        failureReason: `${failure.tip} ${failure.action}`,
+                        failureCanRetryUpload: Boolean(failure.canRetryUpload),
+                        failureNeedsGuidance: Boolean(failure.showGuidanceAction),
                     });
                 }
                 else {

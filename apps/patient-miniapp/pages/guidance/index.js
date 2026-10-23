@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const guidance_1 = require("../../services/guidance");
+const appConfig_1 = require("../../services/appConfig");
 const env_1 = require("../../config/env");
 const FILTERS = [
   { label: '全部', value: 'all' },
@@ -56,8 +57,16 @@ Page({
   async loadGuidance() {
     this.setData({ loading: true, loadFailed: false, errorTitle: '', errorDesc: '', items: [], filteredItems: [] });
     try {
-      const items = await (0, guidance_1.getGuidanceList)();
-      const viewItems = items.map(toViewItem);
+      const [items, configResult] = await Promise.all([
+        (0, guidance_1.getGuidanceList)(),
+        (0, appConfig_1.fetchAppConfig)().catch(() => null),
+      ]);
+      if (configResult) getApp().globalData.appConfig = configResult;
+      const supported = Array.isArray(configResult?.supportedActionTypes) && configResult.supportedActionTypes.length
+        ? new Set(configResult.supportedActionTypes)
+        : null;
+      const filteredItems = supported ? items.filter((item) => supported.has(item.actionType)) : items;
+      const viewItems = filteredItems.map(toViewItem);
       this.setData({ items: viewItems, filteredItems: this.filterItems(viewItems, this.data.activeFilter) });
     }
     catch (error) {

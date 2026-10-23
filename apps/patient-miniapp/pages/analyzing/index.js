@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const session_1 = require("../../store/session");
 const video_1 = require("../../services/video");
+const videoFailure_1 = require("../../utils/videoFailure");
 const POLL_INTERVAL_MS = 3000;
 const MAX_WAIT_MS = 3 * 60 * 1000;
 let pollTimer;
@@ -62,59 +63,7 @@ function getProgressPresentation(status, progressStage, failed, timeoutReached, 
     return presentations[progressStage] || presentations.waiting_for_worker;
 }
 function failurePresentation(status, failReason) {
-const reason = `${failReason || ''}`.toLowerCase();
-if (status === 'quality_insufficient') {
-const uploadIncomplete = reason.includes('视频上传不完整')
-|| reason.includes('视频文件信息不一致')
-|| reason.includes('缺少原视频文件大小');
-if (uploadIncomplete) {
-return {
-title: '视频上传不完整',
-tip: '手机原文件大小与服务器收到的文件不一致，系统没有开始分析。',
-action: '请检查网络后从相册重新选择原视频并上传，不要使用聊天软件转发或剪辑过程中生成的临时文件。',
-};
-}
-const incompleteDecode = reason.includes('视频解码不完整') || reason.includes('video_decode_incomplete');
-if (incompleteDecode) {
-return {
-title: '视频文件不完整',
-tip: '视频时长信息与实际可读取画面不一致，继续分析会遗漏部分动作。',
-action: '请从相册重新选择原视频，确认预览可以完整播放后再上传；不要使用聊天软件转发或剪辑过程中生成的临时文件。',
-};
-}
-const trunkKeypointsUnstable = reason.includes('关键躯干点') || reason.includes('肩髋');
-return trunkKeypointsUnstable
-? {
-title: '拍摄画面暂不适合评估',
-tip: '部分画面未能稳定识别到肩部或髋部，暂时无法可靠分析本次动作。',
-action: '请将肩膀到髋部完整拍入画面，动作过程中保持身体不移出镜头，并避免遮挡后重新上传。',
-}
-: {
-title: '视频质量不足',
-tip: '请确保动作完整入镜、光线清晰后重新上传。',
-action: '请回到指导页确认拍摄角度、入镜范围和光线，再重新上传。',
-};
-}
-
-    if (reason.includes('analysis_queue_unavailable') || reason.includes('分析服务')) {
-        return {
-            title: '分析服务暂时繁忙',
-            tip: '视频已经保存，不需要重新拍摄。请稍后到训练记录查看，系统恢复后可再次提交。',
-            action: '建议等待几分钟后从训练记录重新查看；如果仍未恢复，再重新上传。',
-        };
-    }
-    if (reason.includes('视频文件尚未上传')) {
-        return {
-            title: '视频上传未完成',
-            tip: '视频文件可能未完整传到服务器，请重新上传这一段视频。',
-            action: '请检查网络连接后重新上传。',
-        };
-    }
-    return {
-        title: '本次训练已记录',
-        tip: '视频已经保存，但本次动作观察没有完成；不影响您的训练记录。',
-        action: '可先查看训练记录，不必为了评分重新练习；有需要时再上传清晰视频。',
-    };
+    return (0, videoFailure_1.getVideoFailurePresentation)(status, failReason);
 }
 function buildStatusSteps(status, progressStage) {
     const steps = [
@@ -169,6 +118,7 @@ Page({
         statusLabel: '等待分析资源',
         failed: false,
         canRetryUpload: false,
+        showGuidanceAction: false,
         canRetryConfirm: false,
         timeoutReached: false,
         showHistoryAction: false,
@@ -369,7 +319,8 @@ Page({
                 status: result.status,
                 progressStage,
                 failed,
-                canRetryUpload: failed,
+                canRetryUpload: failed && Boolean(failure?.canRetryUpload),
+                showGuidanceAction: failed && Boolean(failure?.showGuidanceAction),
                 canRetryConfirm: false,
                 timeoutReached,
                 showHistoryAction: timeoutReached || failed || result.status === 'review_required',
@@ -453,6 +404,9 @@ Page({
             ? `?actionType=${recentUploadMeta.actionType}`
             : '';
         wx.redirectTo({ url: `/pages/upload/index${actionQuery}` });
+    },
+    onViewGuidance() {
+        wx.redirectTo({ url: `/pages/guidance/detail?actionType=${encodeURIComponent(this.data.actionType)}` });
     },
     onViewHistory() {
         wx.redirectTo({ url: '/pages/history/index' });

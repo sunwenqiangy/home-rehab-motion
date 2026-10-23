@@ -29,8 +29,9 @@
     <view class="rp-loading__sub">{{failureReason}}</view>
     <view class="rp-failure-result__tip">本次训练已计入训练日。视频分析是否成功不影响您的练习记录；如想再次拍摄，可在方便时尝试，不必勉强调整动作幅度。</view>
     <view class="rp-loading__actions">
-      <button class="btn-big btn-teal" bindtap="onViewHistory">查看训练记录</button>
-      <button class="btn-big btn-outline" bindtap="onRetryUpload">有需要时重新上传</button>
+      <button wx:if="{{failureNeedsGuidance}}" class="btn-big btn-teal" bindtap="onViewGuidance">查看拍摄要求</button>
+      <button wx:else class="btn-big btn-teal" bindtap="onViewHistory">查看训练记录</button>
+      <button wx:if="{{failureCanRetryUpload}}" class="btn-big btn-outline" bindtap="onRetryUpload">有需要时重新上传</button>
     </view>
   </view>
 

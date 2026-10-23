@@ -78,10 +78,17 @@ export class HistoryService {
 
   private resolvePatientFailReason(status: string, failReason: string | null): string | undefined {
     if (status === 'quality_insufficient') {
+      const normalized = (failReason || '').toLowerCase();
+      if (normalized.includes('视频上传不完整') || normalized.includes('视频文件信息不一致') || normalized.includes('缺少原视频文件大小')) {
+        return '训练已记录，但视频文件未完整上传；请重新选择手机里的原视频。';
+      }
+      if (normalized.includes('视频解码不完整') || normalized.includes('video_decode_incomplete')) {
+        return '训练已记录，但视频画面不完整；请确认原视频可完整播放后再上传。';
+      }
       const trunkKeypointsUnstable = (failReason || '').includes('关键躯干点') || (failReason || '').includes('肩髋');
       return trunkKeypointsUnstable
-        ? '部分画面未能稳定识别到肩部或髋部，请调整取景范围并避免遮挡后重新上传。'
-        : '视频质量不足，请按拍摄要求重新上传。';
+        ? '训练已记录，但部分画面未识别到肩部或髋部；请先查看拍摄要求。'
+        : '训练已记录，但暂未生成可靠的动作观察；请先查看拍摄要求。';
     }
 
     if (status === 'failed') {
@@ -91,12 +98,12 @@ export class HistoryService {
 
       const normalized = failReason.toLowerCase();
       if (normalized.includes('timeout')) {
-        return '分析等待超时，请重新上传后再试。';
+        return '训练已记录，分析等待时间较长；请稍后从训练记录查看。';
       }
       if (normalized.includes('quality') || normalized.includes('姿势') || normalized.includes('角度')) {
-        return '视频质量不足，请按拍摄要求重新上传。';
+        return '训练已记录，但暂未生成可靠的动作观察；请先查看拍摄要求。';
       }
-      return '分析暂未完成，请重新上传后再试。';
+      return '训练已记录，动作观察暂未完成；请稍后从训练记录查看。';
     }
 
     return undefined;

@@ -60,19 +60,19 @@
         </el-form-item>
 
         <el-form-item label="每周目标天数">
-          <el-input-number v-model="form.weeklyTarget" :min="1" :max="14" :step="1" />
-          <div class="form-hint">患者端首页的每周训练目标显示值</div>
+          <el-input-number v-model="form.weeklyTarget" :min="1" :max="7" :step="1" />
+          <div class="form-hint">患者端首页的每周训练目标显示值，按一周最多 7 天计算</div>
         </el-form-item>
 
         <el-divider content-position="left">动作类型</el-divider>
 
         <el-form-item label="支持的动作类型">
-          <el-checkbox-group v-model="form.supportedActionTypes">
+          <el-checkbox-group v-model="form.supportedActionTypes" :min="1">
             <el-checkbox label="abdominal_crunch">缩腹运动</el-checkbox>
             <el-checkbox label="pelvic_tilt">骨盆倾斜</el-checkbox>
             <el-checkbox label="knee_rotation">膝关节旋转</el-checkbox>
           </el-checkbox-group>
-          <div class="form-hint">控制患者端可选择的动作类型</div>
+          <div class="form-hint">控制患者端可选择的动作类型，至少保留一种动作</div>
         </el-form-item>
       </el-form>
     </el-card>

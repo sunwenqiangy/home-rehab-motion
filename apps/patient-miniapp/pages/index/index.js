@@ -26,9 +26,14 @@ function getAppConfig() {
     return app.globalData.appConfig || appConfig_1.DEFAULT_APP_CONFIG;
 }
 function buildQuickActions() {
-    // 首页固定展示当前已运营的三类动作；接口配置仍用于训练规则、周目标等动态数据，
-    // 避免后台误配置额外动作导致患者看到没有完整指导与分析能力的入口。
-    const supported = ['abdominal_crunch', 'pelvic_tilt', 'knee_rotation'];
+    const configured = getAppConfig().supportedActionTypes;
+    // 后台配置用于控制患者端入口；若配置暂未加载或为空，保留三类正式动作作为兜底。
+    const configuredSupported = Array.isArray(configured)
+        ? configured.filter((actionType) => ACTION_LABEL_MAP[actionType])
+        : [];
+    const supported = configuredSupported.length
+        ? configuredSupported
+        : ['abdominal_crunch', 'pelvic_tilt', 'knee_rotation'];
     return supported.map((actionType) => ({
         actionType,
         iconUrl: ACTION_ICON_MAP[actionType] || '',
@@ -50,6 +55,7 @@ const STATUS_LABEL_MAP = {
     completed: '已完成',
     failed: '分析失败',
     quality_insufficient: '质量不足',
+    review_required: '待复核',
 };
 function formatTime(dateText) {
     if (!dateText)
@@ -542,6 +548,10 @@ Page({
         }
         if (status === 'processing' || status === 'queued' || status === 'pending' || status === 'uploading') {
             wx.navigateTo({ url: `/pages/analyzing/index?videoId=${videoId}` });
+            return;
+        }
+        if (status === 'failed' || status === 'quality_insufficient' || status === 'review_required') {
+            wx.navigateTo({ url: `/pages/report/index?videoId=${videoId}` });
             return;
         }
         wx.redirectTo({ url: `/pages/upload/index?actionType=${actionType}` });
