@@ -69,8 +69,8 @@
           <el-table-column label="基础信息" min-width="130">
             <template #default="{ row }">{{ row.gender }}<span v-if="row.age"> · {{ row.age }} 岁</span></template>
           </el-table-column>
-          <el-table-column prop="registeredAt" label="注册时间" min-width="165">
-            <template #default="{ row }">{{ formatDate(row.registeredAt) }}</template>
+          <el-table-column prop="registeredAt" label="注册时间" min-width="190">
+            <template #default="{ row }">{{ formatDateTime(row.registeredAt) }}</template>
           </el-table-column>
           <el-table-column prop="totalTrainingCount" label="训练次数" width="110" />
           <el-table-column label="最近训练" min-width="165">
@@ -123,6 +123,18 @@ const keyword = ref('');
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value));
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(date);
+  const fields = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${fields.year}年${fields.month}月${fields.day}日 ${fields.hour}:${fields.minute}`;
 }
 
 function gradeClass(grade: string) {

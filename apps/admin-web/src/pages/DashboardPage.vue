@@ -51,7 +51,7 @@
 
     <el-card class="surface-card" shadow="never">
       <template #header><div class="section-header"><div><div class="section-header__title">需要关注的训练</div><div class="section-header__subtitle">优先展示分析失败、质量不足和仍在处理的训练记录。</div></div><el-button type="primary" plain @click="router.push('/videos')">查看全部</el-button></div></template>
-      <div class="table-shell"><el-table :data="recentVideos" stripe empty-text="当前没有需要关注的训练记录"><el-table-column prop="videoId" label="视频 ID" width="95"/><el-table-column label="动作类型" min-width="150"><template #default="{ row }">{{ actionTypeLabel(row.actionType) }}</template></el-table-column><el-table-column label="患者" min-width="130"><template #default="{ row }">{{ row.patientName || '未命名患者' }}</template></el-table-column><el-table-column label="分析状态" width="130"><template #default="{ row }"><span class="soft-tag" :class="tagClass(row.status)">{{ statusLabel(row.status) }}</span></template></el-table-column><el-table-column prop="uploadedAt" label="上传时间" min-width="180"/><el-table-column label="操作" width="110" fixed="right"><template #default="{ row }"><el-button type="primary" link @click="router.push(`/videos/${row.videoId}`)">查看详情</el-button></template></el-table-column></el-table></div>
+      <div class="table-shell"><el-table :data="recentVideos" stripe empty-text="当前没有需要关注的训练记录"><el-table-column prop="videoId" label="视频 ID" width="95"/><el-table-column label="动作类型" min-width="150"><template #default="{ row }">{{ actionTypeLabel(row.actionType) }}</template></el-table-column><el-table-column label="患者" min-width="130"><template #default="{ row }">{{ row.patientName || '未命名患者' }}</template></el-table-column><el-table-column label="分析状态" width="130"><template #default="{ row }"><span class="soft-tag" :class="tagClass(row.status)">{{ statusLabel(row.status) }}</span></template></el-table-column><el-table-column label="上传时间" min-width="190"><template #default="{ row }">{{ formatDateTime(row.uploadedAt) }}</template></el-table-column><el-table-column label="操作" width="110" fixed="right"><template #default="{ row }"><el-button type="primary" link @click="router.push(`/videos/${row.videoId}`)">查看详情</el-button></template></el-table-column></el-table></div>
     </el-card>
   </div>
 </template>
@@ -119,6 +119,17 @@ function showTrendTooltip(item: AdminDashboardOverview['trend'][number], event: 
 function moveTrendTooltip(event: MouseEvent) { if (trendTooltip.value) trendTooltip.value = { ...trendTooltip.value, ...getTrendTooltipPosition(event) }; }
 function hideTrendTooltip() { hoveredTrendDate.value = ''; trendTooltip.value = null; }
 function formatTrendDate(value: string) { return value.slice(5).replace('-', '/'); }
+function formatDateTime(value?: string) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(date);
+  const fields = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${fields.year}年${fields.month}月${fields.day}日 ${fields.hour}:${fields.minute}`;
+}
 function toggleTrendSeries(key: TrendSeriesKey) { visibleTrendSeries.value = visibleTrendSeries.value.includes(key) ? visibleTrendSeries.value.filter((item) => item !== key) : [...visibleTrendSeries.value, key]; }
 function actionTypeLabel(type: TrainingActionType) { return ({ abdominal_crunch: '缩腹运动', pelvic_tilt: '骨盆倾斜', knee_rotation: '膝关节旋转' } as Record<string, string>)[type] || type; }
 function statusLabel(status: AnalysisStatus) { return (ANALYSIS_STATUS_LABELS as Record<string, string>)[status] || status; }

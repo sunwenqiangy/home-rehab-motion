@@ -6,10 +6,10 @@
           <div class="page-hero__eyebrow">Patient Profile</div>
           <h1 class="page-hero__title">患者详情</h1>
           <p class="page-hero__subtitle">统一查看患者基础资料、近期训练表现和评分变化；训练记录可直接进入视频详情复核。</p>
-          <div class="page-hero__meta"><span class="page-pill">最近 30 天训练趋势</span><span class="page-pill">评分范围 0–100 分</span></div>
+          <div class="page-hero__meta"><span class="page-pill">训练评分趋势</span><span class="page-pill">评分范围 0–100 分</span></div>
         </div>
         <div class="page-hero__side">
-          <div class="hero-glass-card"><div class="hero-glass-card__label">最近 30 天完成训练</div><div class="hero-glass-card__value">{{ recentTrendItems.length }}</div><div class="hero-glass-card__hint">仅统计已生成评分的训练记录</div></div>
+          <div class="hero-glass-card"><div class="hero-glass-card__label">{{ trendRange === 'all' ? '历史完成训练' : '近 30 天完成训练' }}</div><div class="hero-glass-card__value">{{ visibleTrendItems.length }}</div><div class="hero-glass-card__hint">仅统计已生成评分的训练记录</div></div>
         </div>
       </div>
     </section>
@@ -20,7 +20,7 @@
       <aside class="profile-card">
         <span class="profile-card__avatar" :class="{ 'profile-card__avatar--male': detail?.gender === '男', 'profile-card__avatar--female': detail?.gender === '女' }">{{ detail?.name?.slice(0, 1) || '患' }}</span>
         <div><strong>{{ detail?.name || '-' }}</strong><p>患者 ID #{{ detail?.patientId || '-' }}</p><p>{{ detail?.gender || '未填写' }}<span v-if="detail?.age"> · {{ detail.age }} 岁</span></p></div>
-        <div class="profile-card__fields"><div><span>注册时间</span><strong>{{ detail ? formatDate(detail.registeredAt) : '-' }}</strong></div><div><span>联系电话</span><strong>{{ detail?.phone || '未填写' }}</strong></div><div><span>微信标识</span><strong class="profile-card__openid">{{ detail?.openid || '-' }}</strong></div></div>
+        <div class="profile-card__fields"><div><span>注册时间</span><strong>{{ detail ? formatDateTime(detail.registeredAt) : '-' }}</strong></div><div><span>联系电话</span><strong>{{ detail?.phone || '未填写' }}</strong></div><div><span>微信标识</span><strong class="profile-card__openid">{{ detail?.openid || '-' }}</strong></div></div>
       </aside>
       <div class="training-panel">
         <div class="training-panel__head"><div><span class="training-panel__eyebrow">TRAINING OVERVIEW</span><h2>训练概览</h2></div><span v-if="detail?.trainingSummary.latestGrade" class="soft-tag" :class="gradeClass(detail.trainingSummary.latestGrade)">最近评级：{{ detail.trainingSummary.latestGrade }}</span></div>
@@ -33,14 +33,16 @@
         <div class="trend-chart">
           <div class="trend-chart__head">
             <div>
-              <strong>最近 30 天评分趋势</strong>
-              <small>仅展示完成分析的训练；切换动作可查看单项表现。</small>
+              <strong>{{ trendRange === 'all' ? '历史评分趋势' : '最近 30 天评分趋势' }}</strong>
+              <small>仅展示完成分析的训练；当前范围内共 {{ visibleTrendItems.length }} 条，同日多条记录按上传顺序展开。</small>
             </div>
             <div class="trend-chart__filters">
+              <button type="button" :class="{ active: trendRange === '30d' }" @click="trendRange = '30d'">近 30 天</button>
+              <button type="button" :class="{ active: trendRange === 'all' }" @click="trendRange = 'all'">全部历史</button>
               <button v-for="option in actionFilters" :key="option.value" type="button" :class="{ active: actionFilter === option.value }" @click="actionFilter = option.value">{{ option.label }}</button>
             </div>
           </div>
-          <template v-if="recentTrendItems.length">
+          <template v-if="visibleTrendItems.length">
             <div class="trend-chart__insights">
               <div><span>最新得分</span><strong>{{ latestTrendPoint ? formatScore(latestTrendPoint.score) : '—' }}<small v-if="latestTrendPoint">分</small></strong></div>
               <div><span>本期变化</span><strong :class="{ 'trend-chart__delta--up': (scoreChange || 0) > 0, 'trend-chart__delta--down': (scoreChange || 0) < 0 }">{{ scoreChange == null ? '—' : formatSignedScore(scoreChange) }}<small v-if="scoreChange != null">分</small></strong></div>
@@ -60,13 +62,13 @@
                 <g v-for="point in chartPointsData" :key="point.videoId" class="trend-chart__hit" :class="{ active: activeTrendPoint?.videoId === point.videoId }" tabindex="0" @mouseenter="activeTrendPoint = point" @focus="activeTrendPoint = point" @click="activeTrendPoint = point">
                   <circle :cx="point.x" :cy="point.y" r="11" class="trend-chart__halo" />
                   <circle :cx="point.x" :cy="point.y" :r="activeTrendPoint?.videoId === point.videoId ? 6.5 : 5" :class="`trend-chart__point trend-chart__point--${gradeTone(point.grade)}`" />
-                  <title>{{ formatDate(point.uploadedAt) }} · {{ actionTypeLabel(point.actionType) }} · {{ formatScore(point.score) }} 分 · {{ point.grade || '未评级' }}</title>
+                  <title>{{ formatDateTime(point.uploadedAt) }} · {{ actionTypeLabel(point.actionType) }} · {{ formatScore(point.score) }} 分 · {{ point.grade || '未评级' }}</title>
                 </g>
               </svg>
-              <div class="trend-chart__axis"><span>{{ chartStartLabel }}</span><span>今天</span></div>
+              <div class="trend-chart__axis"><span>{{ chartStartLabel }}</span><span>{{ chartEndLabel }}</span></div>
             </div>
             <div v-if="trendDisplayPoint" class="trend-chart__detail">
-              <span class="trend-chart__detail-date">{{ formatDate(trendDisplayPoint.uploadedAt) }}</span>
+              <span class="trend-chart__detail-date">{{ formatDateTime(trendDisplayPoint.uploadedAt) }}</span>
               <strong>{{ formatScore(trendDisplayPoint.score) }} 分</strong>
               <span class="soft-tag" :class="gradeClass(trendDisplayPoint.grade || '')">{{ trendDisplayPoint.grade || '未评级' }}</span>
               <span>{{ actionTypeLabel(trendDisplayPoint.actionType) }}</span>
@@ -80,14 +82,27 @@
     <el-card class="surface-card" shadow="never">
       <template #header><div class="section-header"><div><div class="section-header__title">训练记录</div><div class="section-header__subtitle">点击任意记录进入视频详情，查看动作分析与失败原因。</div></div></div></template>
       <div class="table-shell">
-        <el-table :data="detail?.videos || []" stripe empty-text="该患者暂无训练记录">
+        <el-table :data="paginatedVideos" stripe empty-text="该患者暂无训练记录">
           <el-table-column prop="videoId" label="视频 ID" width="100" />
           <el-table-column label="动作类型" min-width="150"><template #default="{ row }">{{ actionTypeLabel(row.actionType) }}</template></el-table-column>
-          <el-table-column label="上传时间" min-width="170"><template #default="{ row }">{{ formatDate(row.uploadedAt) }}</template></el-table-column>
+          <el-table-column label="上传时间" min-width="190"><template #default="{ row }">{{ formatDateTime(row.uploadedAt) }}</template></el-table-column>
           <el-table-column label="分析状态" width="130"><template #default="{ row }"><span class="soft-tag" :class="statusClass(row.status)">{{ statusLabel(row.status) }}</span></template></el-table-column>
           <el-table-column label="评分 / 评级" min-width="130"><template #default="{ row }"><span v-if="row.grade" class="soft-tag" :class="gradeClass(row.grade)">{{ row.grade }} {{ row.averageScore ?? '-' }}</span><span v-else>—</span></template></el-table-column>
           <el-table-column label="操作" width="110" fixed="right"><template #default="{ row }"><el-button type="primary" link @click="router.push(`/videos/${row.videoId}`)">查看视频</el-button></template></el-table-column>
         </el-table>
+      </div>
+      <div v-if="trainingVideos.length" class="pagination-row">
+        <span class="pagination-row__total">共 {{ trainingVideos.length }} 条</span>
+        <el-pagination
+          v-model:current-page="trainingPage"
+          v-model:page-size="trainingPageSize"
+          :page-sizes="[10, 20, 50]"
+          :total="trainingVideos.length"
+          :pager-count="5"
+          small
+          background
+          layout="total, sizes, prev, pager, next"
+        />
       </div>
     </el-card>
 
@@ -106,7 +121,10 @@ const route = useRoute();
 const router = useRouter();
 const detail = ref<PatientDetail | null>(null);
 const loading = ref(false);
+const trendRange = ref<'30d' | 'all'>('all');
 const actionFilter = ref<'all' | TrainingActionType>('all');
+const trainingPage = ref(1);
+const trainingPageSize = ref(10);
 const activeTrendPoint = ref<PatientDetail['scoreTrend'][number] | null>(null);
 const actionFilters: Array<{ value: 'all' | TrainingActionType; label: string }> = [
   { value: 'all', label: '全部动作' },
@@ -114,18 +132,26 @@ const actionFilters: Array<{ value: 'all' | TrainingActionType; label: string }>
   { value: 'pelvic_tilt', label: '骨盆倾斜' },
   { value: 'knee_rotation', label: '膝关节旋转' },
 ];
+const trainingVideos = computed(() => detail.value?.videos || []);
+const paginatedVideos = computed(() => {
+  const start = (trainingPage.value - 1) * trainingPageSize.value;
+  return trainingVideos.value.slice(start, start + trainingPageSize.value);
+});
 const thirtyDaysAgo = computed(() => {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
   date.setDate(date.getDate() - 29);
   return date;
 });
-const recentTrendItems = computed(() => (detail.value?.scoreTrend || []).filter((item) => {
+const allTrendItems = computed(() => (detail.value?.scoreTrend || []).filter((item) => {
+  return actionFilter.value === 'all' || item.actionType === actionFilter.value;
+}));
+const visibleTrendItems = computed(() => allTrendItems.value.filter((item) => {
   const uploadedAt = new Date(item.uploadedAt);
-  return uploadedAt >= thirtyDaysAgo.value && (actionFilter.value === 'all' || item.actionType === actionFilter.value);
+  return trendRange.value === 'all' || uploadedAt >= thirtyDaysAgo.value;
 }));
 const trendDomain = computed(() => {
-  const scores = recentTrendItems.value.map((item) => item.score);
+  const scores = visibleTrendItems.value.map((item) => item.score);
   if (!scores.length) return { min: 0, max: 100, ticks: [0, 50, 100] };
   const rawMin = Math.min(...scores);
   const rawMax = Math.max(...scores);
@@ -135,15 +161,45 @@ const trendDomain = computed(() => {
   const safeMax = max <= min ? Math.min(100, min + 10) : max;
   return { min, max: safeMax, ticks: [min, Math.round((min + safeMax) / 2), safeMax] };
 });
-const chartPointsData = computed(() => recentTrendItems.value.map((item) => {
-  const rangeStart = thirtyDaysAgo.value.getTime();
-  const rangeEnd = new Date().getTime();
-  const x = rangeEnd === rangeStart ? 40 : 40 + ((new Date(item.uploadedAt).getTime() - rangeStart) / (rangeEnd - rangeStart)) * 560;
-  return { ...item, x: Math.max(40, Math.min(600, x)), y: chartY(item.score) };
-}));
+const chartPointsData = computed(() => {
+  const timestamps = visibleTrendItems.value.map((item) => new Date(item.uploadedAt).getTime()).filter(Number.isFinite);
+  const rangeStart = trendRange.value === 'all' && timestamps.length ? Math.min(...timestamps) : thirtyDaysAgo.value.getTime();
+  const latestTimestamp = timestamps.length ? Math.max(...timestamps) : Date.now();
+  const rangeEnd = trendRange.value === 'all' ? Math.max(rangeStart + 24 * 60 * 60 * 1000, latestTimestamp) : Date.now();
+  const points = [...visibleTrendItems.value]
+    .sort((left, right) => new Date(left.uploadedAt).getTime() - new Date(right.uploadedAt).getTime())
+    .map((item) => {
+      const x = rangeEnd === rangeStart ? 40 : 40 + ((new Date(item.uploadedAt).getTime() - rangeStart) / (rangeEnd - rangeStart)) * 560;
+      return { ...item, x: Math.max(40, Math.min(600, x)), y: chartY(item.score) };
+    });
+
+  // 保留真实时间顺序；时间相同或非常接近的记录按顺序拉开，避免图点无法点击或辨认。
+  const minimumGap = points.length > 1 ? Math.min(48, 560 / (points.length - 1)) : 0;
+  const spacedPoints = points.reduce<typeof points>((result, point) => {
+    const previousPoint = result.at(-1);
+    result.push({ ...point, x: previousPoint ? Math.max(point.x, previousPoint.x + minimumGap) : point.x });
+    return result;
+  }, []);
+  if ((spacedPoints.at(-1)?.x || 600) > 600) {
+    spacedPoints[spacedPoints.length - 1].x = 600;
+    for (let index = spacedPoints.length - 2; index >= 0; index -= 1) {
+      spacedPoints[index].x = Math.min(points[index].x, spacedPoints[index + 1].x - minimumGap);
+    }
+  }
+  return spacedPoints;
+});
 const chartPoints = computed(() => chartPointsData.value.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' '));
-const chartAreaPoints = computed(() => `40,180 ${chartPoints.value} 600,180`);
-const chartStartLabel = computed(() => new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit' }).format(thirtyDaysAgo.value));
+const chartAreaPoints = computed(() => {
+  const points = chartPointsData.value;
+  if (!points.length) return '';
+  return `${points[0].x.toFixed(1)},180 ${chartPoints.value} ${points.at(-1)!.x.toFixed(1)},180`;
+});
+const chartStartLabel = computed(() => new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit' }).format(
+  trendRange.value === 'all' && visibleTrendItems.value.length
+    ? new Date(Math.min(...visibleTrendItems.value.map((item) => new Date(item.uploadedAt).getTime())))
+    : thirtyDaysAgo.value,
+));
+const chartEndLabel = computed(() => trendRange.value === 'all' ? '最新训练' : '今天');
 const selectedActionLabel = computed(() => actionFilters.find((item) => item.value === actionFilter.value)?.label || '');
 const latestTrendPoint = computed(() => chartPointsData.value.at(-1) || null);
 const scoreChange = computed(() => {
@@ -179,7 +235,17 @@ function gradeTone(grade: string | null) {
   return 'danger';
 }
 
-function formatDate(value: string) { return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value)); }
+function formatDateTime(value?: string) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(date);
+  const fields = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${fields.year}年${fields.month}月${fields.day}日 ${fields.hour}:${fields.minute}`;
+}
 function formatScore(value: number) { return new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 }).format(value); }
 function formatSignedScore(value: number) { return `${value > 0 ? '+' : '-'}${formatScore(Math.abs(value))}`; }
 function actionTypeLabel(type: TrainingActionType) { return ({ abdominal_crunch: '缩腹运动', pelvic_tilt: '骨盆倾斜', knee_rotation: '膝关节旋转' } as Record<string, string>)[type] || type; }
@@ -191,7 +257,13 @@ async function loadDetail() {
   const patientId = Number(route.params.patientId);
   if (!patientId) return;
   loading.value = true;
-  try { detail.value = await getAdminPatientDetail(patientId); } catch (error: any) { detail.value = null; ElMessage.error(error?.response?.data?.message || '加载患者档案失败'); } finally { loading.value = false; }
+  try {
+    detail.value = await getAdminPatientDetail(patientId);
+    trainingPage.value = 1;
+  } catch (error: any) {
+    detail.value = null;
+    ElMessage.error(error?.response?.data?.message || '加载患者档案失败');
+  } finally { loading.value = false; }
 }
 
 onMounted(loadDetail);
