@@ -128,6 +128,11 @@ services:
       MAX_ANALYSIS_DURATION_SECONDS: ${MAX_ANALYSIS_DURATION_SECONDS:-300}
       MAX_ANALYSIS_FRAMES: ${MAX_ANALYSIS_FRAMES:-1200}
       MAX_POSE_FRAME_WIDTH: ${MAX_POSE_FRAME_WIDTH:-720}
+      ANALYSIS_TIMEOUT_SECONDS: ${ANALYSIS_TIMEOUT_SECONDS:-600}
+      ANALYSIS_HARD_TIMEOUT_SECONDS: ${ANALYSIS_HARD_TIMEOUT_SECONDS:-630}
+      CALLBACK_TASK_SOFT_TIME_LIMIT_SECONDS: ${CALLBACK_TASK_SOFT_TIME_LIMIT_SECONDS:-10}
+      CALLBACK_TASK_TIME_LIMIT_SECONDS: ${CALLBACK_TASK_TIME_LIMIT_SECONDS:-20}
+      CALLBACK_TASK_EXPIRES_SECONDS: ${CALLBACK_TASK_EXPIRES_SECONDS:-55}
       ABDOMINAL_VISUAL_SCORE_MODE: ${ABDOMINAL_VISUAL_SCORE_MODE:-legacy}
       KNEE_ROTATION_MODE: ${KNEE_ROTATION_MODE:-bilateral}
       MPLCONFIGDIR: /tmp/matplotlib
@@ -191,6 +196,11 @@ services:
       MAX_ANALYSIS_DURATION_SECONDS: ${MAX_ANALYSIS_DURATION_SECONDS:-300}
       MAX_ANALYSIS_FRAMES: ${MAX_ANALYSIS_FRAMES:-1200}
       MAX_POSE_FRAME_WIDTH: ${MAX_POSE_FRAME_WIDTH:-720}
+      ANALYSIS_TIMEOUT_SECONDS: ${ANALYSIS_TIMEOUT_SECONDS:-600}
+      ANALYSIS_HARD_TIMEOUT_SECONDS: ${ANALYSIS_HARD_TIMEOUT_SECONDS:-630}
+      CALLBACK_TASK_SOFT_TIME_LIMIT_SECONDS: ${CALLBACK_TASK_SOFT_TIME_LIMIT_SECONDS:-10}
+      CALLBACK_TASK_TIME_LIMIT_SECONDS: ${CALLBACK_TASK_TIME_LIMIT_SECONDS:-20}
+      CALLBACK_TASK_EXPIRES_SECONDS: ${CALLBACK_TASK_EXPIRES_SECONDS:-55}
       # 小程序视觉计次；新视觉分默认只保留旧计算，显式设 evidence_shadow 后试算。
       ABDOMINAL_SEGMENTATION_MODE: ${ABDOMINAL_SEGMENTATION_MODE:-shadow}
       ABDOMINAL_VISUAL_SCORE_MODE: ${ABDOMINAL_VISUAL_SCORE_MODE:-legacy}
@@ -227,6 +237,51 @@ services:
       retries: 3
       start_period: 30s
 
+  # 回调补偿和 MediaPipe 推理分离：回调查询或 HTTPS 调用卡住时，不得阻塞视频分析 Worker。
+  # 该 Worker 不执行视频任务，资源上限明显低于 analysis-worker。
+  analysis-callback-worker:
+    image: ${ANALYSIS_SERVICE_IMAGE:?ANALYSIS_SERVICE_IMAGE is required}
+    command: ['celery', '-A', 'app.tasks.celery_app:celery_app', 'worker', '--loglevel=INFO', '--concurrency=1', '--max-tasks-per-child=1', '--queues=callbacks', '--hostname=analysis-callback-worker@%h']
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@${MYSQL_HOST:-host.docker.internal}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE}
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
+      ANALYSIS_CALLBACK_URL: ${ANALYSIS_CALLBACK_URL:?ANALYSIS_CALLBACK_URL must be public HTTPS}
+      ANALYSIS_INTERNAL_TOKEN: ${ANALYSIS_INTERNAL_TOKEN:?ANALYSIS_INTERNAL_TOKEN is required}
+      ANALYSIS_TIMEOUT_SECONDS: ${ANALYSIS_TIMEOUT_SECONDS:-600}
+      ANALYSIS_HARD_TIMEOUT_SECONDS: ${ANALYSIS_HARD_TIMEOUT_SECONDS:-630}
+      CALLBACK_TASK_SOFT_TIME_LIMIT_SECONDS: ${CALLBACK_TASK_SOFT_TIME_LIMIT_SECONDS:-10}
+      CALLBACK_TASK_TIME_LIMIT_SECONDS: ${CALLBACK_TASK_TIME_LIMIT_SECONDS:-20}
+      CALLBACK_TASK_EXPIRES_SECONDS: ${CALLBACK_TASK_EXPIRES_SECONDS:-55}
+      MPLCONFIGDIR: /tmp/matplotlib
+      XDG_CACHE_HOME: /tmp/.cache
+      XDG_CONFIG_HOME: /tmp/.config
+      ALLOW_SAMPLE_VIDEO_FALLBACK: 'false'
+      ALLOW_MOCK_KEYPOINTS_FALLBACK: 'false'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [host-access]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    # 回调进程需要加载分析任务模块；预留少量峰值空间，避免 OOM 后反复重启。
+    mem_limit: 192m
+    memswap_limit: 192m
+    cpus: 0.25
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      # 必须指定本 Worker，不能因 analysis-worker 的 pong 而误判回调消费端健康。
+      test: ['CMD-SHELL', 'celery -A app.tasks.celery_app:celery_app inspect ping -d "analysis-callback-worker@$(hostname)" --timeout=2 2>/dev/null | grep -q pong']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
   # 仅运行一个 Beat 实例，负责每分钟调度失败分析回调的重试任务。
   analysis-beat:
     image: ${ANALYSIS_SERVICE_IMAGE:?ANALYSIS_SERVICE_IMAGE is required}
@@ -244,6 +299,9 @@ services:
       OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:?OSS_ACCESS_KEY_SECRET is required}
       OSS_FORCE_PATH_STYLE: 'false'
       OSS_PUBLIC_BASE_URL: ''
+      CALLBACK_TASK_SOFT_TIME_LIMIT_SECONDS: ${CALLBACK_TASK_SOFT_TIME_LIMIT_SECONDS:-10}
+      CALLBACK_TASK_TIME_LIMIT_SECONDS: ${CALLBACK_TASK_TIME_LIMIT_SECONDS:-20}
+      CALLBACK_TASK_EXPIRES_SECONDS: ${CALLBACK_TASK_EXPIRES_SECONDS:-55}
       MPLCONFIGDIR: /tmp/matplotlib
       XDG_CACHE_HOME: /tmp/.cache
       XDG_CONFIG_HOME: /tmp/.config

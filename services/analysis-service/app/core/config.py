@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     model_complexity: int = Field(default=1, alias='MODEL_COMPLEXITY')
     # 分析任务上限。低配实例必须限制单条视频的计算量，避免 MediaPipe 长时间占满 CPU / 内存。
     analysis_timeout_seconds: int = Field(default=600, alias='ANALYSIS_TIMEOUT_SECONDS')
+    # 硬超时必须略大于软超时。软超时让 Python 有机会清理临时文件；硬超时兜底原生解码/推理不响应中断的情形。
+    analysis_hard_timeout_seconds: int = Field(default=630, alias='ANALYSIS_HARD_TIMEOUT_SECONDS')
+    # 回调重试不应无限占用 Celery 子进程。每分钟都会投递下一次补偿任务，超时后保留 retry_pending 即可。
+    callback_task_soft_time_limit_seconds: int = Field(default=10, alias='CALLBACK_TASK_SOFT_TIME_LIMIT_SECONDS')
+    callback_task_time_limit_seconds: int = Field(default=20, alias='CALLBACK_TASK_TIME_LIMIT_SECONDS')
+    callback_task_expires_seconds: int = Field(default=55, alias='CALLBACK_TASK_EXPIRES_SECONDS')
     max_analysis_duration_seconds: int = Field(default=300, alias='MAX_ANALYSIS_DURATION_SECONDS')
     # 与最长 300 秒视频的固定 4fps 骨盆倾斜采样对齐，默认完整覆盖 1200 帧。
     max_analysis_frames: int = Field(default=1200, alias='MAX_ANALYSIS_FRAMES')
@@ -82,6 +88,12 @@ class Settings(BaseSettings):
             errors.append('ABDOMINAL_VISUAL_SCORE_MODE 仅允许 legacy、evidence_shadow 或 evidence')
         if self.knee_rotation_mode not in {'legacy', 'shadow', 'bilateral'}:
             errors.append('KNEE_ROTATION_MODE 仅允许 legacy、shadow 或 bilateral')
+        if self.analysis_hard_timeout_seconds <= self.analysis_timeout_seconds:
+            errors.append('ANALYSIS_HARD_TIMEOUT_SECONDS 必须大于 ANALYSIS_TIMEOUT_SECONDS')
+        if not 0 < self.callback_task_soft_time_limit_seconds < self.callback_task_time_limit_seconds:
+            errors.append('回调任务软超时必须为正数且小于硬超时')
+        if self.callback_task_expires_seconds <= self.callback_task_time_limit_seconds:
+            errors.append('CALLBACK_TASK_EXPIRES_SECONDS 必须大于回调任务硬超时')
         if not self.analysis_callback_url.startswith('https://'):
             errors.append('ANALYSIS_CALLBACK_URL 必须使用 HTTPS')
         if not self.oss_endpoint.startswith('https://'):

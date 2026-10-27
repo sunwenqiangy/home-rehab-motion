@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from billiard.exceptions import WorkerLostError
+from billiard.exceptions import SoftTimeLimitExceeded, WorkerLostError
 from celery import signals
 
 from app.core.abdominal_visual_signal import (
@@ -241,6 +241,7 @@ def _expected_rep_range(action_type: str, source_type: Optional[str] = None) -> 
     max_retries=2,
     default_retry_delay=30,
     soft_time_limit=settings.analysis_timeout_seconds,
+    time_limit=settings.analysis_hard_timeout_seconds,
     acks_late=True,
     # 原生崩溃无法进入 Python 的 except/retry；立即确认失败并由 task_failure
     # 回写终态，避免同一消息无限重投、患者永远停在 processing。
@@ -1356,7 +1357,17 @@ def _save_keypoints_json(
         logger.warning('Failed to save keypoints JSON for video_id=%d: %s', video_id, exc)
 
 
-def _notify_callback(callback_url: Optional[str], video_id: int, analysis_run_id: str, provider_task_id: str, analysis_status: str, **kwargs) -> bool:
+def _notify_callback(
+    callback_url: Optional[str],
+    video_id: int,
+    analysis_run_id: str,
+    provider_task_id: str,
+    analysis_status: str,
+    *,
+    max_attempts: int = 3,
+    request_timeout: int = 10,
+    **kwargs,
+) -> bool:
     """投递终态回调；短暂网络故障同步重试，最终状态写入 analysis_task 供补偿。"""
     from app.db.repository import AnalysisRepository
     from app.db.session import sync_session_scope
@@ -1374,14 +1385,14 @@ def _notify_callback(callback_url: Optional[str], video_id: int, analysis_run_id
         **kwargs,
     }
     last_error: Optional[str] = None
-    for attempt in range(1, 4):
+    for attempt in range(1, max_attempts + 1):
         try:
             import requests
 
             response = requests.post(
                 callback_url,
                 json=payload,
-                timeout=10,
+                timeout=request_timeout,
                 headers={'X-Internal-Token': settings.analysis_internal_token},
             )
             if 200 <= response.status_code < 300:
@@ -1392,11 +1403,14 @@ def _notify_callback(callback_url: Optional[str], video_id: int, analysis_run_id
                 logger.info('Callback delivered: video_id=%d, attempt=%d', video_id, attempt)
                 return True
             last_error = f'HTTP {response.status_code}: {response.text[:160]}'
+        except SoftTimeLimitExceeded:
+            # 不能吞掉 Celery 的软超时；让任务尽快退出，由硬超时兜底。
+            raise
         except Exception as exc:
             last_error = str(exc)
 
-        logger.warning('Callback attempt %d/3 failed for video_id=%d: %s', attempt, video_id, last_error)
-        if attempt < 3:
+        logger.warning('Callback attempt %d/%d failed for video_id=%d: %s', attempt, max_attempts, video_id, last_error)
+        if attempt < max_attempts:
             time.sleep(attempt)
 
     with sync_session_scope() as session:
@@ -1469,9 +1483,20 @@ def _on_worker_lost(sender=None, task_id=None, exception=None, kwargs=None, **_e
         logger.exception('[%s] Failed to persist worker-lost status for video_id=%s', task_id, video_id)
 
 
-@celery_app.task(name='analysis.retry_pending_callbacks')
+@celery_app.task(
+    name='analysis.retry_pending_callbacks',
+    soft_time_limit=settings.callback_task_soft_time_limit_seconds,
+    time_limit=settings.callback_task_time_limit_seconds,
+    acks_late=True,
+    reject_on_worker_lost=False,
+)
 def retry_pending_callbacks() -> Dict[str, int]:
-    """重投已落库但尚未投递成功的终态回调。"""
+    """重投已落库但尚未投递成功的终态回调。
+
+    该任务只做小批量数据库查询和 HTTP 回调；它不能与视频推理共用故障域。
+    若 MySQL 或回调链路卡住，Celery 的软/硬超时会终止本次尝试，保留 retry_pending
+    状态以供下一分钟重新补偿。
+    """
     from app.db.models import AnalysisTask
     from app.db.session import sync_session_scope
 
@@ -1498,7 +1523,17 @@ def retry_pending_callbacks() -> Dict[str, int]:
         analysis_run_id = str(payload.pop('analysis_run_id', ''))
         provider_task_id = str(payload.pop('provider_task_id', ''))
         payload.pop('video_id', None)
-        if callback_url and analysis_run_id and provider_task_id and _notify_callback(callback_url, video_id, analysis_run_id, provider_task_id, status, **payload):
+        # 每分钟都会重新扫描；单次补偿只尝试一次、最多等待 5 秒，避免异常地址耗尽 Worker。
+        if callback_url and analysis_run_id and provider_task_id and _notify_callback(
+            callback_url,
+            video_id,
+            analysis_run_id,
+            provider_task_id,
+            status,
+            max_attempts=1,
+            request_timeout=5,
+            **payload,
+        ):
             delivered += 1
 
     return {'scanned': scanned, 'delivered': delivered}

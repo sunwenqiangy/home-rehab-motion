@@ -26,11 +26,16 @@ celery_app.conf.update(
         'retry-pending-callbacks-every-minute': {
             'task': 'analysis.retry_pending_callbacks',
             'schedule': 60.0,
+            # 回调补偿独立于视频分析队列；过期消息直接丢弃，下一分钟会重新扫描 retry_pending 数据。
+            'options': {
+                'queue': 'callbacks',
+                'expires': settings.callback_task_expires_seconds,
+            },
         },
     },
     task_routes={
         'analysis.analyze_video': {'queue': 'analysis'},
         'analysis.sample': {'queue': 'analysis'},
-        'analysis.retry_pending_callbacks': {'queue': 'analysis'},
+        'analysis.retry_pending_callbacks': {'queue': 'callbacks'},
     },
 )
